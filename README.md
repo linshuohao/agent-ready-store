@@ -1,27 +1,28 @@
 # Agent-Ready Store
 
-本项目将完成面向人类与 AI Agent 的商店作业。原始目标、交付要求和商品资料直接见 [作业原件](references/home-quiz.md) 与 [测试数据原件](references/products.json)，不在这里复制。PM 需求仍为草稿，需在后续阶段讨论确认。
+面向人类与 AI Agent 的商店作业。目标与交付约束见只读的 [作业原件](references/home-quiz.md) 和 [商品原件](references/products.json)；PM 需求仍是草稿。
 
-当前为 **Phase 0 — Bootstrap & Governance，等待 Human Review**。已初始化 Git、OpenSpec 和项目工程规范，复用现有 Superpowers 插件。尚无商城代码、业务 Change 或正式业务 Spec；业务技术栈、Agent 协议、Backend、持久化、模块与顺序均未确定。当前没有业务启动、测试或 CI 命令；在确定技术栈与实现后补充。
+已有工程工具与工作流集成草案，尚无商城代码、业务 Change 或正式业务 Spec；产品决策 D-01～D-22 已记录。启动、业务测试及 CI 命令待实际实现后补充；治理增量待 Human Review。
 
-采用 **Global Baseline + Incremental Change Loop**：Phase 1 建立全局需求认知，Phase 2 建立必要的最小架构基线，随后逐个业务切片经历规格、实现、验证和归档。Phase 5 汇总交付和复盘。阶段允许按证据回退，禁止提前铺开全项目详细任务。
+## 日常协作
 
-## 开始协作
+从 [AGENTS.md](AGENTS.md) 与 [ai-native-workflow](.agents/skills/ai-native-workflow/SKILL.md) 开始，按任务获取最小上下文。关键设计、行为与交付风险按需接入 [ai-native-review](.agents/skills/ai-native-review/SKILL.md)。OpenSpec 管变更级正式规格和任务，Superpowers 提供测试、调试等执行方法，不维护平行计划。
 
-1. 先读 [AGENTS.md](AGENTS.md)，确认本轮授权与分支；按任务查阅需求决策或工程治理决策。
-2. 按 [WORKFLOW](docs/WORKFLOW.md) 加载当前切片的必要上下文。
-3. OpenSpec Skills 从 Codex Skills 入口调用；版本、实际可执行路径及验证命令见 [TOOLING](docs/TOOLING.md)。本机裸 `openspec` 指向旧版，须按该文档选择 1.15.0。
-4. 在 OpenSpec Change 内维护唯一正式任务清单，按需使用 Superpowers 的测试、调试、Review 和验证技能。
+## 交付讲解
 
-## 导航
+[打开 Workflow 图与设计思想讲解](docs/presentation/ai-native-workflow.html)。下载仓库后，用浏览器打开该 HTML 即可，离线可用；GitHub 文件页显示的是源码，可下载后打开。
 
-- [Workflow 与 Review Gate](docs/WORKFLOW.md)
-- [GitHub Flow](docs/GIT_WORKFLOW.md)
-- [Context Engineering](docs/CONTEXT_STRATEGY.md)
-- [工具集成与 Phase 0 验证](docs/TOOLING.md)
-- [需求决策与 PM 沟通](DECISIONS.md)
-- [工程治理决策](docs/ENGINEERING_DECISIONS.md)
-- [AI 协作关键时刻](AI_NOTES.md)
-- [OpenSpec 配置](openspec/config.yaml)
+这是面向人的独立演示页，介绍目标、三平面、两种循环、Review 与工具分工；不作为 Agent 默认上下文或批准依据。
 
-后续交付仍需落实原件要求的自定义 Skill 创建、真实使用与迭代记录、GitHub Actions、真实 Agent 验证和完整提交历史；本阶段只建立机制。原件含保密要求，发布或分享资料前须确认授权。本轮不建远程、不 Push、不创建 PR、不合并；Human Review 后另行授权下一阶段。
+最终 Project Showcase 尚未生成；其信息架构、真实资产映射与验收规则见 [产品、设计与交付契约](docs/PRODUCT_ENGINEERING.md#project-showcase-生成与维护)。当前讲解页不代表产品已交付。
+
+## 记录入口
+
+- [DECISIONS](DECISIONS.md)：逐条需求的假设、判断、取舍及 PM 回复。
+- [ENGINEERING_DECISIONS](docs/ENGINEERING_DECISIONS.md)：工程治理与重要技术选择；唯一技术决策源。
+- [PRODUCT_ENGINEERING](docs/PRODUCT_ENGINEERING.md)：三个全局基线的职责、维护与最终交付映射；按任务读取相关基线及其确认范围。
+- [AI_NOTES](AI_NOTES.md)：精选真实协作关键时刻。
+- [TOOLING](docs/TOOLING.md)：必要工具入口与简短 Skill 验证记录。
+- [OpenSpec](openspec/config.yaml)：正式规格、设计、任务与变更生命周期配置。
+
+保留真实完整的提交历史；当前仍待后续完成产品、GitHub Actions 和真实购物 Agent 记录。原件含保密要求，发布或分享须确认授权。
