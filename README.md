@@ -2,7 +2,7 @@
 
 面向人类与 AI Agent 的商店作业。目标与交付约束见只读的 [作业原件](references/home-quiz.md) 和 [商品原件](references/products.json)；PM 需求仍是草稿。
 
-已有工程工具与工作流集成草案，尚无商城代码、业务 Change 或正式业务 Spec；产品决策 D-01～D-22 已记录。启动、业务测试及 CI 命令待实际实现后补充；治理增量待 Human Review。
+已有工程工具与工作流集成草案，尚无商城代码、业务 Change 或正式业务 Spec；产品决策 D-01～D-22 已记录。Product Design 阶段已归档：Human 接受五页线框与三个代表性视觉稿的设计方向，完整验收仍有未完成项。尚未生成 Technical Design 或授权业务开发。启动、业务测试及 CI 命令待实际实现后补充；治理增量待 Human Review。
 
 ## 日常协作
 
@@ -18,6 +18,9 @@
 
 ## 记录入口
 
+- [Product Design](docs/PRODUCT_DESIGN.md)：归档的页面、旅程、交互、视觉与响应式方向；确认范围、实际验证及未完成项。
+- [Design Preview](design/index.html)：五页线框、三个代表性视觉稿与异常状态；资产与来源说明见 [design/README](design/README.md)。
+- [UX Decisions](docs/UX_DECISIONS.md)：已确认设计决策及其历史；原始交接材料索引见设计资产说明。
 - [DECISIONS](DECISIONS.md)：逐条需求的假设、判断、取舍及 PM 回复。
 - [ENGINEERING_DECISIONS](docs/ENGINEERING_DECISIONS.md)：工程治理与重要技术选择；唯一技术决策源。
 - [PRODUCT_ENGINEERING](docs/PRODUCT_ENGINEERING.md)：三个全局基线的职责、维护与最终交付映射；按任务读取相关基线及其确认范围。

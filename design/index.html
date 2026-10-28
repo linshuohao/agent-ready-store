@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agent-Ready 商店｜產品設計階段歸檔</title>
+  <link rel="stylesheet" href="preview.css">
+  <script src="preview.js" defer></script>
+</head>
+<body>
+  <header class="review-header">
+    <div><span class="tag">設計方向已接受 · 階段已歸檔 · 完整驗收未完成</span><h1>日常選物 / 設計預覽</h1>
+      <p>五頁線框與三個代表性視覺稿已完成人工方向性審閱。所有操作只切換展示樣本，不會購買。</p></div>
+    <a href="README.md">設計說明與來源 ↗</a>
+  </header>
+  <main>
+    <div class="page-tabs mode-tabs" aria-label="設計版本"><button data-mode="visual" aria-pressed="true">代表性視覺稿</button><button data-mode="wireframe" aria-pressed="false">五頁結構線框</button></div>
+    <nav class="page-tabs" aria-label="線框頁面">
+      <button data-page="home" aria-pressed="true">01 首頁／商品列表</button>
+      <button data-page="detail" aria-pressed="false">02 商品詳情</button>
+      <button data-page="cart" aria-pressed="false">03 購物車</button>
+      <button data-page="checkout" aria-pressed="false">04 確認訂單</button>
+      <button data-page="result" aria-pressed="false">05 訂單結果</button>
+    </nav>
+    <section class="tools" aria-label="設計審閱控制">
+      <label>購物路徑<select id="journey"><option value="human">顧客自行選購</option><option value="agent">Agent 交接（範例）</option></select></label>
+      <label>頁面狀態<select id="scenario"></select></label>
+      <fieldset><legend>預覽寬度</legend><button data-width="auto" aria-pressed="true">自適應</button><button data-width="1180" aria-pressed="false">桌面 1180</button><button data-width="768" aria-pressed="false">平板 768</button><button data-width="390" aria-pressed="false">手機 390</button></fieldset>
+      <button id="handoff">開啟 Agent 交接範例 →</button>
+    </section>
+    <p id="context" class="context" aria-live="polite"></p>
+    <div class="canvas"><iframe title="商城視覺設計草稿" id="preview" src="mockups/home.html?page=home&amp;journey=human&amp;state=normal"></iframe></div>
+    <aside class="design-note"><h2>本頁審閱重點</h2><p id="annotation"></p>
+      <p>目前設計表達已歸檔；方向接受不表示每個數值均經逐項簽核或所有設備已完成驗收。原資產的草稿標籤保留為生成時說明。窄螢幕會限制預覽寬度，請在較寬視窗檢查完整桌面版。</p>
+      <p><a href="references/UX_DECISIONS.md">附件決策原件</a> · <a href="references/UX_DECISIONS.html">附件視覺與流程原件</a> · <a href="../docs/UX_DECISIONS.md">倉庫決策記錄</a> · <a href="../docs/REQUIREMENTS.md">Requirements（Draft）</a></p>
+      <p><a href="../docs/PRODUCT_DESIGN.md">Product Design 歸檔與驗收邊界</a> · <a href="mockups/home.html">首頁視覺稿</a> · <a href="mockups/product.html">商品詳情視覺稿</a> · <a href="mockups/checkout.html">確認訂單視覺稿</a>。購物車與訂單結果沿用線框，沒有額外高保真頁面。此入口不是最終 Project Showcase。</p>
+    </aside>
+  </main>
+</body>
+</html>
