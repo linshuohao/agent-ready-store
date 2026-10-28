@@ -71,7 +71,7 @@ openspec/
 | Schema | `schemas --json` 返回 `spec-driven`，原生链为 proposal → specs → design → tasks |
 | 规格校验 | `validate --all --strict` 输出 `No items found to validate.`；没有业务规格，不能将其表述为业务验收通过 |
 | Superpowers 发现 | 当前桌面会话技能目录含 using-superpowers、TDD、systematic-debugging、requesting-code-review、verification-before-completion 等；本地 `.codex-plugin/plugin.json` 与技能文件可读 |
-| Superpowers 使用 | 实际加载 using-superpowers；verification-before-completion 用于核对新证据；requesting-code-review 驱动独立只读 AI 审阅，未发现阻止提交的问题；receiving-code-review 用于核对反馈。详见 AI_NOTES P0-04 |
+| Superpowers 使用 | 初始化阶段实际加载 using-superpowers；verification-before-completion 用于核对新证据；requesting-code-review 驱动独立只读 AI 审阅；receiving-code-review 用于核对反馈。工程检查记录见下节，不逐轮写入 AI_NOTES |
 
 Codex 原生发现检查不启动模型、不创建聊天或业务任务。首次 app-server 启动受全局 SQLite 运行时沙箱访问限制而失败；允许正常运行时访问后只读查询成功。结果证明项目 Skills 可被 Codex 发现，不代表桌面当前会话选择器已经热刷新；若未显示，重新打开项目/会话。Superpowers 的本次发现证据来自桌面会话，未声称其他 Codex 主机/CLI 环境都已安装。
 
@@ -94,7 +94,24 @@ Superpowers 官方 README 当前为 Codex App 推荐官方插件市场：侧栏 
 
 ## 后续自定义 Skill
 
-在出现真实重复任务后，由当前切片驱动创建至少一个项目自定义 Skill（预定位置 `.agents/skills/<project-skill>/SKILL.md`），小范围实际使用，再按失败/反馈迭代。先加载当时可用的 Skill 创建规范。AI_NOTES 按版本记录真实调用与变化，不把第三方技能计作自定义产物；本轮自定义 Skill 创建数和使用数均为 0。
+在出现真实重复任务后，由当前切片驱动创建至少一个项目自定义 Skill（预定位置 `.agents/skills/<project-skill>/SKILL.md`），小范围实际使用，再按失败/反馈迭代。先加载当时可用的 Skill 创建规范。不把第三方技能计作自定义产物；目前自定义 Skill 创建数和使用数均为 0，尚无版本迭代。
+
+本节维护自定义 Skill 的使用与迭代记录：每次实际调用记录日期、Skill 路径和版本/Commit、当前任务/Change、用途、结果与证据；每次修改记录触发反馈、版本变化和复验结果。从真实记录统计使用次数及版本数，阅读或安装不计调用。当前没有调用条目，不预填次数。只有体现关键协作改进的案例才精选进 AI_NOTES，不向其中同步所有调用明细。
+
+## Phase 0 工程检查记录
+
+以下是初始化阶段（治理提交 `8205834`）的运行事实，保留在工具记录中，不再作为 AI_NOTES 的关键时刻。Git 初始化与 Bootstrap 细节见 [GIT_WORKFLOW](GIT_WORKFLOW.md)。
+
+- 原件 SHA-256 与 Bootstrap `e595bf1` 的 Git blob 均一致（2/2）。读取前记录的固定基线如下，可用 `shasum -a 256 references/home-quiz.md references/products.json` 及 `git diff main -- references` 复核。
+- 当时 9 份要求文件齐全、30 个本地文档链接有效，业务 Spec/Change 为空，6 个 Codex 项目 Skills 启用且解析错误为空；Superpowers manifest 与 4 个适用品质技能文件可读。
+- `doctor`、两种 `list` 和 `validate --all --strict` 均退出 0；validate 明确没有待验证项目。`git diff --cached --check` 无输出且退出 0。
+- 当时独立只读 AI Review 未发现 Critical/Important 问题，并核对 6 个 Skills 与本机 1.15.0 官方 core 生成内容一致。后续 Human 指出 DECISIONS/AI_NOTES 的职责偏差并要求纠正；因此这些检查结果不能当作全部作业要求已满足的证明。该人工纠偏精选于 [AI_NOTES](../AI_NOTES.md)。
+- 未运行业务构建、业务测试、CI 或真实购物 Agent；这些留待后续实现和交付。
+
+```text
+5db27433fe19761c6a9def418913498adbb8d316c061ff532e387a1975f6be0a  references/home-quiz.md
+c0c09b271f528fab8925eab041982c056dd94f3e38183976102139050c020889  references/products.json
+```
 
 ## 官方来源
 

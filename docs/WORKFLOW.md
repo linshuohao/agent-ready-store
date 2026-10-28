@@ -24,7 +24,7 @@ Phase 1 才创建以下文件；本轮不填业务内容：
 | `docs/requirements/INVENTORY.md` | Requirement Inventory：稳定 ID、原件定位、需求摘要、Draft/Confirmed/Deferred/Rejected 状态及 Decision/Change 链接 |
 | `docs/requirements/CAPABILITY_MAP.md` | Capability Map 与 Cross-Module Dependencies；边界与依赖，不存详细实现任务 |
 | `docs/requirements/RISKS_AND_QUESTIONS.md` | Risk & Open Questions：风险、问题分级、影响范围与解决条件 |
-| `DECISIONS.md` | Decision Log，决策与理由的唯一来源 |
+| `DECISIONS.md` | 需求 Decision Log：针对每条调整或有疑问的需求，记录原意、假设、判断、取舍及 PM 回复；工程治理选择另见 `docs/ENGINEERING_DECISIONS.md` |
 | `docs/ROADMAP.md` | Incremental Roadmap：切片目标、优先级、依赖、状态与 Change 链接 |
 
 Roadmap 不存逐项技术任务或第二份任务勾选表。状态可用 Candidate、Ready、In progress、Delivered、Deferred；Delivered 必须有验收和归档证据。
@@ -69,4 +69,4 @@ Human 对业务、架构及重要工程决策拥有最终决定权。AI 可自�
 
 每个 Change 必须有可观察的验收标准；关键任务必须说明如何证明完成。记录实际命令、结果、失败与限制，区分未执行和通过。Review 至少覆盖规格符合性、质量、安全/授权边界及回归；AI Review 支持必要的 Human Review，不替代它。提交后仍核对工作区和提交范围。
 
-验证证据可放在当前 Change 的 Tasks 验证条目或关联报告；关键证据链接写入 `AI_NOTES.md`，不要复制整份日志。失败、人工纠偏、相关 Commit/Change 应可追溯。纯文档任务用链接、内容一致性和差异检查，不编造业务测试结果。
+验证证据放在当前 Change 的 Tasks 验证条目或关联报告；工具初始化记录放在 `docs/TOOLING.md`。失败、人工纠偏、相关 Commit/Change 应可追溯，但无需每轮写入 AI_NOTES。`AI_NOTES.md` 仅精选最终 3–5 个关键协作时刻，确有价值时链接相关证据；自定义 Skill 使用与迭代明细按 TOOLING 的机制记录。纯文档任务用链接、内容一致性和差异检查，不编造业务测试结果。
