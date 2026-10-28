@@ -130,7 +130,7 @@ T-01～T-06 原为未选择方案的讨论索引；2026-10-29 按 Human 明确�
 - **文档状态：** 已确认结论归档，记录准确性待 Human Review。Accepted 只覆盖明确确认且不冲突的选择，不自动批准 Technical Design、Requirements 整体、业务修订或开发。ENG-008/009/012 的 Proposed 状态不变。
 - **现有约束：** [DECISIONS](../DECISIONS.md) D-01～D-22 与 [UX Decisions](UX_DECISIONS.md) 的 Accepted 范围继续有效；[Requirements v0.1](REQUIREMENTS.md) 仍为 Draft，其中直接 Human 补充确认单独适用；[Product Design v0.2](PRODUCT_DESIGN.md) 为 Accepted Design Direction，完整验收未闭合。本次不修改上述业务/体验记录或批准范围。
 - **去重：** 既有文件只有治理决策和 T-* 讨论索引，没有同一批已确认技术条目；复用本文件，不新增 TECH_DECISIONS.md。旧文档中的「技术栈尚未选择」按各次交接时的状态解读；当前技术选择以本节为准，不借归档修改 Workflow / Skills。
-- **证据分类：** Normative＝本次 Human 明确确认及既有有效决策；Observed＝本轮实际读取的仓库文档及 Git 状态；Inferred＝下文为解释选择整理的工程取舍与约束推论；Unknown＝实现、性能与 Host 兼容性。Codex 未参加原始 ChatGPT 讨论，技术决策首次归档时尚未取得该阶段过程总结；不声称独立选型、跑过 Spike 或验证过协议/Host。
+- **证据分类：** Normative＝本次 Human 明确确认及既有有效决策；Observed＝本轮实际读取的仓库文档及 Git 状态；Inferred＝下文为解释选择整理的工程取舍与约束推论；Unknown＝实现、性能与 Host 兼容性。Codex 未参加原始 ChatGPT 讨论，技术决策首次归档时尚未取得该阶段过程总结；后续补件见下方 AI Collaboration Evidence Check，不声称独立选型、跑过 Spike 或验证过协议/Host。
 - **候选与理由：** 以下未由交接直接给出的候选对照与代价，均为 Codex 归档时的工程分析，供核对，不描述为 ChatGPT 当时提出、Human 否决或实际测得的结果；未提供的框架候选名、比较指标和历史发言不补造。
 - **状态读法：** 技术选择沿用上方生命周期；本批用 **Planned Enhancement** 标记已规划后续能力方向，用 **Pending Detail** 标记尚缺设计/产品细则，用 **Conflict** 标记与有效基线待裁决的差异。它们标注具体子项，不能把整项 Accepted 误读为子项全部获批；不修改全局 Workflow 状态体系。
 - **本轮边界：** 只归档和检查；不生成 TECHNICAL_DESIGN.md，不创建 OpenSpec Change，不做实验、商城/Agent 实现、部署或自动 Commit / Push / Merge。后续活动须另获对应授权。
@@ -232,6 +232,12 @@ T-01～T-06 原为未选择方案的讨论索引；2026-10-29 按 Human 明确�
 | 恢复与生命周期 | P-04 的通用故障、Cart 独立保留期限、订单后续查询和凭证到期后结果访问仍未获决；不能从 24 小时链接推导数据删除或永久订单查询权限 |
 | Host 与降级 | 协议/SDK 版本、真实 Host/浏览器能力、页面/UI 资源、安全上下文及连接方式待验证；基础 MCP、WebMCP、MCP Apps 分别举证，不互相推定兼容 |
 | 验证与运行 | 后续按契约覆盖金额门槛、异常商品、评论分页、未授权/越权/注入、Quote 变化、并发/重试/回滚与真实 Agent 交接；保留 UI/UX 未完成项。具体工具、Compose、CI、演示入口及公网方案尚未决定/执行 |
+
+### AI Collaboration Evidence Check
+
+本次已知技术讨论主要发生在 Human + ChatGPT，交接提供的是结论而非过程证据。现有 [外部协作摘要](ai-collaboration/AI_COLLABORATION_NOTES.md) Case 01～04 覆盖产品、计价、UX 及职责纠偏，未覆盖本批技术栈、三表取舍、Agent 增强或代提交的新讨论；[AI_NOTES](../AI_NOTES.md) 已有 5 个精选案例。本轮不编造 AI 建议、Human 纠偏或候选比较历史，不直接新增第 6 个案例。阶段补档提醒只在本次最终汇报提出；Human 补交真实过程摘要后，再核对来源并酌情替换/合并精选案例，摘要不代替正式决策批准。
+
+**后续补件（2026-10-29，Asia/Shanghai）：** Human 已提供 [技术决策协作补充记录](ai-collaboration/AI_COLLABORATION_TECH_DECISIONS.md)，原样归档并完成来源/状态对照，详见 [入库核对](ai-collaboration/README.md#技术协作补件接收与核对)。上段保留为首次归档时的缺口记录，当前该批讨论的结构化过程摘要已补齐；原始对话与工程/Host 验证仍未取得。AI_NOTES 合并旧案例并融入两类技术协作，保持 5 例；不再重复催交同一过程摘要。补件不改变 T-*、C-01/02 或 D-01 的决策状态，也不将其中 Codex Host 意向、条件库存更新等细节提升为新的 Accepted 设计。
 
 ## ENG-012 — 产品、设计与最终交付集成（待 Review）
 
