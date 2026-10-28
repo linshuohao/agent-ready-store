@@ -1,0 +1,6 @@
+# Local OS files and secrets; extend after the business stack is chosen.
+.DS_Store
+.env
+.env.*
+!.env.example
+*.log
