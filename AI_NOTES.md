@@ -1,6 +1,6 @@
 # AI 协作关键时刻
 
-> **当前状态校注 — 2026-10-29：** 下文过程与接收核对保留当时快照；Human 本轮 Baseline Finalization 已批准 Requirements 已确认范围，C-01 产品语义冲突已关闭（代提交仍 Planned Enhancement），C-02 已接受七工具。当前结论见 [工程决策](docs/engineering/ENGINEERING_DECISIONS.md#技术决策归档--2026-10-29)。旧 Draft、五工具与 Conflict 表述仅用于追溯，不是当前状态；不改附件原件或补造历史过程。
+> **当前状态校注 — 2026-10-29：** 下文过程与接收核对保留当时快照；Human 本轮 Baseline Finalization 已批准 Requirements 已确认范围，C-01 产品语义冲突已关闭（代提交仍 Planned Enhancement），C-02 已接受七工具。当前结论见 [工程决策](docs/engineering/ENGINEERING_DECISIONS.md#技术决策归档--2026-10-29)。2026-10-29 Design Phase Closure 已批准 Technical Design v0.5 并结束设计阶段，Proposed/Pending/未运行项仍保留。旧 Draft、五工具与 Conflict 表述仅用于追溯，不是当前状态；不改附件原件或补造历史过程。
 
 
 依据 [作业说明「二、繳交內容」第 3 项](references/home-quiz.md)，最终精选 **3–5 个真实关键时刻**，解释人如何发现 AI 的问题、保留哪些判断权，以及如何根据失败改进 context 或 skill。这里不按轮次追加流水账，不汇总每次 AI 决策、命令和例行验证。

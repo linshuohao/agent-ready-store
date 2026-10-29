@@ -1,6 +1,6 @@
 # Product Design — 设计资产入口
 
-Product Design Baseline v0.2 已获 Human 正式批准（2026-10-29）；结构、关键交互与视觉方向生效，完整验收及计划增强仍保留。当前设计说明、15 项 UX 决策、展示限制与验收证据统一见 [Product Design](../docs/product/PRODUCT_DESIGN.md)，本目录保存可打开的设计资产及来源。
+Product Design Baseline v0.2 已获 Human 正式批准（2026-10-29）；结构、关键交互与视觉方向生效，完整运行验收仍保留，Agent 授权代提交继续后置。当前设计说明、15 项 UX 决策、展示限制与验收证据统一见 [Product Design](../docs/product/PRODUCT_DESIGN.md)，本目录保存可打开的设计资产及来源。
 
 ## 打开与审阅
 
@@ -23,7 +23,7 @@ Product Design Baseline v0.2 已获 Human 正式批准（2026-10-29）；结构�
 | [附件 Markdown 原件](references/UX_DECISIONS.md) | 本次 Human + ChatGPT 已确认的 15 项 UX 决策输入；完整保留候选、理由与双语撤回历史 |
 | [附件 HTML 原件](references/UX_DECISIONS.html) | 视觉层级、页面结构和用户流程参考，原样保留内嵌 CSS、图示及全部文字；不是正式视觉稿 |
 | [合并后的 UX 决策](../docs/product/PRODUCT_DESIGN.md#ux-decisions) | 保留原决策 ID、候选、确认与撤回历史，正文已并入 Product Design §10 |
-| [Requirements v0.2](../docs/product/REQUIREMENTS.md) | 文件当前仍标 Draft；作为本轮设计输入，Accepted 产品决策和直接 Human 补充确认分别有效，不将整个基线冒称 Approved |
+| [Requirements v0.2](../docs/product/REQUIREMENTS.md) | Approved Product Requirements Baseline；批准依据与 Pending 以正文为准 |
 | [产品决策 D-01～D-22](../DECISIONS.md) | 业务语义、金额、交接生命周期、权限与最终确认边界 |
 | [Product Design 标准](../docs/workflow/PRODUCT_ENGINEERING.md#product-design-内容与验收标准) | 复用现有设计产物及验收规则 |
 | [原始 Mock](../references/products.json) | 只读数据来源；展示内容不是生产事实 |

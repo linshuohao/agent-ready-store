@@ -1,5 +1,7 @@
 # 工程与技术决策
 
+> **当前基线状态 — 2026-10-29：** Human「Design Phase Closure & Git History Consolidation」已批准 [Technical Design v0.5](TECHNICAL_DESIGN.md) 并结束本轮设计阶段。下文 Draft/待审记录保留其当时范围；Proposed 实施候选、L-01/P-04 等 Pending 与未运行证据不因整体批准自动升级，既有 Accepted 决策不重写。
+
 本文件保存工程治理与重要技术选择，保留原有 ENG-* 决策 ID，业务技术专题按需使用 T-*。针对 PM 需求的假设、判断、取舍及回复另见 [DECISIONS.md](../../DECISIONS.md)，不在这里混合维护；不另建职责相同的 TECH_DECISIONS.md。
 
 历史条目中的 Workflow、Context、Git 独立文档现已收敛到 AGENTS 与项目 Skills；旧验证报告的必要事实迁入 TOOLING，迁移不改变原决策内容或状态。

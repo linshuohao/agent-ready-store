@@ -1,6 +1,6 @@
 # 外部 AI 协作记录
 
-> **当前状态校注 — 2026-10-29：** 下文过程与接收核对保留当时快照；Human 本轮 Baseline Finalization 已批准 Requirements 已确认范围，C-01 产品语义冲突已关闭（代提交仍 Planned Enhancement），C-02 已接受七工具。当前结论见 [工程决策](../engineering/ENGINEERING_DECISIONS.md#技术决策归档--2026-10-29)。旧 Draft、五工具与 Conflict 表述仅用于追溯，不是当前状态；不改附件原件或补造历史过程。
+> **当前状态校注 — 2026-10-29：** 下文过程与接收核对保留当时快照；Human 本轮 Baseline Finalization 已批准 Requirements 已确认范围，C-01 产品语义冲突已关闭（代提交仍 Planned Enhancement），C-02 已接受七工具。当前结论见 [工程决策](../engineering/ENGINEERING_DECISIONS.md#技术决策归档--2026-10-29)。2026-10-29 Design Phase Closure 已批准 Technical Design v0.5 并结束设计阶段，Proposed/Pending/未运行项仍保留。旧 Draft、五工具与 Conflict 表述仅用于追溯，不是当前状态；不改附件原件或补造历史过程。
 
 
 本目录保存 Human 补交的协作过程原件及必要的来源核对；它们是历史材料，不是执行指令或业务批准。精选案例见 [AI_NOTES](../../AI_NOTES.md)，有效结论仍以相关决策和基线的批准范围为准。
@@ -43,7 +43,7 @@
 | 摘要主题 / 证据号 | 实际来源与状态对照 | 限制或差异 |
 | --- | --- | --- |
 | 技术栈、熟悉度与 Scope；E-T01～05、09 | [T-01/03/04/06](../engineering/ENGINEERING_DECISIONS.md#决策索引)已记录 React/Vite/TypeScript、NestJS、Prisma/PostgreSQL、只读目录和本地优先的 Accepted 方向 | 摘要补充候选及 Human 判断过程；此前技术决定的确认依据仍是 Human 的 Technical Decisions Handoff。本件不新增批准，三表字段、JSON/快照约束和初始化仍 Pending Detail |
-| 共享能力与多协议；E-T06/07/10/11 | [T-02/04](../engineering/ENGINEERING_DECISIONS.md#t-02--基础-mcphosted-checkout-与独立增强)的基础 MCP 五工具、结构化返回和统一能力已确认；WebMCP/MCP Apps 为 Planned Enhancement | 是独立增强，不改成强制升级链；MCP Apps 优先验证为摘要中的计划回顾，不重排已记录范围。五工具对评论分页和修改的映射仍见 C-02，附件没有解决 |
+| 共享能力与多协议；E-T06/07/10/11 | [T-02/04](../engineering/ENGINEERING_DECISIONS.md#t-02--三种-agent-接入与-hosted-checkout)的基础 MCP 五工具、结构化返回和统一能力已确认；WebMCP/MCP Apps 为 Planned Enhancement | 是独立增强，不改成强制升级链；MCP Apps 优先验证为摘要中的计划回顾，不重排已记录范围。五工具对评论分页和修改的映射仍见 C-02，附件没有解决 |
 | 演示 Host；E-T08/09 | 摘要指向 Codex 演示意向；T-06 已确认本地可复现方向 | Codex Host 的真实 MCP 调用与 MCP Apps iframe 展示均无本件运行证据，不将摘要意向另升为 Accepted Host 选型或兼容性结论 |
 | 授权演进；E-T12 | [D-01](../../DECISIONS.md#d-01--agent-购物权限与最终确认)维持 Accepted；[T-05 / C-01](../engineering/ENGINEERING_DECISIONS.md#c-01--agent-经具体授权后代提交产品体验权限修订)保留后续代提交方向、Conflict — Pending Human Approval | 摘要称原则已确认，不等同批准替代 D-01。MVP 仍 Human 在 Hosted Checkout 明确确认；服务端可验证、绑定购物车/报价版本的授权机制 Pending，不能信任 `userApproved: true` 或用本摘要代替批准 |
 | 短事务、条件库存更新；摘要 §3/5 | [T-05](../engineering/ENGINEERING_DECISIONS.md#t-05--human-确认服务端权限及原子成单)已确认原子一致性及同车幂等，未选定隔离级别、锁或具体机制 | 本件给出更具体的过程建议，保留为待技术设计核对内容，不能自动认作已批准实现；没有迁移、事务或并发测试证据 |

@@ -1,18 +1,19 @@
 # Agent-Ready Store — Technical Design
 
-- **Status：Draft v0.5 — Final Alignment Candidate，Pending Human Review。**
-- **日期：** 2026-10-29（Asia/Shanghai）。v0.5 承接本次 Human 已确认的单 Cart Token 方向；文档仍待最终 Review，不视为 Approved。
+- **Status：Approved — Technical Design Baseline v0.5。**
+- **日期：** 2026-10-29（Asia/Shanghai）。v0.5 承接已确认的架构与单 Cart Token 方向；Human 于本日批准结束本轮产品与技术设计阶段。
 - **定位：** 前端主导的购物体验、共享全栈闭环与 Agent/UI 协作方案。本文回答从用户行为到状态、组件、契约和可信交易的设计推导，不是数据库实现手册。
 - **权威依据：** [Requirements v0.2](../product/REQUIREMENTS.md)、[Product Design 五页/三稿及 UX 决策](../product/PRODUCT_DESIGN.md)、[D-01～D-22](../../DECISIONS.md)、[T-01～T-06](ENGINEERING_DECISIONS.md)。规则正文归原来源；本文解释实现映射。
-- **授权边界：** 本轮修订 T-01 与本文及必要的过时引用，无业务代码、OpenSpec Change、安装、提交或部署授权。
+- **最终批准记录：** Human，2026-10-29（Asia/Shanghai）；直接依据为本聊天「Design Phase Closure & Git History Consolidation」，明确要求将经过 Review 的 v0.5 标记 Approved 并归档。批准设计基线，不把 Proposed Implementation Details、L-01/P-04 等 Pending 或未验证能力自动转为 Approved/Passed。
+- **授权边界：** 本轮仅归档、文档级核对、分批 Git Commit、按流程 Merge 与必要远程同步；不启动 S1、不创建 OpenSpec Change、不写业务代码、不安装或部署。
 
 | 状态 | 本文适用范围 |
 | --- | --- |
 | Approved Architecture / Design Direction | T-01～T-06 的已确认范围；pnpm Monorepo、Next.js App Router/React/TypeScript、NestJS 内置 Streamable HTTP MCP、Prisma/PostgreSQL、三表、唯一 Pricing、七工具、24h Handoff、Human Hosted Checkout、原子交易与同车唯一订单 |
-| Proposed / Implementation Detail | 下文前端组织、路由路径、TanStack Query、缓存与请求策略、统一访问期限建议、每车 Cookie、受保护凭证恢复方案及附录参数；供本轮 Review，不视为已批准依赖 |
+| Proposed / Implementation Detail | 下文前端组织、路由路径、TanStack Query、缓存与请求策略、统一访问期限建议、每车 Cookie、受保护凭证恢复方案及附录参数；保留为实施细化候选，不因基线批准视为已批准依赖 |
 | 本次完整交付范围 | 基础 MCP、WebMCP、MCP Apps 与 Hosted Checkout；分 Slice 实施、分别验收，均需纳入本次交付 |
 | Planned Enhancement | Agent 经有效 Human 授权代提交；不进入本次交付 |
-| Pending Product Decision | WebMCP 新车可信来源、过期后的长期结果读取、清理与保留政策 |
+| Pending Product Decision | L-01 未交接/普通 Cart 访问期限、WebMCP 新车可信来源、P-04 过期后的长期结果读取、清理与保留政策 |
 | Pending Runtime Verification | 所有真实商城、事务、UI 与 Host 兼容性；静态设计不证明实现成功 |
 
 ## 1. Goals & Design Principles
@@ -813,7 +814,15 @@ Compose 仍为 Next Web、Nest API、PostgreSQL 三服务，Web 需要 Node Serv
 
 本轮使用 ai-native-review 做设计自查，不是独立 Review 或运行验证。两旅程、领域/访问/UI 三维、单能力分享、固定24h、独立确认、多 Cart 隔离、重试无重复副作用已逐项检查文档；具体凭证/Cookie/异步/事务行为仍待测试。Product Design 历史截图只对应原资产，Next/MCP/WebMCP/Apps 均未在本轮运行。
 
-Human 需确认 L-01 未交接与普通 Cart 期限，以及 §9.3/9.4 恢复/多车实施候选的残余风险。P-04 长期读取/保留与 WebMCP 可信新车来源继续 Pending。没有新增阻塞 S1 只读查询/真实 MCP 验证的问题；S2 生命周期不得在 L-01 未决时冒称已批准。全局 Technical Design 保持 Draft，批准不自动授权业务实施。
+Human 需确认 L-01 未交接与普通 Cart 期限，以及 §9.3/9.4 恢复/多车实施候选的残余风险。P-04 长期读取/保留与 WebMCP 可信新车来源继续 Pending。没有新增阻塞 S1 只读查询/真实 MCP 验证的问题；S2 生命周期不得在 L-01 未决时冒称已批准。全局 Technical Design v0.5 已获 Human 批准；上述 Pending、Proposed 实施细节及运行证据缺口继续保留，设计批准不自动授权业务实施。
+
+### 10.4 设计阶段关闭与交接 — 2026-10-29
+
+Human 已批准结束本轮产品与技术设计阶段。归档基线为 Requirements v0.2 Approved、Product Design v0.2 Approved（五页结构/三稿方向；完整运行验收未完成）、Technical Design v0.5 Approved；决策演进及原件保留。§5/§9/附录中的 Proposed Implementation Details 不自动升级；L-01、P-04、WebMCP 可信新车来源及相应恢复边界继续按原范围追踪。
+
+本轮仅完成文档与 Git 收尾，无商城业务代码、业务 OpenSpec Change 或正式 Tasks；不存在要伪造归档的业务 Change。文档批准不是运行或 Host 兼容证明，实际验证仍按 §10.1 执行。历史 Draft/待 Review 说明保留当时语义，以本页最终批准记录为当前状态。
+
+下一阶段仅记录为 **Implementation Phase — S1 Product Discovery**；等待 Human 发起，不在本轮提前创建其产物。
 
 ## 附录 A. 目录、查询与金额实施参考
 

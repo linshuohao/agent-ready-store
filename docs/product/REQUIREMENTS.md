@@ -360,9 +360,9 @@ flowchart TD
 
 ### 11.2 设计与工程事项的当前承接
 
-主要技术选择已由 T-01～T-06 记录，不再整体描述为“技术事项尚未选择”。Requirements 只维护产品结果、权限和验收；选型理由、协议/工具能力映射及技术细节分别归 [ENGINEERING_DECISIONS](../engineering/ENGINEERING_DECISIONS.md#决策索引)与既有 [Technical Design Draft](../engineering/TECHNICAL_DESIGN.md)。体验方向及未完成验收见 [Product Design](PRODUCT_DESIGN.md)。引用这些记录不批准其草稿，也不在本轮开展或修订技术设计。
+主要技术选择已由 T-01～T-06 记录，不再整体描述为“技术事项尚未选择”。Requirements 只维护产品结果、权限和验收；选型理由、协议/工具能力映射及技术细节分别归 [ENGINEERING_DECISIONS](../engineering/ENGINEERING_DECISIONS.md#决策索引)与既有 [Technical Design v0.5 Approved](../engineering/TECHNICAL_DESIGN.md)。体验方向及未完成验收见 [Product Design](PRODUCT_DESIGN.md)。设计阶段已按 Human Design Phase Closure 关闭，Technical Design 的批准来源见其开头；其中 Proposed 实施细节与 Pending 不因此变成已批准实现。
 
-本轮同步 [C-01 / C-02](../engineering/ENGINEERING_DECISIONS.md#conflict--需-human-批准的修订与契约缺口)：C-01 的产品语义冲突已关闭，Agent 经有效授权代提交为 Planned Enhancement；C-02 已 Resolved / Accepted，基础 MCP 采用七工具，独立评论分页与购物车修改均保留。Next.js App Router + React + TypeScript（T-01 已记录由 Vite 演进）、NestJS、Prisma + PostgreSQL、MCP 及共享 Commerce UseCases 的已选方向见 T-01～T-06。具体 Schema、凭证、金额表示、事务/重试及 Host 验证仍待 Technical Design，不因基线批准而视为实现通过。
+本轮同步 [C-01 / C-02](../engineering/ENGINEERING_DECISIONS.md#conflict--需-human-批准的修订与契约缺口)：C-01 的产品语义冲突已关闭，Agent 经有效授权代提交为 Planned Enhancement；C-02 已 Resolved / Accepted，基础 MCP 采用七工具，独立评论分页与购物车修改均保留。Next.js App Router + React + TypeScript（T-01 已记录由 Vite 演进）、NestJS、Prisma + PostgreSQL、MCP 及共享 Commerce UseCases 的已选方向见 T-01～T-06。具体 Schema、凭证、金额表示、事务/重试及 Host 验证由 Technical Design 及相应实施切片承接，不因设计基线批准而视为实现通过。
 
 P-02 / P-04 继续按 §11.1 保留非阻塞设计细化；技术草稿中的参数或建议不是批准依据。局部实现细节由 Technical Design 细化；新增产品承诺或改变权限边界时再提交 Human 决策。真实十万商品规模的性能指标及基础设施也未因技术选型获批。
 
