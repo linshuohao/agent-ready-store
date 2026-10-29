@@ -2,8 +2,8 @@ import Link from 'next/link';
 import { buttonVariants } from '@/components/ui/button';
 import type { Page, ProductSummary } from '@store/contracts';
 import { publicApi } from '@/lib/api';
-import { ProductCard } from '@/components/product-card';
-import { SearchForm } from '@/components/search-form';
+import { ProductCard } from '@/features/product-discovery/components/product-card';
+import { SearchForm } from '@/features/product-discovery/components/search-form';
 export const dynamic = 'force-dynamic';
 export default async function Home({
   searchParams,

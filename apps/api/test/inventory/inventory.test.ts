@@ -1,7 +1,7 @@
 import { describe, it, expect, afterAll, beforeEach, beforeAll } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { database, seedInventory } from '../src/database.js';
-import { Catalog } from '../src/catalog.js';
+import { database, seedInventory } from '../../src/infrastructure/database/database.js';
+import { Catalog } from '../../src/catalog/catalog.js';
 // Only the isolated Compose db-test can be used by this destructive integration suite.
 const url = process.env.TEST_DATABASE_URL;
 const suite = url ? describe : describe.skip;

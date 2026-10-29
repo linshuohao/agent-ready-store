@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { Catalog } from '../src/catalog.js';
+import { Catalog } from '../../src/catalog/catalog.js';
 const raw = readFileSync('references/products.json', 'utf8');
 const stock = new Map<string, number>(
   JSON.parse(raw).products.map((p: { id: string; stock: number }) => [
