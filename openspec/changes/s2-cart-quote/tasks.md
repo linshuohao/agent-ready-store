@@ -6,9 +6,9 @@
 
 ## 1. 精确报价与共享契约
 
-- [ ] 1.1 在 contracts 定义严格 Cart 输入、CartView/Quote、Money/问题及错误结构；明确资源上限、版本和报价指纹语义，不放入 Token 输出或优惠实现。
-- [ ] 1.2 在 API Cart 模块实现唯一服务端 Pricing，核对并锁定精确十进制依赖；改造 `apps/api/src/catalog/` 价格入口保留十进制来源，同时保持 S1 公开字段、异常数据和排序分页契约。
-- [ ] 1.3 验证 Requirements §6 样例、990/1000边界、一次满减、AI优惠、HALF_UP半分、金额对账/溢出、空车和受阻估价，以及语义指纹的正反例；补受影响Catalog回归。
+- [x] 1.1 在 contracts 定义严格 Cart 输入、CartView/Quote、Money/问题及错误结构；明确资源上限、版本和报价指纹语义，不放入 Token 输出或优惠实现。
+- [x] 1.2 在 API Cart 模块实现唯一服务端 Pricing，核对并锁定精确十进制依赖；改造 `apps/api/src/catalog/` 价格入口保留十进制来源，同时保持 S1 公开字段、异常数据和排序分页契约。
+- [x] 1.3 验证 Requirements §6 样例、990/1000边界、一次满减、AI优惠、HALF_UP半分、金额对账/溢出、空车和受阻估价，以及语义指纹的正反例；补受影响Catalog回归。
 
 ## 2. Cart 持久化、幂等与版本
 
@@ -44,3 +44,5 @@
 
 - 2026-10-29：在main `e632e0c`基础的新规划分支完成只读源码调查和Draft编写；仅新增本Change文件，无业务实现、迁移、依赖安装或新增运行测试。文档结构检查与规划自查结果在最终交付时报告，不预填通过。
 - 后续按Human指令rebase到main `03c51eb`，并按已确认的Review改进意见修订幂等恢复顺序、页面级加购协调、对应Spec/验证任务及源码分层/风险驱动Checkpoint表述。两项设计Finding已补齐方案和反例，运行行为仍待实施验证；当时Human Review Queue保留待裁决；随后Human明确“批准这些建议”，三项已接受，当前状态以Design的Human Review Queue为准。
+
+- S2任务组1实施证据：decimal.js 10.6.0、lossless-json 4.3.3已锁定；新增测试首先因缺失契约/计价实现失败，实施后契约/金额/Catalog共28项通过。contracts/API typecheck、lint及API build通过；完整Vitest为28 passed / 6 skipped（DB/API环境未配置），不作集成通过。无商品原件修改。

@@ -74,6 +74,76 @@ export type Result<T> =
   | { ok: true; data: T; requestId: string }
   | {
       ok: false;
-      error: { code: string; message: string; retryable: boolean };
+      error: {
+        code: string;
+        message: string;
+        retryable: boolean;
+        issues?: CartIssue[];
+        currentCartVersion?: number;
+      };
       requestId: string;
     };
+
+export const cartIdInput = z.uuid();
+export const cartTokenInput = z.string().regex(/^[A-Za-z0-9_-]{43}$/);
+export const cartItemInput = z
+  .object({
+    productId: z.string().min(1).max(64),
+    quantity: z.number().int().positive().max(2147483647),
+  })
+  .strict();
+export const cartItemsInput = z
+  .array(cartItemInput)
+  .max(100)
+  .refine(
+    (items) =>
+      new Set(items.map((item) => item.productId)).size === items.length,
+    { message: 'Duplicate product IDs' },
+  );
+export const cartCreateInput = z
+  .object({
+    createRequestId: z.uuid(),
+    cartToken: cartTokenInput,
+    items: cartItemsInput,
+  })
+  .strict();
+export const cartReplaceInput = z
+  .object({
+    expectedCartVersion: z.number().int().positive().max(2147483646),
+    items: cartItemsInput,
+  })
+  .strict();
+export type CartItem = z.infer<typeof cartItemInput>;
+export type CartOrigin = 'HUMAN' | 'AGENT';
+export interface PriceLine extends CartItem {
+  name: string;
+  unitPrice: string;
+}
+export interface Quote {
+  currency: 'TWD';
+  items: (PriceLine & { lineSubtotal: string })[];
+  subtotal: string;
+  thresholdDiscount: string;
+  aiDiscount: string;
+  shipping: string;
+  total: string;
+}
+export interface CartIssue {
+  productId: string;
+  code: string;
+}
+export interface CartView {
+  cartId: string;
+  origin: CartOrigin;
+  cartVersion: number;
+  items: (CartItem & {
+    name: string | null;
+    unitPrice: string | null;
+    availability: ProductSummary['availability'] | null;
+  })[];
+  quote: Quote | null;
+  quoteHash: string | null;
+  issues: CartIssue[];
+  canCheckout: boolean;
+  expiresAt: string;
+}
