@@ -8,7 +8,7 @@ import {
   type CartIssue,
   type CartView,
 } from '@store/contracts';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useCartOperations } from './provider';
 import { getCart, failureText, type EditResult } from './commands';
@@ -198,14 +198,24 @@ export function CartPage({ id }: { id?: string }) {
         </p>
       </main>
     );
+  const canProceed =
+    view.canCheckout &&
+    !operations.busy &&
+    !pending &&
+    !conflicted &&
+    Object.keys(draft).length === view.items.length &&
+    view.items.every((item) => Number(draft[item.productId]) === item.quantity);
   return (
-    <main id="main" tabIndex={-1} className="cart-page">
-      <Link href="/">繼續選購</Link>
-      <h1>購物車</h1>
-      <p className="hint">
-        此購物車於 {new Date(view.expiresAt).toLocaleString('zh-TW')}{' '}
-        到期，瀏覽或編輯不會續期。
-      </p>
+    <main id="main" tabIndex={-1} className="commerce-page cart-page">
+      <div className="commerce-page-heading">
+        <p className="eyebrow">CART</p>
+        <h1>購物車</h1>
+        <p>調整商品與數量，儲存後核對報價，再前往結帳。</p>
+        <p className="hint">
+          此購物車於 {new Date(view.expiresAt).toLocaleString('zh-TW')}{' '}
+          到期，瀏覽或編輯不會續期。
+        </p>
+      </div>
       {status && <p role="status">{status}</p>}
       {error && (
         <p role="alert" id="cart-error">
@@ -226,8 +236,12 @@ export function CartPage({ id }: { id?: string }) {
         </section>
       )}
       {view.items.length === 0 && <p>購物車目前沒有商品</p>}
-      <div className="cart-layout">
-        <section aria-label="編輯購物車">
+      <div className="purchase-layout">
+        <section className="purchase-products" aria-label="編輯購物車">
+          <div className="purchase-section-heading">
+            <h2>商品明細</h2>
+            <p>來源：{view.origin === 'AGENT' ? 'AI 助理準備' : '自行選購'}</p>
+          </div>
           {conflicted && (
             <>
               <h2>目前草稿</h2>
@@ -238,6 +252,8 @@ export function CartPage({ id }: { id?: string }) {
             <p>目前草稿沒有商品，儲存後將清空購物車。</p>
           )}
           <form
+            id="cart-edit-form"
+            className="cart-edit-form"
             onSubmit={(event) => {
               event.preventDefault();
               void save();
@@ -249,11 +265,13 @@ export function CartPage({ id }: { id?: string }) {
               );
               const issues = saveIssues.length ? saveIssues : view.issues;
               return (
-                <article key={productId} className="cart-line">
-                  <h2>
-                    {item ? (item.name ?? '商品已失效') : '待重新驗證的商品'}{' '}
-                    <span className="hint">{productId}</span>
-                  </h2>
+                <article key={productId} className="purchase-product cart-line">
+                  <div className="purchase-product-heading">
+                    <h3>
+                      {item ? (item.name ?? '商品已失效') : '待重新驗證的商品'}{' '}
+                      <span className="hint">{productId}</span>
+                    </h3>
+                  </div>
                   {!item && (
                     <p className="cart-issue">
                       此商品已不在最新購物車，草稿仍保留；儲存時會重新驗證。
@@ -273,50 +291,45 @@ export function CartPage({ id }: { id?: string }) {
                         {issueText[issue.code] ?? '請調整此商品'}
                       </p>
                     ))}
-                  <label htmlFor={`qty-${productId}`}>數量 {productId}</label>
-                  <Input
-                    id={`qty-${productId}`}
-                    type="number"
-                    step="1"
-                    value={quantity}
-                    disabled={operations.busy}
-                    aria-describedby={error ? 'cart-error' : undefined}
-                    onChange={(event) => {
-                      setStatus('');
-                      setDraft((old) => ({
-                        ...old,
-                        [productId]: event.target.value,
-                      }));
-                    }}
-                  />
-                  <Button
-                    variant="outline"
-                    type="button"
-                    disabled={operations.busy}
-                    aria-label={`移除 ${productId}`}
-                    onClick={() => {
-                      setStatus('');
-                      setDraft((old) =>
-                        Object.fromEntries(
-                          Object.entries(old).filter(
-                            ([key]) => key !== productId,
+                  <div className="cart-line-controls">
+                    <label htmlFor={`qty-${productId}`}>數量 {productId}</label>
+                    <Input
+                      id={`qty-${productId}`}
+                      type="number"
+                      step="1"
+                      value={quantity}
+                      disabled={operations.busy}
+                      aria-describedby={error ? 'cart-error' : undefined}
+                      onChange={(event) => {
+                        setStatus('');
+                        setDraft((old) => ({
+                          ...old,
+                          [productId]: event.target.value,
+                        }));
+                      }}
+                    />
+                    <Button
+                      variant="outline"
+                      type="button"
+                      disabled={operations.busy}
+                      aria-label={`移除 ${productId}`}
+                      onClick={() => {
+                        setStatus('');
+                        setDraft((old) =>
+                          Object.fromEntries(
+                            Object.entries(old).filter(
+                              ([key]) => key !== productId,
+                            ),
                           ),
-                        ),
-                      );
-                    }}
-                  >
-                    移除
-                  </Button>
+                        );
+                      }}
+                    >
+                      移除
+                    </Button>
+                  </div>
                 </article>
               );
             })}
-            {(view.items.length > 0 ||
-              Object.keys(draft).length > 0 ||
-              conflicted) && (
-              <Button type="submit" disabled={operations.busy}>
-                {conflicted ? '以目前草稿儲存' : '儲存調整'}
-              </Button>
-            )}
           </form>
           {conflicted && (
             <section className="notice">
@@ -348,31 +361,47 @@ export function CartPage({ id }: { id?: string }) {
             移除與數量變更須儲存後才生效。不會自動減量或預留庫存。
           </p>
         </section>
-        {view.quote ? (
-          <MoneyBreakdown quote={view.quote} />
-        ) : (
-          <section className="notice">
-            <h2>目前無可用報價</h2>
-            <p>請調整商品；空購物車不計運費。</p>
-          </section>
-        )}
+        <aside className="purchase-aside" aria-label="購物車摘要">
+          {view.quote ? (
+            <MoneyBreakdown quote={view.quote} />
+          ) : (
+            <section className="notice">
+              <h2>目前無可用報價</h2>
+              <p>請調整商品；空購物車不計運費。</p>
+            </section>
+          )}
+          <div className="commerce-actions">
+            {canProceed ? (
+              <Link
+                className={buttonVariants()}
+                href={`/checkout/${id}`}
+                prefetch={false}
+              >
+                前往結帳
+              </Link>
+            ) : (
+              <p className="commerce-action-note" role="status">
+                請先儲存調整並排除商品問題後再前往結帳。
+              </p>
+            )}
+            {(view.items.length > 0 ||
+              Object.keys(draft).length > 0 ||
+              conflicted) && (
+              <Button
+                type="submit"
+                form="cart-edit-form"
+                variant={canProceed ? 'outline' : 'default'}
+                disabled={operations.busy}
+              >
+                {conflicted ? '以目前草稿儲存' : '儲存調整'}
+              </Button>
+            )}
+            <Link className="commerce-action-text" href="/">
+              繼續選購
+            </Link>
+          </div>
+        </aside>
       </div>
-      {view.canCheckout &&
-      !operations.busy &&
-      !pending &&
-      !conflicted &&
-      Object.keys(draft).length === view.items.length &&
-      view.items.every(
-        (item) => Number(draft[item.productId]) === item.quantity,
-      ) ? (
-        <p>
-          <Link href={`/checkout/${id}`} prefetch={false}>
-            前往結帳
-          </Link>
-        </p>
-      ) : (
-        <p className="notice">請先儲存調整並排除商品問題後再前往結帳。</p>
-      )}
     </main>
   );
 }

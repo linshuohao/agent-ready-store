@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
+import { Button, buttonVariants } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -92,10 +92,14 @@ export function SearchForm({ values }: { values: Record<string, string> }) {
         />
         <Label htmlFor="purchasable-only">只看可購買商品</Label>
       </div>
-      <Button type="submit" disabled={pending}>
-        {pending ? '正在更新…' : '套用篩選'}
-      </Button>
-      <Link href="/">清除條件</Link>
+      <div className="filter-actions">
+        <Button type="submit" disabled={pending}>
+          {pending ? '正在更新…' : '套用篩選'}
+        </Button>
+        <Link className={buttonVariants({ variant: 'outline' })} href="/">
+          清除條件
+        </Link>
+      </div>
       <p className="hint">依原始推薦分數排序。同分依商品 ID 排序。</p>
       {pending && <p role="status">正在更新結果，以下內容仍為上一組查詢。</p>}
     </form>
