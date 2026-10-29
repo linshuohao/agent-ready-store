@@ -8,19 +8,39 @@ const root=__dirname;
 const fixtureCode=fs.readFileSync(path.join(root,'wireframes/fixtures.js'),'utf8');
 const pageCode=fs.readFileSync(path.join(root,'wireframes/pages.js'),'utf8');
 const scenes={home:['normal','boundaries','empty'],detail:['normal','reviews','soldout','invalid','unpriced'],cart:['normal','edited','invalid','stock','empty'],checkout:['normal','edited','price','sameTotal','stock','expired','pending','unknown'],result:['normal','retry']};
-function render(page,journey='human',state='normal',extra={}){
+function render(page,journey='human',state='normal',extra={},standalone=false){
   const nodes=new Map();const listeners={};const messages=[];
   const document={title:'',querySelector(selector){if(!nodes.has(selector))nodes.set(selector,{innerHTML:'',textContent:'',value:'1',attributes:{},setAttribute(k,v){this.attributes[k]=v;}});return nodes.get(selector);},querySelectorAll(){return [];},addEventListener(type,fn){listeners[type]=fn;}};
-  const scope={URLSearchParams,location:{search:'?'+new URLSearchParams({page,journey,state,...extra})},document,window:{},parent:{postMessage(message){messages.push(message);}}};
+  const browserWindow={};
+  const scope={URLSearchParams,location:{search:'?'+new URLSearchParams({page,journey,state,...extra})},document,window:browserWindow,parent:standalone?browserWindow:{postMessage(message){messages.push(message);}}};
   vm.createContext(scope);vm.runInContext(fixtureCode+'\n'+pageCode,scope);
   function click(action,options={}){const button={dataset:{action,...options},disabled:false};listeners.click({target:{closest(selector){return selector==='[data-action]'?button:null;}}});}
   function nav(target,state='normal',extra={}){const anchor={dataset:{nav:target,state,...extra}};listeners.click({target:{closest(selector){return selector==='[data-nav]'?anchor:null;}},preventDefault(){}});}
-  return {html:document.querySelector('#app').innerHTML,document,nodes,messages,click,nav};
+  return {html:document.querySelector('#app').innerHTML,document,nodes,messages,click,nav,location:scope.location};
 }
 let count=0;
 for(const [page,states] of Object.entries(scenes))for(const journey of ['human','agent'])for(const state of states){
   const view=render(page,journey,state);assert.match(view.html,/<main id="main">/);assert.equal((view.html.match(/<main /g)||[]).length,1);
   assert.match(view.document.title,/線框草稿/);assert.doesNotMatch(view.html,/undefined|NaN|margin_rate|recommendation_score/);count++;
+}
+// Standalone navigation must retain the HTML file rather than resolving a directory or .page path.
+const standaloneBase='http://localhost/design/wireframes/pages.html';
+const standaloneCart=render('cart','agent','normal',{},true);
+standaloneCart.nav('checkout');
+const standaloneTarget=new URL(standaloneCart.location.href,standaloneBase);
+assert.equal(standaloneTarget.pathname,'/design/wireframes/pages.html');
+assert.equal(standaloneTarget.searchParams.get('page'),'checkout');
+assert.equal(standaloneTarget.searchParams.get('journey'),'agent');
+for(const [page,state] of [['checkout','expired'],['result','normal']]){
+  const html=render(page,'agent',state,{},true).html;
+  const newShoppingLinks=[...html.matchAll(/href="([^"]+)" data-new-shopping/g)];
+  assert.ok(newShoppingLinks.length>0);
+  for(const match of newShoppingLinks){
+    const target=new URL(match[1].replaceAll('&amp;','&'),standaloneBase);
+    assert.equal(target.pathname,'/design/wireframes/pages.html');
+    assert.equal(target.searchParams.get('page'),'home');
+    assert.equal(target.searchParams.get('journey'),'human');
+  }
 }
 // Exact immutable attachments; no Downloads dependency in the retained check.
 const hashes={'UX_DECISIONS.md':'41b451a1f598fb9444cb9664ff340f2fb722ec4f4143dd9850b40d4dd590591d','UX_DECISIONS.html':'8186dc2e7c204294a4f48a4998e2ba25b4e276c2577a33dbbacff4bdeb19045e'};
@@ -73,4 +93,4 @@ widthButtons[3].handlers.click();assert.equal(controls.get('#preview').style.wid
 assert.match(render('home').html,/data-product="P005"/);
 assert.match(render('detail','human','normal',{product:'P005'}).html,/Studio 降噪頭戴式耳機/);
 console.log(`PASS: ${count} page / journey / state fixtures; source hashes; 30 public Mock snapshots; identity-preserving navigation; quote snapshots; explicit re-confirmation; shortage / expiry / empty / retry states; quantity feedback; pagination; local assets; no API or storage.`);
-console.log('LIMIT: this static script does not verify browser rendering or accessibility. Actual browser evidence and remaining gaps are recorded in docs/PRODUCT_DESIGN.md.');
+console.log('LIMIT: this static script does not verify browser rendering or accessibility. Actual browser evidence and remaining gaps are recorded in docs/product/PRODUCT_DESIGN.md.');
