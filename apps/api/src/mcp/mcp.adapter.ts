@@ -8,9 +8,9 @@ import {
 import { z } from 'zod';
 import { searchInput, pageInput, productInput } from '@store/contracts';
 import type { Express } from 'express';
-import type { CatalogService } from './catalog.service.js';
-import { AppError } from './catalog.js';
-import { result } from './result.js';
+import type { CatalogService } from '../catalog/catalog.service.js';
+import { AppError } from '../shared/app-error.js';
+import { result } from '../shared/result.js';
 const reviewInput = pageInput.extend({ productId: z.string().min(1).max(64) });
 export function attachMcp(app: Express, catalog: CatalogService) {
   const token = process.env.MCP_SERVICE_TOKEN;

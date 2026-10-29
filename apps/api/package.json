@@ -14,7 +14,7 @@
     "lint": "eslint src",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
-    "db:seed": "node --env-file-if-exists=../../.env dist/seed.js"
+    "db:seed": "node --env-file-if-exists=../../.env dist/infrastructure/database/seed.js"
   },
   "dependencies": {
     "@nestjs/common": "12.3.2",

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { Catalog } from './catalog.js';
-import { database } from './database.js';
+import { database } from '../infrastructure/database/database.js';
 export class CatalogService {
   readonly catalog: Catalog;
   readonly db: ReturnType<typeof database>;

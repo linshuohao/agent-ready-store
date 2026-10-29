@@ -3,8 +3,11 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import type { ProductDetail } from '@store/contracts';
 import { publicApi } from '@/lib/api';
-import { Availability, illustration } from '@/components/product-card';
-import { Reviews } from '@/components/reviews';
+import {
+  Availability,
+  illustration,
+} from '@/features/product-discovery/components/product-card';
+import { Reviews } from '@/features/product-discovery/components/reviews';
 export const dynamic = 'force-dynamic';
 export default async function Product({
   params,

@@ -1,6 +1,6 @@
 import { PrismaClient } from './generated/prisma/client.js';
 import { PrismaPg } from '@prisma/adapter-pg';
-import type { Catalog } from './catalog.js';
+import type { Catalog } from '../../catalog/catalog.js';
 export function database(url: string) {
   return new PrismaClient({ adapter: new PrismaPg({ connectionString: url }) });
 }

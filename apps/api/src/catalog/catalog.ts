@@ -10,14 +10,7 @@ import {
   type Page,
   type ReviewPage,
 } from '@store/contracts';
-export class AppError extends Error {
-  constructor(
-    public readonly code: string,
-    public readonly status: number,
-  ) {
-    super(code);
-  }
-}
+import { AppError } from '../shared/app-error.js';
 const rawProduct = z.object({
   id: z.string().min(1),
   name: z.string(),
