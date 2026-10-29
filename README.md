@@ -6,7 +6,7 @@
 
 阶段关闭记录见 [Technical Design §10.4](docs/engineering/TECHNICAL_DESIGN.md#104-设计阶段关闭与交接--2026-10-29)。Human 已批准 [S1 规划](openspec/changes/archive/2026-10-29-s1-product-discovery/proposal.md) 并授权实施；S1 已完成本轮 Review 并归档，运行证据与保留限制见 [归档 Tasks](openspec/changes/archive/2026-10-29-s1-product-discovery/tasks.md)；后续切片等待对应授权。精益执行原则见 [AGENTS](AGENTS.md#默认执行原则)。
 
-S2当前状态见 [Cart与报价Change](openspec/changes/s2-cart-quote/proposal.md)及[Tasks](openspec/changes/s2-cart-quote/tasks.md)。Web/HTTP购物车与报价已实现，完成自动验证、独立Review及定向修复复核，Human于2026-10-29明确验收通过；Spec同步及归档待对应授权。未交接创建起24h、现有恢复限制及S2 Web/HTTP—S4 MCP写工具分期的正式来源见[D-04补充](DECISIONS.md#d-04--交接链接有效期)。S3订单与S4交接均尚未实现，不能将当前Cart报价视为完成购买。
+S2当前状态见 [Cart与报价Change](openspec/changes/archive/2026-10-29-s2-cart-quote/proposal.md)及[Tasks](openspec/changes/archive/2026-10-29-s2-cart-quote/tasks.md)。Web/HTTP购物车与报价已实现，完成自动验证、独立Review及定向修复复核，Human于2026-10-29明确验收通过；两份正式Spec已同步，S2 Change已按Human授权归档。未交接创建起24h、现有恢复限制及S2 Web/HTTP—S4 MCP写工具分期的正式来源见[D-04补充](DECISIONS.md#d-04--交接链接有效期)。S3订单与S4交接均尚未实现，不能将当前Cart报价视为完成购买。
 
 ## S1 本地开发
 
@@ -67,7 +67,7 @@ Cart DB测试必须指向专用`store_test`并与Inventory DB测试串行，不�
 | 工作流标准：`docs/workflow/` | [工作流使用指南](docs/workflow/WORKFLOW_GUIDE.md)介绍从需求到归档的实际操作；[Git Checkpoint Policy](docs/workflow/GIT_CHECKPOINT_POLICY.md)定义阶段提交与转换 Gate；[产品、设计与交付契约](docs/workflow/PRODUCT_ENGINEERING.md)维护产物职责、验收及变更传播；唯一任务入口是 [Workflow Skill](.agents/skills/ai-native-workflow/SKILL.md) |
 | 历史证据：`docs/ai-collaboration/` | [外部协作原件及来源核对](docs/ai-collaboration/README.md)；精选结果见 [AI_NOTES](AI_NOTES.md) |
 | 设计资产：`design/` | [统一预览](design/index.html)、[打开方式与来源](design/README.md)，包含五页线框、三个视觉稿和截图 |
-| 正式增量：`openspec/` | [OpenSpec 配置](openspec/config.yaml)，唯一变更级 Spec / Design / Tasks 来源；[product-discovery 正式规格](openspec/specs/product-discovery/spec.md)；[S1 Change](openspec/changes/archive/2026-10-29-s1-product-discovery/proposal.md) 已实施、Review 并归档，证据与限制见归档 Tasks |
+| 正式增量：`openspec/` | [OpenSpec 配置](openspec/config.yaml)，唯一变更级 Spec / Design / Tasks 来源；[product-discovery 正式规格](openspec/specs/product-discovery/spec.md)；[shopping-cart 正式规格](openspec/specs/shopping-cart/spec.md)、[cart-pricing 正式规格](openspec/specs/cart-pricing/spec.md)；[S2 归档](openspec/changes/archive/2026-10-29-s2-cart-quote/tasks.md)；[S1 Change](openspec/changes/archive/2026-10-29-s1-product-discovery/proposal.md) 已实施、Review 并归档，证据与限制见归档 Tasks |
 | 根目录入口与决策 | [AGENTS](AGENTS.md)定义协作权限；[DECISIONS](DECISIONS.md)保留产品取舍及 PM 回复；[只读原件](references/home-quiz.md)不因归档成为批准依据 |
 
 Draft / Accepted / Approved 等状态维护在文档开头及对应条目，不按状态复制文件或另建目录。展示讲解入口见上方“交付讲解”，不参与日常默认上下文。

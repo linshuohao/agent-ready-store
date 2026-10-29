@@ -1,12 +1,10 @@
-# Spec Delta
+# cart-pricing Specification
 
 ## Purpose
 
 让购物车调用者与顾客获得同一份可核对的当前报价，以精确金额和完整分项解释优惠及运费，明确不可购买情况，并为后续确认购买内容是否变化提供稳定语义依据。
 
-状态：Approved S2增量规格；金额公式依据Approved Requirements §6。Human于2026-10-29明确批准本规划并授权实施，来源见Proposal；运行行为仍待验证。
-
-## ADDED Requirements
+## Requirements
 
 ### Requirement: 唯一精确计价
 

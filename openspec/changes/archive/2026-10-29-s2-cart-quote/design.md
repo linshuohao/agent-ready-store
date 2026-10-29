@@ -1,6 +1,6 @@
 # Design
 
-状态：Approved / S2实施已授权。批准来源见[Proposal](proposal.md)：Human于2026-10-29明确“批准这部分规划，开始实施”。先前三项限定决定及批准来源保留；Git授权单独核对，运行行为尚待实施验证。
+状态：Approved / S2实施已授权。批准来源见[Proposal](proposal.md)：Human于2026-10-29明确“批准这部分规划，开始实施”。先前三项限定决定及批准来源保留；实施、Review及Human验收已完成，运行证据与保留限制见Tasks，Git授权单独核对。
 
 ## Context
 
@@ -117,7 +117,7 @@ PUT响应丢失采用Human已选择的方案A：页面保留原cartId、expected
 
 ## Human Review Queue
 
-1. **L-01 / Resolved、Accepted：** Human在本聊天收到三项建议后明确“批准这些建议”。未交接Human/Agent Cart创建起固定24h；有效期内首次分享后改用首次分享起完整24h，不被创建截止截短；到期等号拒绝，访问/编辑/重试不续期，过期不能首次分享。取代v0.5的不设预交接超时候选，接受旧车可能需重新发起的代价。规则正文与批准来源见 [D-04](../../../DECISIONS.md#d-04--交接链接有效期)，已传播Requirements及Technical Design相关章节。
+1. **L-01 / Resolved、Accepted：** Human在本聊天收到三项建议后明确“批准这些建议”。未交接Human/Agent Cart创建起固定24h；有效期内首次分享后改用首次分享起完整24h，不被创建截止截短；到期等号拒绝，访问/编辑/重试不续期，过期不能首次分享。取代v0.5的不设预交接超时候选，接受旧车可能需重新发起的代价。规则正文与批准来源见 [D-04](../../../../DECISIONS.md#d-04--交接链接有效期)，已传播Requirements及Technical Design相关章节。
 2. **恢复与多车方向 / Accepted，运行未验证：** 接受单密文恢复、浏览器创建证明、每车Cookie及丢失内存+未收Cookie后无法恢复的体验限制；同材料仅在有效期限内恢复原车。不批准凭公共ID补发权限或自动重建。具体加密API/反代/密钥实现仍须验证，P-04长期恢复/保留/过期结果权限保持Pending。
 3. **切片边界 / Accepted：** 接受S2 Web/HTTP，S4接MCP写工具、交接和有效Agent创建事实；S2 Pricing的AGENT分支仅为可信领域测试证据，完整交付目标保持。
 
