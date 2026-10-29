@@ -166,6 +166,16 @@ T-01～T-06 原为未选择方案的讨论索引；2026-10-29 按 Human 明确�
 - **职责限制：** Next 负责页面、SSR/RSC、初始公开数据获取、客户端交互及 Hosted Checkout；只通过 Nest HTTP API 取得业务数据，不直接用 Prisma 执行交易。Pricing、库存扣减、订单创建、权限和 Agent 来源始终由 Nest Commerce UseCases 唯一维护。MCP 不迁至 Next，不逐接口复制 Route Handler/Server Action。
 - **实施与证据：** 技术栈选择 Accepted；Technical Design v0.4 仍 Draft。渲染/缓存 API、Next/React/Node 版本与自托管行为由 S1 按官方适用版本验证。无代码、运行或 Host 兼容证据；未授权 Change、提交、云托管或付费服务。
 
+#### T-01 演进 — 基础 UI 优先 shadcn/ui（2026-10-29，Human Accepted）
+
+- **来源与选择：** Human 在本聊天明确确认项目级前端约束：基础 UI 统一优先使用 shadcn/ui；适用于当前 S1 及后续工程。保持 Product Design 的黑白极简、繁体中文及响应式方向。
+- **边界与取舍：** shadcn/ui 提供可维护的基础组件源码，减少重复维护控件状态与可访问性；接受 Tailwind/PostCSS 和实际控件所需依赖。仅按当前消费者添加组件，不建设完整 Design System 或额外封装层，不替代 ProductCard、PurchaseSummary、CartEditor 等业务组件。已有 Base UI/Radix 实现优先兼容，不为选型形式迁移底层。
+- **传播与授权：** 在已有 Next.js 项目增量接入，当前实施细节与验证归 S1 Change；既定服务、数据/权限/交易边界及完整交付范围不变。不修改通用 Workflow，不扩展 Git/发布授权；此前批准历史保留。
+
+#### T-01 演进 — Base UI（2026-10-29，Human Accepted）
+
+- Human 本聊天明确“改为 Base ui”，替代本项目首次 shadcn 接入时的 Radix 实施选择；后续本项目基础组件采用 Base UI。最初并无既有 Radix 消费者需要兼容，保留原取舍记录，不把此前 shadcn 优先确认解释为 Human 指定了 Radix。迁移与定向验证归当前 S1 Change，不改变服务、业务或权限边界及 Git 授权。
+
 ### T-02 — 三种 Agent 接入与 Hosted Checkout
 
 - **Status：Accepted**（基础 MCP、WebMCP、MCP Apps 与 Hosted Checkout 本次交付范围）；各入口实现/兼容性未验证，演进依据见本节末尾。

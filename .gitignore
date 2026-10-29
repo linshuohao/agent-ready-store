@@ -4,3 +4,15 @@
 .env.*
 !.env.example
 *.log
+
+node_modules/
+.pnpm-store/
+.next/
+dist/
+*.tsbuildinfo
+**/generated/
+playwright-report/
+test-results/
+
+# Local Codex MCP connection (machine-specific paths).
+/.codex/config.toml
