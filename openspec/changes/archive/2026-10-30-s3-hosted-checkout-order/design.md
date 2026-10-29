@@ -10,7 +10,7 @@ Observed：规划起点main `0474471`，工作区干净；S2已归档。Prisma�
 
 现有priceCart输出完整金额和quoteHash，但哈希不含品牌/规格等关键描述，不能原样冒充完整购买摘要指纹。目录在单进程生命周期内不可变，库存来自PostgreSQL；沿当前单实例边界工作，不新增热更新/分布式目录机制。版本升级/重启后的目录变化仍须被新旧摘要比较发现。
 
-Normative：动机、有效基线与授权见[Proposal](proposal.md)。三项Human限定决定的正式记录见[DECISIONS S3补充](../../../DECISIONS.md#s3-checkout-boundary-20261029)。Requirements/Technical Design中P-04历史Pending由该限定记录局部补充，不等于长期查询/保留全部解决。
+Normative：动机、有效基线与授权见[Proposal](proposal.md)。三项Human限定决定的正式记录见[DECISIONS S3补充](../../../../DECISIONS.md#s3-checkout-boundary-20261029)。Requirements/Technical Design中P-04历史Pending由该限定记录局部补充，不等于长期查询/保留全部解决。
 
 ## Goals / Non-Goals
 

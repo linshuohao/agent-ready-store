@@ -221,7 +221,7 @@ T-01～T-06 原为未选择方案的讨论索引；2026-10-29 按 Human 明确�
 
 **2026-10-30限定补充：** [D-21追加确认](../../DECISIONS.md#s3-confirmation-lifetime-20261030)明确无独立5分钟时限、同步生单与成交价格固定；取代本条及历史演进中“短期”所可能暗示的额外短倒计时，独立绑定和服务端重验保持。
 
-**S3限定补充（2026-10-29）：** Human确认的到期准入、原权限结果访问及无自动清理边界见[D-21补充](../../DECISIONS.md#s3-checkout-boundary-20261029)；具体确认会话/恢复/事务实现仍为[S3 Design](../../openspec/changes/s3-hosted-checkout-order/design.md)中的Proposed，未授权实施。
+**S3限定补充（2026-10-29）：** Human确认的到期准入、原权限结果访问及无自动清理边界见[D-21补充](../../DECISIONS.md#s3-checkout-boundary-20261029)；具体确认会话/恢复/事务实现仍为[S3 Design](../../openspec/changes/archive/2026-10-30-s3-hosted-checkout-order/design.md)中的Proposed，未授权实施。
 
 - **Status：Accepted**（现有确认与一致性约束及本次技术边界）；Agent 代提交为 **Planned Enhancement**，见 C-01。
 - **Decision：** Agent 可以准备、修改购物车；Human 必须明确授权具体购买内容。MVP 由 Human 在 Hosted Checkout 看完整摘要并确认。最终订单创建、模拟库存扣减、购物车完成状态保持原子一致性；同一购物车重复提交不得重复成单或重复扣库存。
