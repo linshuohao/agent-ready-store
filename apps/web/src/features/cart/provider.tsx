@@ -27,6 +27,7 @@ type Creation = {
   cartToken: string;
   items: CartItem[];
 };
+const creationPendingKey = 'cartCreationPending';
 type Context = {
   currentCartId: string | null;
   selectCart: (id: string) => void;
@@ -46,11 +47,14 @@ export const useCartOperations = () => {
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const currentId = useRef<string | null>(null);
   const creation = useRef<Creation | null>(null);
-  const lock = useRef(false);
+  const lock = useRef(true);
   const inFlight = useRef(false);
+  // The ref blocks writes until storage is read; avoid an unnecessary mount update
+  // around streamed children when this tab has no pending creation.
   const [busy, setBusy] = useState(false);
   const [pendingEdit, setPendingEdit] = useState<EditIntent | null>(null);
   const [creationUnknown, setCreationUnknown] = useState(false);
+  const [creationLost, setCreationLost] = useState(false);
   const pathname = usePathname();
   const [feedback, setFeedback] = useState<{
     text: string;
@@ -73,13 +77,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     // Defer browser-only navigation state until after hydration, without persisting secrets.
     let active = true;
     Promise.resolve().then(() => {
+      if (!active) return;
+      const lost = sessionStorage.getItem(creationPendingKey) === '1';
+      lock.current = lost;
+      setBusy(lost);
+      setCreationLost(lost);
       const id = sessionStorage.getItem('currentCartId');
-      if (
-        active &&
-        id &&
-        cartIdInput.safeParse(id).success &&
-        !currentId.current
-      ) {
+      if (id && cartIdInput.safeParse(id).success && !currentId.current) {
         currentId.current = id;
         setCartId(id);
       }
@@ -139,7 +143,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
     setCreationUnknown(false);
     creation.current = null;
-    unlock();
     if (result.kind === 'success') {
       select(result.cart.cartId);
       setMessage('已加入購物車');
@@ -149,6 +152,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         ['FORBIDDEN', 'CREDENTIAL_EXPIRED'].includes(result.error.code),
       );
     }
+    sessionStorage.removeItem(creationPendingKey);
+    unlock();
   }
   async function add(productId: string) {
     if (lock.current || inFlight.current) return;
@@ -171,6 +176,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         cartToken: token,
         items: [{ productId, quantity: 1 }],
       };
+      // Persist only uncertainty, never the capability or request materials.
+      sessionStorage.setItem(creationPendingKey, '1');
       await finishCreation();
       return;
     }
@@ -210,6 +217,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const restart = () => {
     if (inFlight.current) return;
     creation.current = null;
+    sessionStorage.removeItem(creationPendingKey);
+    setCreationLost(false);
     setCreationUnknown(false);
     setPendingEdit(null);
     unlock();
@@ -240,6 +249,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       </nav>
       {((message && !pathname.startsWith('/cart')) ||
         creationUnknown ||
+        creationLost ||
         pendingEdit) && (
         <CartFeedback
           success={
@@ -248,6 +258,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           onDismiss={() => setFeedback(null)}
         >
           {message && <p role="status">{message}</p>}
+          {creationLost && (
+            <p role="status">
+              建立結果無法確認，原請求材料已遺失，無法自動找回購物車。
+              重新發起會建立新的購物車，原車可能仍存在。
+            </p>
+          )}
           {cartId && (
             <Link href={`/cart/${cartId}`} prefetch={false}>
               前往購物車
@@ -272,7 +288,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
               。
             </p>
           )}
-          {canRestart && (
+          {(canRestart || creationLost) && (
             <Button type="button" onClick={restart}>
               重新發起購物
             </Button>

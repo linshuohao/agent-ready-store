@@ -36,6 +36,9 @@
 
 ## Workflow follow-up
 
+- [x] 6.1 按Human选择的A方案修复冲突草稿：全部待提交条目可见、可改量/移除，展示最新已保存内容，明确以草稿保存或放弃草稿载入最新；覆盖他端删除/新增、最新空车及失效条目。
+- [x] 6.2 按Human选择的A方案修复建车刷新：发请求前保存不含秘密的标签页待确认标记，结果未明保留，刷新后提示且阻止新建，明确重新发起才清除；补失败回归、成功/明确拒绝清理与原材料重试回归并复核。
+
 - 按最新版Git Checkpoint Policy依据金额、权限、幂等风险与交接需要安排Checkpoint，复用同一逻辑增量的验证/审查；不要求每Task或每任务组独立提交，不为Guard新造提交。本Change适用的高风险阶段/任务组交接在条件满足后运行Guard，Git授权仍单独核对。
 - Human验收及相应归档授权后同步两份正式规格并归档，保留旧S1历史；本轮不执行。
 - S3确认/订单与S4 Agent建车/编辑/交接/有效创建事实等待对应授权；当前Cart数据与Pricing为复用基础，不提前铺开后续Tasks。
@@ -71,3 +74,12 @@
 - 参考：[Baymard加购确认案例](https://baymard.com/ecommerce-design-examples/added-to-cart-confirmation)、[Shopify Dawn通知源码](https://github.com/Shopify/dawn/blob/main/assets/cart-notification.js)。采用动画通知与明确关闭入口，具体位置/时长是本项目实现选择。
 - 验证：Docker Next生产构建、Web lint/typecheck通过；完整桌面/移动E2E 32 passed，追加减少动态效果/焦点暂停/手动关闭定向测试2 passed。实际检查1280px/390px截图，滚动到底仍可见，无横向溢出；自查非独立Review。首次宿主Chrome启动受sandbox限制，提升执行权限后取得上述浏览器证据。本次仅影响提示展示，复用此前后端权限、报价及并发验证，不重跑数据库测试。
 - 后续按钮反馈修复：原先所有按钮直接用全局busy控制文字及变淡，Human观察到整页闪动。保留全局写锁/禁用保护，每个按钮独立记录本次请求进度；只有被点击的按钮显示处理中，其余可购买按钮保持原文字及不变淡。桌面/移动回归先实测失败（预期1个处理中，实际12个），修复后Cart相关22项E2E通过，覆盖独立文字/透明度及原创建恢复/编辑保护；Web生产构建、lint/typecheck、格式及Diff检查通过。局部展示修复，不改变Cart交易契约。
+
+### Review Findings修复（A+A，2026-10-29）
+
+- 本聊天先只读Review `main…206cb49`，发现两个P2：版本冲突后草稿商品被最新车删除时，输入消失但下一次保存仍提交隐藏条目；创建响应丢失后刷新，未显示无法确认状态。Human明确选择完整草稿/最新内容对照及非敏感待确认标记的A+A方案，授权本轮修复；方案细节回写同一Design/Spec，无新增恢复接口、后端表或依赖。
+- 先补`e2e/cart-review-fixes.spec.ts`：修复前，最新车替换/清空两例均因P001草稿输入消失失败；创建网络失败后刷新一例因缺少无法确认提示失败。修复后新增7场景在桌面/移动共14项通过：完整草稿可编辑/移除，最新新增项不静默合并，最新空车仍可保存草稿，失效商品问题可见且可移除，明确放弃草稿，网络/503后刷新保护和重复刷新，成功/明确拒绝清标记；同时断言请求发出前已有非敏感标记，session/localStorage不含Token/创建请求键。这些新增场景模拟HTTP结果、不写数据库，不冒称真实后端故障证据。
+- 持续验证定位到初始化busy从true改false会在首次挂载触发不必要Provider更新；商品发现6项测试因此匹配到React流式渲染隐藏容器中的重复节点。只读浏览器检查确认隐藏祖先`div[hidden]`。保留初始化同步ref锁，把busy初值设为false，无标记时不产生状态变化；未放宽S1选择器或断言，修复后完整回归通过。
+- 最终源码通过既有隔离`agent-ready-store-s2-web`容器的contracts/Web生产构建，Next16.4.3生产server运行于`http://127.0.0.1:3005`。`WEB_BASE_URL=http://127.0.0.1:3005 pnpm test:e2e --workers 1`：**48 passed**（含新增14项和既有34项，桌面/移动）；既有场景真实经Next反代写入专用store_test，包含原创建材料重试、版本冲突、PUT未知恢复、多车隔离与S1回归。未重跑无改动的API金额/DB并发测试，复用此前匹配的证据；未重启或迁移演示API/DB。
+- Web lint/typecheck、相关Prettier与Git空白检查通过；OpenSpec结构校验通过。实际检查390px模拟冲突/材料遗失截图，无横向溢出；未新增真实读屏证据。本轮行为复核为实现者自查，沿ai-native-review核对两项Finding及React组件状态/可访问性，未发现新的阻塞项，不冒称独立Review。
+- Git：沿`docs/s2-cart-quote-planning`原审查单元修改；提交前Checkpoint Guard返回BLOCKED，原因是本轮成果尚未进入checkpoint commit、仍有未提交修改。Human随后选择方案1，授权先提交本次修复，再将当前S2分支rebase到最新main；实际提交、rebase与Guard结果留当前对话，不Push/Merge/同步Spec/归档或启动后续切片。Human最终验收仍待进行。

@@ -291,7 +291,7 @@ test('shows a real version conflict and preserves the unsaved quantity', async (
   await expect(quantity).toHaveValue('2');
   await expect(page.getByText(`${id}：3 件`, { exact: true })).toBeVisible();
   await page
-    .getByRole('button', { name: '載入最新後重新調整', exact: true })
+    .getByRole('button', { name: '放棄草稿，載入最新', exact: true })
     .click();
   await expect(quantity).toHaveValue('3');
 });

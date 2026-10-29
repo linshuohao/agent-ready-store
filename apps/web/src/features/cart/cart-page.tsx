@@ -5,6 +5,7 @@ import {
   cartIdInput,
   cartItemsInput,
   type CartItem,
+  type CartIssue,
   type CartView,
 } from '@store/contracts';
 import { Button } from '@/components/ui/button';
@@ -34,6 +35,8 @@ export function CartPage({ id }: { id?: string }) {
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
+  const [conflicted, setConflicted] = useState(false);
+  const [saveIssues, setSaveIssues] = useState<CartIssue[]>([]);
   const [expired, setExpired] = useState(false);
   const [loading, setLoading] = useState(Boolean(id));
   const [loadAttempt, setLoadAttempt] = useState(0);
@@ -99,14 +102,19 @@ export function CartPage({ id }: { id?: string }) {
       setView(result.cart);
       setDraft(drafts(result.cart.items));
       setError('');
+      setConflicted(false);
+      setSaveIssues([]);
       setStatus('已儲存，內容與報價已更新。');
     }
     if (result.kind === 'conflict') {
       setView(result.cart);
+      setConflicted(true);
+      setSaveIssues([]);
       setError('購物車已變更，原草稿已保留，請比較最新內容後重新調整。');
     }
     if (result.kind === 'failure') {
       setError(failureText(result.error));
+      setSaveIssues(result.error.issues ?? []);
       setExpired(
         ['FORBIDDEN', 'CREDENTIAL_EXPIRED'].includes(result.error.code),
       );
@@ -207,49 +215,64 @@ export function CartPage({ id }: { id?: string }) {
       {view.items.length === 0 && <p>購物車目前沒有商品</p>}
       <div className="cart-layout">
         <section aria-label="編輯購物車">
+          {conflicted && (
+            <>
+              <h2>目前草稿</h2>
+              <p>儲存會以完整草稿取代最新內容，不會自動合併其他入口的調整。</p>
+            </>
+          )}
+          {Object.keys(draft).length === 0 && view.items.length > 0 && (
+            <p>目前草稿沒有商品，儲存後將清空購物車。</p>
+          )}
           <form
             onSubmit={(event) => {
               event.preventDefault();
               void save();
             }}
           >
-            {view.items
-              .filter((item) => Object.hasOwn(draft, item.productId))
-              .map((item) => (
-                <article key={item.productId} className="cart-line">
+            {Object.entries(draft).map(([productId, quantity]) => {
+              const item = view.items.find(
+                (item) => item.productId === productId,
+              );
+              const issues = saveIssues.length ? saveIssues : view.issues;
+              return (
+                <article key={productId} className="cart-line">
                   <h2>
-                    {item.name ?? '商品已失效'}{' '}
-                    <span className="hint">{item.productId}</span>
+                    {item ? (item.name ?? '商品已失效') : '待重新驗證的商品'}{' '}
+                    <span className="hint">{productId}</span>
                   </h2>
+                  {!item && (
+                    <p className="cart-issue">
+                      此商品已不在最新購物車，草稿仍保留；儲存時會重新驗證。
+                    </p>
+                  )}
                   <p>
                     目前單價：
-                    {item.unitPrice
+                    {item?.unitPrice
                       ? formatMoney(item.unitPrice)
                       : '無法報價'}{' '}
-                    · 庫存 {item.availability?.currentQuantity ?? '未知'}
+                    · 庫存 {item?.availability?.currentQuantity ?? '未知'}
                   </p>
-                  {view.issues
-                    .filter((issue) => issue.productId === item.productId)
+                  {issues
+                    .filter((issue) => issue.productId === productId)
                     .map((issue) => (
                       <p key={issue.code} className="cart-issue">
                         {issueText[issue.code] ?? '請調整此商品'}
                       </p>
                     ))}
-                  <label htmlFor={`qty-${item.productId}`}>
-                    數量 {item.productId}
-                  </label>
+                  <label htmlFor={`qty-${productId}`}>數量 {productId}</label>
                   <Input
-                    id={`qty-${item.productId}`}
+                    id={`qty-${productId}`}
                     type="number"
                     step="1"
-                    value={draft[item.productId]}
+                    value={quantity}
                     disabled={operations.busy}
                     aria-describedby={error ? 'cart-error' : undefined}
                     onChange={(event) => {
                       setStatus('');
                       setDraft((old) => ({
                         ...old,
-                        [item.productId]: event.target.value,
+                        [productId]: event.target.value,
                       }));
                     }}
                   />
@@ -257,13 +280,13 @@ export function CartPage({ id }: { id?: string }) {
                     variant="outline"
                     type="button"
                     disabled={operations.busy}
-                    aria-label={`移除 ${item.productId}`}
+                    aria-label={`移除 ${productId}`}
                     onClick={() => {
                       setStatus('');
                       setDraft((old) =>
                         Object.fromEntries(
                           Object.entries(old).filter(
-                            ([key]) => key !== item.productId,
+                            ([key]) => key !== productId,
                           ),
                         ),
                       );
@@ -272,16 +295,20 @@ export function CartPage({ id }: { id?: string }) {
                     移除
                   </Button>
                 </article>
-              ))}
-            {view.items.length > 0 && (
+              );
+            })}
+            {(view.items.length > 0 ||
+              Object.keys(draft).length > 0 ||
+              conflicted) && (
               <Button type="submit" disabled={operations.busy}>
-                儲存調整
+                {conflicted ? '以目前草稿儲存' : '儲存調整'}
               </Button>
             )}
           </form>
-          {error.includes('購物車已變更') && (
+          {conflicted && (
             <section className="notice">
               <h2>最新已儲存內容</h2>
+              {view.items.length === 0 && <p>最新購物車沒有商品。</p>}
               <ul>
                 {view.items.map((item) => (
                   <li key={item.productId}>
@@ -291,13 +318,16 @@ export function CartPage({ id }: { id?: string }) {
               </ul>
               <Button
                 variant="outline"
+                disabled={operations.busy}
                 onClick={() => {
                   setStatus('');
                   setDraft(drafts(view.items));
                   setError('');
+                  setConflicted(false);
+                  setSaveIssues([]);
                 }}
               >
-                載入最新後重新調整
+                放棄草稿，載入最新
               </Button>
             </section>
           )}

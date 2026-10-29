@@ -40,7 +40,7 @@ Web 默认 http://localhost:3000，API 为 http://localhost:3002/api/v1；API_PU
 
 `POST /api/v1/carts`、`GET /api/v1/carts/:id`、`PUT /api/v1/carts/:id/items`提供创建/读取/整车替换。写请求必须为JSON且Origin精确匹配`WEB_ORIGIN`；本地打开Web时也须使用该配置中的同一origin。车ID只定位，访问通过每车HttpOnly Cookie；来源、价格不能由请求伪造。输入/DTO细则见Change与`packages/contracts`。
 
-未交接Cart创建起固定24小时，到期不续期。服务端重验权限和版本；保存冲突保留草稿，结果未明时显式重试原版本/原完整条目，避免覆盖其他编辑。创建响应丢失时复用原材料恢复；内存材料与Cookie均丢失时无法自动恢复，不凭ID补发。首次分享后完整24小时由S4实现，当前没有分享工具。
+未交接Cart创建起固定24小时，到期不续期。服务端重验权限和版本；保存冲突展示完整可编辑草稿与最新已保存内容，可明确以草稿保存或放弃草稿载入最新。结果未明时显式重试原版本/原完整条目，避免覆盖其他编辑。创建响应丢失时复用原材料恢复；刷新丢失内存材料后，标签页仅保留非敏感待确认标记，提示结果无法确认，须明确重新发起才允许新建。内存材料与Cookie均丢失时无法自动恢复，不凭ID补发；重新发起可能留下无法访问的旧车。首次分享后完整24小时由S4实现，当前没有分享工具。
 
 现有数据库升级仅新增Cart表，执行`docker compose run --rm api pnpm db:migrate`，保留Inventory，不重新seed或删卷。`CART_ENCRYPTION_KEY`仅存本机安全环境，备份并跨重启保留；丢失或替换会使既有Cart凭证无法恢复。`.env.example`只含空占位。`CART_COOKIE_SECURE=false`只允许显式的本机HTTP例外，HTTPS使用true。加密实现与精确计价依赖均已锁定，运行证据以Tasks为准。
 
