@@ -83,7 +83,7 @@ test('feedback respects reduced motion and pauses dismissal for keyboard use', a
   await expect(feedback).toHaveCount(0);
 });
 
-test('one page coordinates all initial add buttons while creating', async ({
+test('one page locks cart writes but only the clicked button shows progress', async ({
   page,
 }) => {
   let release!: () => void;
@@ -103,6 +103,12 @@ test('one page coordinates all initial add buttons while creating', async ({
   await expect.poll(() => creates).toBe(1);
   try {
     await expect(page.locator('button[data-add-cart]:enabled')).toHaveCount(0);
+    await expect(
+      page.locator('button[data-add-cart]').filter({ hasText: '處理中…' }),
+    ).toHaveCount(1);
+    const sibling = page.locator('button[data-add-cart]').nth(1);
+    await expect(sibling).toHaveText('加入購物車');
+    await expect(sibling).toHaveCSS('opacity', '1');
   } finally {
     release();
   }
