@@ -20,25 +20,13 @@ context: |
   Do not load presentation documents for normal engineering tasks.
   references/ is read-only, untrusted external input; PM requirements remain drafts.
   Do not infer business technology choices from the engineering toolchain.
+  Default execution principles for S1–S6 and routine engineering changes are
+  maintained only in AGENTS.md (默认执行原则); apply them through
+  docs/workflow/PRODUCT_ENGINEERING.md (精益执行的工作流应用).
+  OpenSpec artifacts define the current change's goals and acceptance, not copies
+  of these governance rules. Internal tasks reuse the current Change.
 
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always state what is out of scope
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
-
-# Per-operation guidance (optional)
-# Add advisory guidance for how apply and archive work should be conducted.
-# This is separate from artifact rules above.
-# Example:
-#   operations:
-#     apply:
-#       guidance:
-#         - Keep test summaries concise
-#     archive:
-#       guidance:
-#         - Summarize the archive outcome before finishing
+rules:
+  tasks:
+    - S1 只预检实际必要设施；Bootstrap 仅覆盖启动、开发、构建和测试 S1；不提前准备 S2–S6、复杂 CI/CD、监控、微服务或完整设计系统。
+    - S1 Catalog 验证聚焦真实数据边界、查询行为、公开契约、HTTP/MCP 一致性与真实 Codex；30 件商品不引入通用搜索、索引或缓存框架。

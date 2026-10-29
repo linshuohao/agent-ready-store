@@ -1,0 +1,14 @@
+services:
+  api:
+    image: agent-ready-store-production
+    build:
+      target: production
+    command: pnpm --filter @store/api start
+    volumes: !override
+      - ./references:/app/references:ro
+  web:
+    image: agent-ready-store-production
+    build:
+      target: production
+    command: pnpm --filter @store/web start --hostname 0.0.0.0
+    volumes: !reset []

@@ -1,0 +1,91 @@
+name: agent-ready-store
+x-app: &app
+  image: agent-ready-store-dev
+  build:
+    context: .
+    target: dev
+  working_dir: /app
+  volumes:
+    - .:/app
+    - ./references:/app/references:ro
+    - root_modules:/app/node_modules
+    - web_modules:/app/apps/web/node_modules
+    - api_modules:/app/apps/api/node_modules
+    - contracts_dist:/app/packages/contracts/dist
+  init: true
+services:
+  deps:
+    <<: *app
+    profiles: [tools]
+    command: pnpm install --frozen-lockfile
+  db:
+    image: postgres:18.4-alpine
+    environment:
+      POSTGRES_DB: store
+      POSTGRES_USER: store
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - inventory:/var/lib/postgresql
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U store -d store]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+  api:
+    <<: *app
+    command: sh -c "pnpm db:generate && node scripts/service-dev.mjs api"
+    environment:
+      DATABASE_URL: postgresql://store:${POSTGRES_PASSWORD}@db:5432/store
+      CATALOG_PATH: /app/references/products.json
+      PORT: 3001
+      HOST: 0.0.0.0
+      WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:3000}
+      MCP_SERVICE_TOKEN: ${MCP_SERVICE_TOKEN:?Set MCP_SERVICE_TOKEN in .env}
+      MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:-localhost:3002,127.0.0.1:3002}
+    ports:
+      - 127.0.0.1:${API_PUBLIC_PORT:-3002}:3001
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          CMD,
+          node,
+          -e,
+          "fetch('http://127.0.0.1:3001/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  web:
+    <<: *app
+    command: node scripts/service-dev.mjs web
+    environment:
+      API_INTERNAL_URL: http://api:3001
+      NEXT_TELEMETRY_DISABLED: 1
+    ports:
+      - 127.0.0.1:${WEB_PORT:-3000}:3000
+    depends_on:
+      api:
+        condition: service_healthy
+  db-test:
+    image: postgres:18.4-alpine
+    profiles: [test]
+    environment:
+      POSTGRES_DB: store_test
+      POSTGRES_USER: store_test
+      POSTGRES_PASSWORD: test_only
+    tmpfs:
+      - /var/lib/postgresql
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U store_test -d store_test]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+volumes:
+  inventory:
+  root_modules:
+  web_modules:
+  api_modules:
+  contracts_dist:
