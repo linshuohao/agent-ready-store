@@ -1,6 +1,6 @@
 # Tasks
 
-状态：规划Approved、S2实施已授权，18项任务已完成，Human验收通过（2026-10-29，Asia/Shanghai）。规划授权来源见Proposal；本聊天在最终独立Review后，Human明确回复“验收通过”，验收对象为`7b082a1`及随本记录提交的迟到创建响应修复。范围见 [Proposal](proposal.md)，实现与验证依据见 [Design](design.md) 和两份 [Cart](specs/shopping-cart/spec.md) / [Pricing](specs/cart-pricing/spec.md) 规格。已披露的真实读屏/Host等验证限制保留；Spec同步及归档待对应授权。
+状态：规划Approved、S2实施已授权，18项任务已完成，Human验收通过（2026-10-29，Asia/Shanghai）。规划授权来源见Proposal；本聊天在最终独立Review后，Human明确回复“验收通过”，验收对象为`7b082a1`及随本记录提交的迟到创建响应修复。范围见 [Proposal](proposal.md)，实现与验证依据见 [Design](design.md) 和两份 [Cart](specs/shopping-cart/spec.md) / [Pricing](specs/cart-pricing/spec.md) 规格。已披露的真实读屏/Host等验证限制保留；两份正式Spec已同步，Human授权的S2归档已完成；Human已授权将独立docs分支的归档增量提交并合并main。
 
 实施交接条件：规划复核已完成，Human已明确批准整份S2规划并发起实施，L-01等决定已记录并传播。按最新版Git Checkpoint Policy，本Change涉及金额、幂等和权限不变量，进入实施及需要交接的高风险任务组前形成适用Checkpoint并运行Guard；不以任务数量机械增加提交。Git授权仍独立核对，任务完成以真实实现和验证为准。
 
@@ -92,3 +92,7 @@
 - 新增桌面/移动共4项模拟时序回归，先运行桌面两项均失败（预期B、实际导航A），修复后验证导航、sessionStorage及后续PUT仍属B；原材料重试断言Token/请求键保持。最终`WEB_BASE_URL=http://127.0.0.1:3005 pnpm test:e2e --workers 1` **52 passed**，包含原48项及新增4项。现有隔离Web容器完成生产构建；Web lint/typecheck、格式、Git空白与OpenSpec校验通过。后端无改动，未重跑DB并发/真实Host或新增读屏证据，复用仍适用证据与限制。
 - 同一独立Reviewer对本轮未提交Provider/test Diff作定向复核：确认原P2解决，未发现新增明确回归；Reviewer未亲自运行测试，52项运行证据由主执行者取得。无布局变化，短行为摘要足以交接，不另建可视化。Human体验验收待进行；当前新增修复尚未提交，提交/合并/归档权限单独核对。
 - 随后全新上下文`final_acceptance_review`对最终working tree作验收前独立复核，核对契约、创建/重试/选车、CartPage/commands/路由隔离及交付证据，未发现新增可操作P1/P2；复用52项等验证，未重复全量后端或新增真实读屏/Host运行。Human明确“验收通过”，随后对提交这4个修复/测试/验收文件明确“授权”。本记录与修复一并提交；实际commit及Checkpoint结果留当前对话，合并/同步Spec/归档仍待对应授权。
+
+### 归档（2026-10-29）
+
+- Human在S2已验收、修复提交`90e6877`并以`02cd799`合入main后明确“归档”。在`docs/s2-cart-quote-archive`分支同步shopping-cart与cart-pricing正式规格，并通过原生CLI归档；9条Requirement及27个Scenario正文逐项保持一致。严格校验及链接检查结果在当前对话报告，原验证限制保留。本轮仅文档/规格生命周期操作，复用业务验证；Human随后明确授权提交归档增量并合并main，实际commit与Checkpoint结果留当前对话。
