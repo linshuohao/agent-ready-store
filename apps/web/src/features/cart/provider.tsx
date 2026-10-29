@@ -204,6 +204,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       );
       return;
     }
+    if (latest.cart.orderId) {
+      unlock();
+      setMessage('此購物車已完成購買，請明確開始新的購物。');
+      setCanRestart(true);
+      return;
+    }
     const items = latest.cart.items.map(({ productId, quantity }) => ({
       productId,
       quantity,

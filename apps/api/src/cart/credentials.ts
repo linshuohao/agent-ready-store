@@ -1,3 +1,4 @@
+import { CheckoutConfirmation } from './confirmation.js';
 import {
   createCipheriv,
   createDecipheriv,
@@ -11,11 +12,13 @@ export const cartAccessExpired = (createdAt: Date, now: Date) =>
   now.getTime() >= createdAt.getTime() + cartLifetime;
 
 export class CartCredentials {
+  readonly confirmation: CheckoutConfirmation;
   private readonly key: Buffer;
   private readonly scopeKey: Buffer;
   constructor(key: string) {
     if (!/^[a-f0-9]{64}$/i.test(key))
       throw new Error('CART_ENCRYPTION_KEY must be a stable 32-byte hex key');
+    this.confirmation = new CheckoutConfirmation(key);
     this.key = Buffer.from(key, 'hex');
     this.scopeKey = createHmac('sha256', this.key)
       .update('cart-creation-scope-v1')

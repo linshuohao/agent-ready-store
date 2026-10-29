@@ -185,6 +185,19 @@ export function CartPage({ id }: { id?: string }) {
         </p>
       </main>
     );
+  if (view.orderId)
+    return (
+      <main id="main" tabIndex={-1}>
+        <h1>購物車</h1>
+        <p>此購物車已完成購買。</p>
+        <Link href={`/orders/${id}`} prefetch={false}>
+          查看原訂單
+        </Link>
+        <p>
+          <Button onClick={operations.restart}>開始新的購物</Button>
+        </p>
+      </main>
+    );
   return (
     <main id="main" tabIndex={-1} className="cart-page">
       <Link href="/">繼續選購</Link>
@@ -344,7 +357,22 @@ export function CartPage({ id }: { id?: string }) {
           </section>
         )}
       </div>
-      <p className="notice">購物車與報價已可使用；結帳功能尚未開放。</p>
+      {view.canCheckout &&
+      !operations.busy &&
+      !pending &&
+      !conflicted &&
+      Object.keys(draft).length === view.items.length &&
+      view.items.every(
+        (item) => Number(draft[item.productId]) === item.quantity,
+      ) ? (
+        <p>
+          <Link href={`/checkout/${id}`} prefetch={false}>
+            前往結帳
+          </Link>
+        </p>
+      ) : (
+        <p className="notice">請先儲存調整並排除商品問題後再前往結帳。</p>
+      )}
     </main>
   );
 }

@@ -6,9 +6,9 @@
 
 阶段关闭记录见 [Technical Design §10.4](docs/engineering/TECHNICAL_DESIGN.md#104-设计阶段关闭与交接--2026-10-29)。Human 已批准 [S1 规划](openspec/changes/archive/2026-10-29-s1-product-discovery/proposal.md) 并授权实施；S1 已完成本轮 Review 并归档，运行证据与保留限制见 [归档 Tasks](openspec/changes/archive/2026-10-29-s1-product-discovery/tasks.md)；后续切片等待对应授权。精益执行原则见 [AGENTS](AGENTS.md#默认执行原则)。
 
-S2当前状态见 [Cart与报价Change](openspec/changes/archive/2026-10-29-s2-cart-quote/proposal.md)及[Tasks](openspec/changes/archive/2026-10-29-s2-cart-quote/tasks.md)。Web/HTTP购物车与报价已实现，完成自动验证、独立Review及定向修复复核，Human于2026-10-29明确验收通过；两份正式Spec已同步，S2 Change已按Human授权归档。未交接创建起24h、现有恢复限制及S2 Web/HTTP—S4 MCP写工具分期的正式来源见[D-04补充](DECISIONS.md#d-04--交接链接有效期)。S3订单与S4交接均尚未实现，不能将当前Cart报价视为完成购买。
+S2当前状态见 [Cart与报价Change](openspec/changes/archive/2026-10-29-s2-cart-quote/proposal.md)及[Tasks](openspec/changes/archive/2026-10-29-s2-cart-quote/tasks.md)。Web/HTTP购物车与报价已实现，完成自动验证、独立Review及定向修复复核，Human于2026-10-29明确验收通过；两份正式Spec已同步，S2 Change已按Human授权归档。未交接创建起24h、现有恢复限制及S2 Web/HTTP—S4 MCP写工具分期的正式来源见[D-04补充](DECISIONS.md#d-04--交接链接有效期)。S3订单已实现、待Human验收，S4交接尚未实现，不能将当前Cart报价视为完成购买。
 
-S3已开启规划：[Proposal](openspec/changes/s3-hosted-checkout-order/proposal.md)、[Design](openspec/changes/s3-hosted-checkout-order/design.md)、[Tasks](openspec/changes/s3-hosted-checkout-order/tasks.md)。Human已确认到期准入/结果访问/无自动清理的三项限定边界，见[D-21补充](DECISIONS.md#s3-checkout-boundary-20261029)；Human于2026-10-30明确“批准，然后开始去实施”，完整规划已批准、实施已授权；规划Checkpoint提交授权仍待取得。S3范围为普通Web Hosted Checkout与原子订单，S4 Agent交接等后续分期保持。
+S3已开启规划：[Proposal](openspec/changes/s3-hosted-checkout-order/proposal.md)、[Design](openspec/changes/s3-hosted-checkout-order/design.md)、[Tasks](openspec/changes/s3-hosted-checkout-order/tasks.md)。Human已确认到期准入/结果访问/无自动清理的三项限定边界，见[D-21补充](DECISIONS.md#s3-checkout-boundary-20261029)；Human于2026-10-30明确“批准，然后开始去实施”，完整规划已批准、实施已授权；规划Checkpoint已提交并通过Guard。S3范围为普通Web Hosted Checkout与原子订单，S4 Agent交接等后续分期保持。
 
 ## S1 本地开发
 
@@ -38,7 +38,7 @@ Web 默认 http://localhost:3000，API 为 http://localhost:3002/api/v1；API_PU
 
 ## S2 购物车与报价
 
-商品列表/详情支持加购，导航进入独立 `/cart/{cartId}` 页面，可修改数量、移除并保存整车。报价由API唯一实现：满1000减100、可信Agent来源在满减后95折，优惠前小计满990免运；当前普通Web创建固定HUMAN，不提供AI来源开关。建车不预留库存，数量/商品异常会提示调整，空车不计算运费。当前不提供结账或订单提交。
+商品列表/详情支持加购，导航进入独立 `/cart/{cartId}` 页面，可修改数量、移除并保存整车。报价由API唯一实现：满1000减100、可信Agent来源在满减后95折，优惠前小计满990免运；当前普通Web创建固定HUMAN，不提供AI来源开关。建车不预留库存，数量/商品异常会提示调整，空车不计算运费。可购买且已保存的购物车可进入S3结算页，由Human明确确认后同步生单。
 
 `POST /api/v1/carts`、`GET /api/v1/carts/:id`、`PUT /api/v1/carts/:id/items`提供创建/读取/整车替换。写请求必须为JSON且Origin精确匹配`WEB_ORIGIN`；本地打开Web时也须使用该配置中的同一origin。车ID只定位，访问通过每车HttpOnly Cookie；来源、价格不能由请求伪造。输入/DTO细则见Change与`packages/contracts`。
 
@@ -109,3 +109,15 @@ pnpm test:e2e
 ```
 
 DB 測試會修改並清理專用 store_test 資料，禁止指向演示庫。E2E 使用本機 Google Chrome，桌面與移動視窗各驗證一遍；沒有 Chrome 時需明確準備瀏覽器，不將未執行當通過。
+
+## S3 结算与订单
+
+结算入口为 `/checkout/{cartId}`，完整审阅后明确点击“確認購買”；服务端在同步短事务中重验内容与库存、保存唯一订单并扣减库存。无支付步骤、无5分钟倒计时；确认材料与审阅时Cart截止一致，内容/版本/会话/重新审阅可使旧材料失效。订单价格与金额快照固定，成功车不能再编辑或重复购买。
+
+新增HTTP：`POST /api/v1/carts/:id/checkout-review`（空JSON）、`POST /api/v1/carts/:id/orders`（confirmation），以及 `GET /api/v1/carts/:id/order`。写请求继续要求精确WEB_ORIGIN、JSON、目标车Cookie；新购买另须独立浏览器会话及服务端签名确认。Review是有副作用的安全恢复屏障，不可换成普通GET。未查到订单不能证明在途提交已失败；结果未知时有限查询或明确重新审阅，不自动重下单。
+
+订单结果页 `/orders/{cartId}` 优先展示成功响应内存快照，刷新/直达才重新查询。Cart到期后不能新增查询或购买权限；已收到成功结果不因到期改成失败。响应丢失后再到期可能无法确认结果，不能宣称购买失败或补发凭证。开始新购物须明确操作。
+
+升级仍执行 `pnpm db:migrate`（Compose用既有API命令），只增加Order/唯一外键和Cart恢复栅栏，保留现有Cart/Inventory，不重新seed。已有订单后不可删除Order表或回滚成允许完成车写入的旧API；先停购买/写入，保留数据并前向修复。无自动清理或长期保留期限政策。
+
+S3 DB测试 `apps/api/test/cart/checkout-db.test.ts` 只接受专用store_test，使用TEST_DATABASE_URL且与其他破坏性DB套件串行；HTTP测试另用 `S3_API_BASE_URL=http://localhost:3002/api/v1`。HTTP/API测试和DB重置分阶段运行。浏览器入口 `pnpm test:e2e`，含桌面/移动主线、内容变化、响应丢失及快照显示；未配置DB/API变量时skip不算通过。当前实现/Review/验收事实见S3 Tasks，不将本地通过表述为远程CI通过。

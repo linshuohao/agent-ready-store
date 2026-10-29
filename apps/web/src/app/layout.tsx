@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { OrderMemory } from '@/features/checkout/order-memory';
 import type { Metadata } from 'next';
 import './globals.css';
 import { CartProvider } from '@/features/cart/provider';
@@ -22,7 +23,9 @@ export default function RootLayout({
           <Link href="/">AGENT / STORE</Link>
           <span>為人與 AI 助理設計</span>
         </header>
-        <CartProvider>{children}</CartProvider>
+        <OrderMemory>
+          <CartProvider>{children}</CartProvider>
+        </OrderMemory>
         <footer>商品資訊為目前快照，實際庫存可能變動。</footer>
       </body>
     </html>
