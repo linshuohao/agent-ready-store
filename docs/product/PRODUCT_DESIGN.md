@@ -1,5 +1,7 @@
 # Agent-Ready Store — Product Design
 
+**S3验收反馈补充（Human，2026-10-30）：** 按本聊天明确反馈将全站购物车入口并入固定顶部Header，改进结算/订单的商品—金额—操作层级与间距；订单开始新购物直接返回商品列表。Human选择空页可进入、首次加购才创建，不自动初始化持久空车。具体差异与验证留[S3 Change](../../openspec/changes/s3-hosted-checkout-order/design.md)，不改变购买确认/金额/权限规则，也不表示完整Human验收通过。
+
 **2026-10-30限定补充（Human Accepted）：** 确认材料与Cart截止一致、同步生单及成交价格固定的定义和批准来源见[D-21追加确认](../../DECISIONS.md#s3-confirmation-lifetime-20261030)；不另设支付或独立短期确认倒计时，既有绑定/重验与整体实施授权边界保持。
 
 **S3限定补充（Human Accepted，2026-10-29）：** §4与§8的未知结果/到期体验按[D-21 S3限定补充](../../DECISIONS.md#s3-checkout-boundary-20261029)执行其已确认边界；具体确认与恢复交互仍待S3规划批准，不代表运行验收、实施或Git授权。

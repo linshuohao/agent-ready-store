@@ -256,11 +256,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             : Promise.resolve(undefined),
       }}
     >
-      <nav className="cart-nav" aria-label="購物導覽">
-        <Link href={cartId ? `/cart/${cartId}` : '/cart'} prefetch={false}>
-          購物車
-        </Link>
-      </nav>
       {((message && !pathname.startsWith('/cart')) ||
         creationUnknown ||
         creationLost ||

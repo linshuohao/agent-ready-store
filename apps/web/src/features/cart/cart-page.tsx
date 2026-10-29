@@ -143,7 +143,7 @@ export function CartPage({ id }: { id?: string }) {
   }
   if (!id)
     return (
-      <main id="main" tabIndex={-1}>
+      <main id="main" tabIndex={-1} className="commerce-page">
         <h1>購物車</h1>
         {operations.currentCartId ? (
           <Link href={`/cart/${operations.currentCartId}`} prefetch={false}>

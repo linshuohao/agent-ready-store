@@ -3,32 +3,53 @@ import { MoneyBreakdown } from '@/features/cart/money-breakdown';
 export function PurchaseSummary({
   summary,
   completed = false,
+  actions,
 }: {
   summary: Summary;
   completed?: boolean;
+  actions?: React.ReactNode;
 }) {
   return (
-    <section aria-label={completed ? '成交內容' : '本次購買內容'}>
-      <p>來源：{summary.origin === 'AGENT' ? 'AI 助理準備' : '自行選購'}</p>
-      <ul>
-        {summary.items.map((item) => (
-          <li key={item.productId}>
-            <strong>{item.name}</strong> · {item.productId} · {item.brand}
-            <dl>
-              {Object.entries(item.specs).map(([key, value]) => (
-                <div key={key}>
-                  <dt>{key}</dt>
-                  <dd>{String(value)}</dd>
-                </div>
-              ))}
-            </dl>
-          </li>
-        ))}
-      </ul>
-      <MoneyBreakdown
-        quote={summary.quote}
-        mode={completed ? 'completed' : 'confirmation'}
-      />
+    <section
+      className="purchase-layout"
+      aria-label={completed ? '成交內容' : '本次購買內容'}
+    >
+      <div className="purchase-products">
+        <div className="purchase-section-heading">
+          <h2>商品明細</h2>
+          <p>來源：{summary.origin === 'AGENT' ? 'AI 助理準備' : '自行選購'}</p>
+        </div>
+        <ul className="purchase-product-list">
+          {summary.items.map((item) => (
+            <li key={item.productId} className="purchase-product">
+              <div className="purchase-product-heading">
+                <h3>{item.name}</h3>
+                <p className="purchase-product-meta">
+                  {item.productId} · {item.brand} · {item.quantity} 件
+                </p>
+              </div>
+              <dl>
+                {Object.entries(item.specs).map(([key, value]) => (
+                  <div key={key}>
+                    <dt>{key}</dt>
+                    <dd>{String(value)}</dd>
+                  </div>
+                ))}
+              </dl>
+            </li>
+          ))}
+        </ul>
+      </div>
+      <aside
+        className="purchase-aside"
+        aria-label={completed ? '成交摘要' : '結帳摘要'}
+      >
+        <MoneyBreakdown
+          quote={summary.quote}
+          mode={completed ? 'completed' : 'confirmation'}
+        />
+        {actions && <div className="commerce-actions">{actions}</div>}
+      </aside>
     </section>
   );
 }

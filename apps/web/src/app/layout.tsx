@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import { SiteHeader } from '@/features/cart/site-header';
 import { OrderMemory } from '@/features/checkout/order-memory';
 import type { Metadata } from 'next';
 import './globals.css';
@@ -19,12 +19,11 @@ export default function RootLayout({
         <a className="skip" href="#main">
           跳至主要內容
         </a>
-        <header>
-          <Link href="/">AGENT / STORE</Link>
-          <span>為人與 AI 助理設計</span>
-        </header>
         <OrderMemory>
-          <CartProvider>{children}</CartProvider>
+          <CartProvider>
+            <SiteHeader />
+            {children}
+          </CartProvider>
         </OrderMemory>
         <footer>商品資訊為目前快照，實際庫存可能變動。</footer>
       </body>

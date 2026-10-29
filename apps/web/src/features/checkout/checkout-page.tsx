@@ -190,11 +190,14 @@ export function CheckoutPage({ id }: { id: string }) {
     phase,
   );
   return (
-    <main id="main" tabIndex={-1} className="cart-page">
-      <h1>結帳</h1>
-      <p>
-        核對商品與完整金額後，按下「確認購買」即完成模擬購買，沒有額外付款步驟。
-      </p>
+    <main id="main" tabIndex={-1} className="commerce-page checkout-page">
+      <div className="commerce-page-heading">
+        <p className="eyebrow">CHECKOUT</p>
+        <h1>結帳</h1>
+        <p>
+          核對商品與完整金額後，按下「確認購買」即完成模擬購買，沒有額外付款步驟。
+        </p>
+      </div>
       {working && (
         <p role="status">
           {phase === 'submitting'
@@ -210,7 +213,35 @@ export function CheckoutPage({ id }: { id: string }) {
       {ready && previous && (
         <PurchaseChanges before={previous} after={ready.summary} />
       )}
-      {ready && <PurchaseSummary summary={ready.summary} />}
+      {ready && (
+        <PurchaseSummary
+          summary={ready.summary}
+          actions={
+            <>
+              <Button
+                onClick={() => void submit()}
+                disabled={phase !== 'ready'}
+              >
+                {phase === 'submitting' ? '正在提交購買…' : '確認購買'}
+              </Button>
+              {phase === 'ready' && (
+                <>
+                  <Link
+                    className="commerce-action-secondary"
+                    href={`/cart/${id}`}
+                    prefetch={false}
+                  >
+                    編輯原購物車
+                  </Link>
+                  <Link className="commerce-action-text" href="/">
+                    繼續選購
+                  </Link>
+                </>
+              )}
+            </>
+          }
+        />
+      )}
       {blocked && (
         <ul>
           {blocked.cart.issues.map((issue, i) => (
@@ -219,9 +250,6 @@ export function CheckoutPage({ id }: { id: string }) {
             </li>
           ))}
         </ul>
-      )}
-      {phase === 'ready' && (
-        <Button onClick={() => void submit()}>確認購買</Button>
       )}
       {['changed', 'unknown'].includes(phase) && (
         <Button onClick={() => void review()}>
@@ -239,9 +267,13 @@ export function CheckoutPage({ id }: { id: string }) {
           查詢原訂單
         </Button>
       )}
-      {!working && phase !== 'unknown' && phase !== 'expired' && (
+      {!working && !ready && phase !== 'unknown' && phase !== 'expired' && (
         <p>
-          <Link href={`/cart/${id}`} prefetch={false}>
+          <Link
+            className="commerce-action-secondary"
+            href={`/cart/${id}`}
+            prefetch={false}
+          >
             編輯原購物車
           </Link>
         </p>
