@@ -1,6 +1,7 @@
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash, randomUUID, randomBytes } from 'node:crypto';
 import {
   cartCreateInput,
+  agentCreateInput,
   cartReplaceInput,
   cartTokenInput,
   cartIdInput,
@@ -23,7 +24,7 @@ import { Catalog } from '../catalog/catalog.js';
 import { AppError } from '../shared/app-error.js';
 import {
   CartCredentials,
-  cartLifetime,
+  cartExpiresAt,
   cartAccessExpired,
 } from './credentials.js';
 import { priceCart } from './pricing.js';
@@ -52,7 +53,7 @@ export class CartService {
       !this.credentials.matches(row.id, row.encryptedCartToken, token)
     )
       throw new AppError('FORBIDDEN', 403);
-    if (cartAccessExpired(row.createdAt, now))
+    if (cartAccessExpired(row.createdAt, now, row.handoffIssuedAt))
       throw new AppError('CREDENTIAL_EXPIRED', 410);
   }
   private async contents(
@@ -124,7 +125,10 @@ export class CartService {
       cartId: row.id,
       origin: row.origin as 'HUMAN' | 'AGENT',
       cartVersion: row.version,
-      expiresAt: new Date(row.createdAt.getTime() + cartLifetime).toISOString(),
+      expiresAt: cartExpiresAt(
+        row.createdAt,
+        row.handoffIssuedAt,
+      ).toISOString(),
       ...(await this.contents(db, items, row.origin as 'HUMAN' | 'AGENT')),
       ...(order ? { canCheckout: false } : {}),
     };
@@ -136,11 +140,29 @@ export class CartService {
   async create(input: unknown): Promise<{ cart: CartView; replayed: boolean }> {
     const parsed = cartCreateInput.safeParse(input);
     if (!parsed.success) throw new AppError('VALIDATION_ERROR', 400);
-    const { cartToken, createRequestId } = parsed.data;
-    const items = [...parsed.data.items].sort((a, b) =>
+    return this.createInternal(parsed.data, 'HUMAN');
+  }
+  async createAgent(input: unknown) {
+    const parsed = agentCreateInput.safeParse(input);
+    if (!parsed.success) throw new AppError('VALIDATION_ERROR', 400);
+    const result = await this.createInternal(
+      { ...parsed.data, cartToken: randomBytes(32).toString('base64url') },
+      'AGENT',
+    );
+    return { cart: result.cart, cartAccessToken: result.token };
+  }
+  private async createInternal(
+    data: { cartToken: string; createRequestId: string; items: CartItem[] },
+    origin: 'HUMAN' | 'AGENT',
+  ) {
+    const { cartToken, createRequestId } = data;
+    const items = [...data.items].sort((a, b) =>
       a.productId < b.productId ? -1 : a.productId > b.productId ? 1 : 0,
     );
-    const scope = this.credentials.scope(cartToken);
+    const scope =
+      origin === 'AGENT'
+        ? this.credentials.principalScope('store-mcp-v1')
+        : this.credentials.scope(cartToken);
     const hash = createHash('sha256')
       .update(JSON.stringify(items))
       .digest('hex');
@@ -156,7 +178,7 @@ export class CartService {
         const encrypted = this.credentials.encrypt(id, cartToken);
         const inserted = await tx.$queryRaw<{ id: string }[]>`
           INSERT INTO "Cart" (id, origin, items, version, "createdAt", "createScope", "createRequestId", "createPayloadHash", "encryptedCartToken")
-          VALUES (${id}::uuid, 'HUMAN', ${JSON.stringify(items)}::jsonb, 1, clock_timestamp(), ${scope}, ${createRequestId}::uuid, ${hash}, ${encrypted})
+          VALUES (${id}::uuid, ${origin}, ${JSON.stringify(items)}::jsonb, 1, clock_timestamp(), ${scope}, ${createRequestId}::uuid, ${hash}, ${encrypted})
           ON CONFLICT ("createScope", "createRequestId") DO NOTHING RETURNING id`;
         replayed = inserted.length === 0;
         row = await tx.cart.findUniqueOrThrow({
@@ -168,18 +190,78 @@ export class CartService {
           },
         });
         if (!replayed) {
-          this.validateContents(await this.contents(tx, items, 'HUMAN'));
+          this.validateContents(await this.contents(tx, items, origin));
           row = await tx.cart.update({
             where: { id: row.id },
             data: { createdAt: await this.now(tx) },
           });
         }
       }
-      this.authorize(row, cartToken, await this.now(tx));
+      await tx.$queryRaw`SELECT id FROM "Cart" WHERE id = ${row.id}::uuid FOR UPDATE`;
+      row = await tx.cart.findUniqueOrThrow({ where: { id: row.id } });
+      const effectiveToken =
+        origin === 'AGENT'
+          ? this.credentials.recover(row.id, row.encryptedCartToken)
+          : cartToken;
+      this.authorize(row, effectiveToken, await this.now(tx));
       if (row.createPayloadHash !== hash)
         throw new AppError('CREATE_REQUEST_CONFLICT', 409);
-      return { cart: await this.view(tx, row), replayed };
+      return {
+        cart: await this.view(tx, row),
+        replayed,
+        token: effectiveToken,
+      };
     });
+  }
+  async agentGet(id: string, token: string) {
+    return this.db.$transaction(
+      async (tx) => {
+        const row = await this.locked(tx, id, token);
+        return {
+          cart: await this.view(tx, row),
+          order: await this.saved(tx, id),
+        };
+      },
+      { timeout: 10000 },
+    );
+  }
+  async handoff(id: string, token: string) {
+    return this.db.$transaction(
+      async (tx) => {
+        let row = await this.locked(tx, id, token);
+        if (await this.saved(tx, id)) throw new AppError('CART_COMPLETED', 409);
+        if (!row.handoffIssuedAt) {
+          const issued = await this.now(tx);
+          this.authorize(row, token, issued);
+          row = await tx.cart.update({
+            where: { id },
+            data: { handoffIssuedAt: issued },
+          });
+        }
+        return {
+          cart: await this.view(tx, row),
+          issuedAt: row.handoffIssuedAt!.toISOString(),
+          expiresAt: cartExpiresAt(
+            row.createdAt,
+            row.handoffIssuedAt,
+          ).toISOString(),
+        };
+      },
+      { timeout: 10000 },
+    );
+  }
+  async exchange(id: string, token: string) {
+    return this.db.$transaction(
+      async (tx) => {
+        const row = await this.locked(tx, id, token);
+        if (!row.handoffIssuedAt) throw new AppError('FORBIDDEN', 403);
+        return this.view(tx, row);
+      },
+      { timeout: 10000 },
+    );
+  }
+  async agentCreationCount() {
+    return this.db.cart.count({ where: { origin: 'AGENT' } });
   }
   async get(id: string, token: string): Promise<CartView> {
     if (!cartIdInput.safeParse(id).success)

@@ -6,13 +6,26 @@ import {
   CallToolRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
-import { searchInput, pageInput, productInput } from '@store/contracts';
+import {
+  searchInput,
+  pageInput,
+  productInput,
+  agentCreateInput,
+  cartCapabilityInput,
+  agentUpdateInput,
+  handoffOutput,
+} from '@store/contracts';
 import type { Express } from 'express';
+import type { CartService } from '../cart/cart.service.js';
 import type { CatalogService } from '../catalog/catalog.service.js';
 import { AppError } from '../shared/app-error.js';
 import { result } from '../shared/result.js';
 const reviewInput = pageInput.extend({ productId: z.string().min(1).max(64) });
-export function attachMcp(app: Express, catalog: CatalogService) {
+export function attachMcp(
+  app: Express,
+  catalog: CatalogService,
+  carts: CartService,
+) {
   const token = process.env.MCP_SERVICE_TOKEN;
   const hosts = process.env.MCP_ALLOWED_HOSTS?.split(',');
   const origin = process.env.WEB_ORIGIN;
@@ -55,6 +68,39 @@ export function attachMcp(app: Express, catalog: CatalogService) {
     server.setRequestHandler(ListToolsRequestSchema, async () => ({
       tools: [
         {
+          name: 'create_cart',
+          description:
+            '建立可信 Agent 購物車。使用隨機 UUID 建立請求鍵；結果未明時以相同鍵及原條目重試。回傳秘密憑證，請勿公開。建立不購買、不預留庫存。',
+          inputSchema: z.toJSONSchema(agentCreateInput, { io: 'input' }),
+          annotations: { ...annotations, readOnlyHint: false },
+        },
+        {
+          name: 'get_cart',
+          description:
+            '以車憑證讀取原車與完整報價，已完成則另回原訂單；不產生購買確認。',
+          inputSchema: z.toJSONSchema(cartCapabilityInput),
+          annotations,
+        },
+        {
+          name: 'update_cart',
+          description:
+            '按預期版本整車替換條目。衝突時重讀原車核對意圖，不自動覆蓋；不購買。',
+          inputSchema: z.toJSONSchema(agentUpdateInput),
+          annotations: {
+            ...annotations,
+            readOnlyHint: false,
+            destructiveHint: true,
+            idempotentHint: false,
+          },
+        },
+        {
+          name: 'create_handoff',
+          description:
+            '分享同一車的有限存取能力；首次分享起固定24小時，重試不續期。回傳原車、報價和含秘密的連結；交Human在Hosted Checkout明確確認，勿自行提交購買。',
+          inputSchema: z.toJSONSchema(cartCapabilityInput),
+          annotations: { ...annotations, readOnlyHint: false },
+        },
+        {
           name: 'search_products',
           description: '搜尋商品摘要，推薦分數排序；有界分頁，庫存為當次快照。',
           inputSchema: z.toJSONSchema(searchInput, { io: 'input' }),
@@ -79,6 +125,38 @@ export function attachMcp(app: Express, catalog: CatalogService) {
       const r = await result(async () => {
         const input = request.params.arguments ?? {};
         switch (request.params.name) {
+          case 'create_cart':
+            return carts.createAgent(input);
+          case 'get_cart': {
+            const p = cartCapabilityInput.safeParse(input);
+            if (!p.success) throw new AppError('VALIDATION_ERROR', 400);
+            return carts.agentGet(p.data.cartId, p.data.cartAccessToken);
+          }
+          case 'update_cart': {
+            const p = agentUpdateInput.safeParse(input);
+            if (!p.success) throw new AppError('VALIDATION_ERROR', 400);
+            const { cartId, cartAccessToken, ...replacement } = p.data;
+            return carts.replace(cartId, cartAccessToken, replacement);
+          }
+          case 'create_handoff': {
+            const p = cartCapabilityInput.safeParse(input);
+            if (!p.success) throw new AppError('VALIDATION_ERROR', 400);
+            const shared = await carts.handoff(
+              p.data.cartId,
+              p.data.cartAccessToken,
+            );
+            const url = new URL(`/checkout/${p.data.cartId}`, origin);
+            url.hash = `handoff=${p.data.cartAccessToken}`;
+            return handoffOutput.parse({
+              cart: shared.cart,
+              handoff: {
+                url: url.href,
+                issuedAt: shared.issuedAt,
+                expiresAt: shared.expiresAt,
+              },
+              requiresHumanConfirmation: true,
+            });
+          }
           case 'search_products':
             return catalog.search(input);
           case 'get_product': {

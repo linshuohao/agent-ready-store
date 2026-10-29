@@ -1,0 +1,1 @@
+ALTER TABLE "Cart" ADD COLUMN "handoffIssuedAt" TIMESTAMPTZ(3);

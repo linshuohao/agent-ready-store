@@ -52,7 +52,7 @@ export class CheckoutConfirmation {
     const parsed = payloadSchema.safeParse(data);
     if (!parsed.success) throw new AppError('CONFIRMATION_INVALID', 403);
     if (now >= parsed.data.expiresAt)
-      throw new AppError('CREDENTIAL_EXPIRED', 410);
+      throw new AppError('CONFIRMATION_EXPIRED', 409);
     return parsed.data;
   }
 }

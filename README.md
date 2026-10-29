@@ -2,13 +2,29 @@
 
 面向人类与 AI Agent 的商店作业。目标与交付约束见只读的 [作业原件](references/home-quiz.md) 和 [商品原件](references/products.json)；PM 需求仍是草稿。
 
-本轮产品与技术设计阶段已由 Human 批准结束（2026-10-29，Asia/Shanghai）：Requirements v0.2、Product Design v0.2 与 [Technical Design v0.5](docs/engineering/TECHNICAL_DESIGN.md) 均为 Approved Baseline；产品/技术决策及演进保留。已批准五页结构、三份视觉方向和前端主导的 Next.js/NestJS/Agent 架构；其余 Proposed Implementation Details、P-04、WebMCP 来源及运行验收缺口继续保留；L-01 已由 S2 限定补充批准解决，见下方当前规划。基础 MCP、WebMCP、MCP Apps 均属本次完整交付目标，S1 商品发现已实现并记录 Human 验收，完整交易与其他 Agent 接入尚未实施。
+本轮产品与技术设计阶段已由 Human 批准结束（2026-10-29，Asia/Shanghai）：Requirements v0.2、Product Design v0.2 与 [Technical Design v0.5](docs/engineering/TECHNICAL_DESIGN.md) 均为 Approved Baseline；产品/技术决策及演进保留。已批准五页结构、三份视觉方向和前端主导的 Next.js/NestJS/Agent 架构；其余 Proposed Implementation Details、P-04、WebMCP 来源及运行验收缺口继续保留；L-01 已由 S2 限定补充批准解决，见下方当前规划。基础 MCP、WebMCP、MCP Apps 均属本次完整交付目标，S1 商品发现已实现并记录 Human 验收，Web交易已实现，S4基础MCP闭环等待本轮Human验收；WebMCP/MCP Apps尚未实施。
 
 阶段关闭记录见 [Technical Design §10.4](docs/engineering/TECHNICAL_DESIGN.md#104-设计阶段关闭与交接--2026-10-29)。Human 已批准 [S1 规划](openspec/changes/archive/2026-10-29-s1-product-discovery/proposal.md) 并授权实施；S1 已完成本轮 Review 并归档，运行证据与保留限制见 [归档 Tasks](openspec/changes/archive/2026-10-29-s1-product-discovery/tasks.md)；后续切片等待对应授权。精益执行原则见 [AGENTS](AGENTS.md#默认执行原则)。
 
-S2当前状态见 [Cart与报价Change](openspec/changes/archive/2026-10-29-s2-cart-quote/proposal.md)及[Tasks](openspec/changes/archive/2026-10-29-s2-cart-quote/tasks.md)。Web/HTTP购物车与报价已实现，完成自动验证、独立Review及定向修复复核，Human于2026-10-29明确验收通过；两份正式Spec已同步，S2 Change已按Human授权归档。未交接创建起24h、现有恢复限制及S2 Web/HTTP—S4 MCP写工具分期的正式来源见[D-04补充](DECISIONS.md#d-04--交接链接有效期)。S3订单已实现并通过Human验收，S4交接尚未实现，不能将当前Cart报价视为完成购买。
+S2当前状态见 [Cart与报价Change](openspec/changes/archive/2026-10-29-s2-cart-quote/proposal.md)及[Tasks](openspec/changes/archive/2026-10-29-s2-cart-quote/tasks.md)。Web/HTTP购物车与报价已实现，完成自动验证、独立Review及定向修复复核，Human于2026-10-29明确验收通过；两份正式Spec已同步，S2 Change已按Human授权归档。未交接创建起24h、现有恢复限制及S2 Web/HTTP—S4 MCP写工具分期的正式来源见[D-04补充](DECISIONS.md#d-04--交接链接有效期)。S3订单已实现并通过Human验收，S4交接已实施、尚待Human验收，不能将当前Cart报价视为完成购买。
 
 S3已完成实施并于2026-10-30通过Human验收：[Proposal](openspec/changes/archive/2026-10-30-s3-hosted-checkout-order/proposal.md)、[Design](openspec/changes/archive/2026-10-30-s3-hosted-checkout-order/design.md)、[Tasks与验收记录](openspec/changes/archive/2026-10-30-s3-hosted-checkout-order/tasks.md)。Human已确认到期准入/结果访问/无自动清理的三项限定边界，见[D-21补充](DECISIONS.md#s3-checkout-boundary-20261029)。三份正式Spec已同步，S3 Change已按Human授权归档；Push/Merge须对应授权。S3范围为普通Web Hosted Checkout与原子订单，S4 Agent交接等后续分期保持。
+
+## S4 Agent Handoff
+
+[S4 Change](openspec/changes/s4-agent-handoff/proposal.md) 已获规划批准与实施授权；当前实现七工具、同车分享/兑换及本地有效创建统计，验证与剩余验收见 [Tasks](openspec/changes/s4-agent-handoff/tasks.md)。尚未归档或取得 Human 最终验收，S5/S6 未实施。
+
+基础 MCP 仍为 `http://localhost:3002/mcp`，使用本机 `MCP_SERVICE_TOKEN` 的 Bearer 认证及既有 Host/Origin 限制。七工具为 `search_products`、`get_product`、`list_product_reviews`、`create_cart`、`get_cart`、`update_cart`、`create_handoff`。无订单提交工具。单个配置的服务身份共享创建键命名空间，不能区分 Host 或顾客；每个新意图使用随机 UUID `createRequestId`。
+
+`create_cart` 只接收请求键和非空 `items`，服务端固定 AGENT 来源并返回 `cart`、`cartAccessToken`；响应未知时用同键、原条目重试，恢复同车同凭证及当前内容，不还原后续编辑。`get_cart` 携 `cartId/cartAccessToken` 返回 `cart` 和已完成时的原 `order`；`update_cart` 另带 `expectedCartVersion/items` 整车保存，版本冲突先重读核对；不能伪造来源或价格。`create_handoff` 携同车能力，返回原车、完整当前报价/问题、`handoff.url/issuedAt/expiresAt` 和 `requiresHumanConfirmation=true`。
+
+链接形如 `/checkout/{cartId}#handoff={秘密凭证}`，只应交给实际接手者。Human 浏览器先清除 fragment，再经同源 JSON POST `/api/v1/handoffs/exchange` 兑换对应车 HttpOnly Cookie，随后审阅/编辑原车并明确确认。首次分享前创建起24h、分享后首次签发起完整24h；各入口共用期限，重复签发/兑换/失败不续期。完成车不能再次签发或编辑，有效权限内旧链接可读取原结果。
+
+旧购买确认不随首次分享延长。`CONFIRMATION_EXPIRED/409` 允许显式重新审阅并等待新点击；`CREDENTIAL_EXPIRED/410` 表示车权限到期。客户端确认计时到期本身不证明车已过期。兑换未知时原材料仅在内存中供重试；刷新且 Cookie 未到达，或旧 Cookie 已被浏览器移除时，须重新打开原有效链接，不凭车ID补权限。链接/Token不应写入公开日志、截图、持久客户端缓存或共享材料。
+
+已有数据库只需执行 `docker compose exec api pnpm db:migrate`（服务未启动时使用前文 `run --rm` 入口），新增可空 `handoffIssuedAt`，不 seed、不删卷。已分享后不能回退到忽略此字段的旧权限实现。只读统计执行 `docker compose exec api pnpm --filter @store/api metrics:agent-carts`，按持久 AGENT Cart ID 计数；后续删空、到期或成交不撤销创建，不代表独立顾客或运营目标已达成。本轮无自动清理。
+
+S4测试：专用 `store_test` 库迁移后，设置 `TEST_DATABASE_URL` 串行运行 `apps/api/test/cart/handoff-db.test.ts`；MCP/HTTP测试设置 `API_BASE_URL=http://localhost:3002`、`MCP_SERVICE_TOKEN`、`WEB_ORIGIN` 后运行 `apps/api/test/cart/handoff-http.test.ts`；桌面/移动 `e2e/handoff.spec.ts` 另需相同服务Token与匹配 `WEB_BASE_URL`。真实Host调用和模拟协议/浏览器测试分别记证，不把自动化点击称为Human验收。
 
 ## S1 本地开发
 
@@ -42,7 +58,7 @@ Web 默认 http://localhost:3000，API 为 http://localhost:3002/api/v1；API_PU
 
 `POST /api/v1/carts`、`GET /api/v1/carts/:id`、`PUT /api/v1/carts/:id/items`提供创建/读取/整车替换。写请求必须为JSON且Origin精确匹配`WEB_ORIGIN`；本地打开Web时也须使用该配置中的同一origin。车ID只定位，访问通过每车HttpOnly Cookie；来源、价格不能由请求伪造。输入/DTO细则见Change与`packages/contracts`。
 
-未交接Cart创建起固定24小时，到期不续期。服务端重验权限和版本；保存冲突展示完整可编辑草稿与最新已保存内容，可明确以草稿保存或放弃草稿载入最新。结果未明时显式重试原版本/原完整条目，避免覆盖其他编辑。创建响应丢失时复用原材料恢复；刷新丢失内存材料后，标签页仅保留非敏感待确认标记，提示结果无法确认，须明确重新发起才允许新建。内存材料与Cookie均丢失时无法自动恢复，不凭ID补发；重新发起可能留下无法访问的旧车。首次分享后完整24小时由S4实现，当前没有分享工具。
+未交接Cart创建起固定24小时，到期不续期。服务端重验权限和版本；保存冲突展示完整可编辑草稿与最新已保存内容，可明确以草稿保存或放弃草稿载入最新。结果未明时显式重试原版本/原完整条目，避免覆盖其他编辑。创建响应丢失时复用原材料恢复；刷新丢失内存材料后，标签页仅保留非敏感待确认标记，提示结果无法确认，须明确重新发起才允许新建。内存材料与Cookie均丢失时无法自动恢复，不凭ID补发；重新发起可能留下无法访问的旧车。首次分享后完整24小时已由S4实现，分享通过MCP工具提供，普通Web不另增分享操作。
 
 现有数据库升级仅新增Cart表，执行`docker compose run --rm api pnpm db:migrate`，保留Inventory，不重新seed或删卷。`CART_ENCRYPTION_KEY`仅存本机安全环境，备份并跨重启保留；丢失或替换会使既有Cart凭证无法恢复。`.env.example`只含空占位。`CART_COOKIE_SECURE=false`只允许显式的本机HTTP例外，HTTPS使用true。加密实现与精确计价依赖均已锁定，运行证据以Tasks为准。
 

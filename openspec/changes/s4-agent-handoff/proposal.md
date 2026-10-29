@@ -1,6 +1,6 @@
 # Proposal
 
-状态：Approved / S4 实施已授权；2026-10-30（Asia/Shanghai）。Human 在修改后规划审核通过后明确回复“批准这次规划开始实施”，批准本 Change 的 Proposal、四份 Specs、Design 和 Tasks 并授权实施。Git 提交/Push/Merge 未获本轮授权；进入 Implementation 前须完成规划 Checkpoint 与 Guard。
+状态：Human Accepted / S4 已验收（保留真实 Human 链路证据缺口，见 Tasks）；2026-10-30（Asia/Shanghai）。Human 在修改后规划审核通过后明确回复“批准这次规划开始实施”，批准本 Change 的 Proposal、四份 Specs、Design 和 Tasks 并授权实施。Human后续明确“提交，然后实施”，规划已提交为 `d69b8c0`，规划 Checkpoint Guard 已通过；后续提交/Push/Merge须对应授权。
 
 ## Why
 

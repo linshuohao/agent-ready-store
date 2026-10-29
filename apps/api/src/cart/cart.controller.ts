@@ -1,5 +1,5 @@
 import { randomBytes } from 'node:crypto';
-import { checkoutReviewInput } from '@store/contracts';
+import { checkoutReviewInput, cartCapabilityInput } from '@store/contracts';
 import {
   Controller,
   HttpCode,
@@ -16,7 +16,7 @@ import { CartService } from './cart.service.js';
 import { AppError } from '../shared/app-error.js';
 import { result } from '../shared/result.js';
 
-@Controller('api/v1/carts')
+@Controller('api/v1')
 export class CartController {
   constructor(@Inject(CartService) private readonly carts: CartService) {}
   private checkRequest(req: Request, write: boolean) {
@@ -52,26 +52,62 @@ export class CartController {
       .status(res.statusCode === 201 && response.ok ? 201 : status)
       .json(response);
   }
-  @Post() async create(@Req() req: Request, @Res() res: Response) {
+  private setCartCookie(
+    res: Response,
+    id: string,
+    token: string,
+    expiresAt: string,
+  ) {
+    const origin = new URL(process.env.WEB_ORIGIN!);
+    const local =
+      origin.protocol === 'http:' &&
+      ['127.0.0.1', 'localhost', '[::1]'].includes(origin.hostname);
+    res.cookie(`cart_${id}`, token, {
+      httpOnly: true,
+      sameSite: 'strict',
+      path: '/api/v1',
+      secure: !(local && process.env.CART_COOKIE_SECURE === 'false'),
+      expires: new Date(expiresAt),
+    });
+  }
+  @Post('handoffs/exchange')
+  @HttpCode(200)
+  async exchange(@Req() req: Request, @Res() res: Response) {
+    await this.send(res, async () => {
+      this.checkRequest(req, true);
+      const parsed = cartCapabilityInput.safeParse(req.body);
+      if (!parsed.success) throw new AppError('VALIDATION_ERROR', 400);
+      const { cartId, cartAccessToken } = parsed.data;
+      const matches = (req.headers.cookie ?? '')
+        .split(';')
+        .map((s) => s.trim())
+        .filter((s) => s.startsWith(`cart_${cartId}=`));
+      if (
+        matches.length > 1 ||
+        (matches.length === 1 &&
+          matches[0] !== `cart_${cartId}=${cartAccessToken}`)
+      )
+        throw new AppError('FORBIDDEN', 403);
+      const cart = await this.carts.exchange(cartId, cartAccessToken);
+      this.setCartCookie(res, cartId, cartAccessToken, cart.expiresAt);
+      return cart;
+    });
+  }
+  @Post('carts') async create(@Req() req: Request, @Res() res: Response) {
     await this.send(res, async () => {
       this.checkRequest(req, true);
       const created = await this.carts.create(req.body);
-      const origin = new URL(process.env.WEB_ORIGIN!);
-      const local =
-        origin.protocol === 'http:' &&
-        ['127.0.0.1', 'localhost', '[::1]'].includes(origin.hostname);
-      res.cookie(`cart_${created.cart.cartId}`, req.body.cartToken, {
-        httpOnly: true,
-        sameSite: 'strict',
-        path: '/api/v1',
-        secure: !(local && process.env.CART_COOKIE_SECURE === 'false'),
-        expires: new Date(created.cart.expiresAt),
-      });
+      this.setCartCookie(
+        res,
+        created.cart.cartId,
+        req.body.cartToken,
+        created.cart.expiresAt,
+      );
       res.status(created.replayed ? 200 : 201);
       return created.cart;
     });
   }
-  @Get(':id') async get(
+  @Get('carts/:id') async get(
     @Param('id') id: string,
     @Req() req: Request,
     @Res() res: Response,
@@ -80,10 +116,13 @@ export class CartController {
       this.checkRequest(req, false);
       if (req.body && Object.keys(req.body).length)
         throw new AppError('VALIDATION_ERROR', 400);
-      return this.carts.get(id, this.cookie(req, id));
+      const token = this.cookie(req, id);
+      const cart = await this.carts.get(id, token);
+      this.setCartCookie(res, id, token, cart.expiresAt);
+      return cart;
     });
   }
-  @Put(':id/items') async replace(
+  @Put('carts/:id/items') async replace(
     @Param('id') id: string,
     @Req() req: Request,
     @Res() res: Response,
@@ -119,7 +158,7 @@ export class CartController {
     });
     return value;
   }
-  @Post(':id/checkout-review')
+  @Post('carts/:id/checkout-review')
   @HttpCode(200)
   async review(
     @Param('id') id: string,
@@ -137,7 +176,7 @@ export class CartController {
       );
     });
   }
-  @Post(':id/orders')
+  @Post('carts/:id/orders')
   @HttpCode(200)
   async submit(
     @Param('id') id: string,
@@ -154,7 +193,7 @@ export class CartController {
       );
     });
   }
-  @Get(':id/order') async order(
+  @Get('carts/:id/order') async order(
     @Param('id') id: string,
     @Req() req: Request,
     @Res() res: Response,

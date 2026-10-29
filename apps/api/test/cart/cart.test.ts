@@ -151,7 +151,7 @@ const request = () => ({
       await expect(
         carts.get(cart.cartId, request().cartToken),
       ).rejects.toMatchObject({ code: 'FORBIDDEN' });
-      await db.$executeRaw`UPDATE "Cart" SET "createdAt" = clock_timestamp() - interval '24 hours' WHERE id = ${cart.cartId}::uuid`;
+      await db.$executeRaw`UPDATE "Cart" SET "createdAt" = date_trunc('milliseconds', clock_timestamp()) - interval '24 hours' WHERE id = ${cart.cartId}::uuid`;
       await expect(
         carts.get(cart.cartId, input.cartToken),
       ).rejects.toMatchObject({ code: 'CREDENTIAL_EXPIRED' });
@@ -190,7 +190,7 @@ const request = () => ({
           })
           .catch((error) => error);
         await waitForBlockedWriters(1);
-        await tx.$executeRaw`UPDATE "Cart" SET "createdAt" = clock_timestamp() - interval '24 hours' WHERE id = ${cart.cartId}::uuid`;
+        await tx.$executeRaw`UPDATE "Cart" SET "createdAt" = date_trunc('milliseconds', clock_timestamp()) - interval '24 hours' WHERE id = ${cart.cartId}::uuid`;
       });
       expect(await pending!).toMatchObject({ code: 'CREDENTIAL_EXPIRED' });
       expect(

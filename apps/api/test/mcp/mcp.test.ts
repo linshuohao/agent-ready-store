@@ -7,7 +7,7 @@ const token = process.env.MCP_SERVICE_TOKEN;
 (base && token ? describe : describe.skip)(
   'real Streamable HTTP adapter',
   () => {
-    it('discovers exactly three read-only tools and matches HTTP data and errors', async () => {
+    it('discovers seven tools and preserves the three read-only queries and matches HTTP data and errors', async () => {
       const client = new Client({ name: 's1-contract-test', version: '1.0.0' });
       await client.connect(
         new StreamableHTTPClientTransport(new URL(`${base}/mcp`), {
@@ -17,13 +17,26 @@ const token = process.env.MCP_SERVICE_TOKEN;
       try {
         const tools = await client.listTools();
         expect(tools.tools.map((t) => t.name).sort()).toEqual([
+          'create_cart',
+          'create_handoff',
+          'get_cart',
           'get_product',
           'list_product_reviews',
           'search_products',
+          'update_cart',
         ]);
-        expect(tools.tools.every((t) => t.annotations?.readOnlyHint)).toBe(
-          true,
-        );
+        expect(
+          tools.tools
+            .filter((t) =>
+              [
+                'get_product',
+                'search_products',
+                'list_product_reviews',
+                'get_cart',
+              ].includes(t.name),
+            )
+            .every((t) => t.annotations?.readOnlyHint),
+        ).toBe(true);
         for (const [tool, args, path] of [
           ['search_products', { limit: 2 }, '/api/v1/products?limit=2'],
           ['get_product', { productId: 'P005' }, '/api/v1/products/P005'],

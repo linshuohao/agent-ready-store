@@ -7,6 +7,7 @@ import { CartCredentials } from './credentials.js';
 @Module({
   imports: [CatalogModule],
   controllers: [CartController],
+  exports: [CartService],
   providers: [
     {
       provide: CartService,
