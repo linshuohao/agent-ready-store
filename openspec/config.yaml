@@ -6,12 +6,12 @@ context: |
   Keep OpenSpec structural headings and SHALL/MUST keywords in English.
   Read AGENTS.md for project instructions and documentation entry points.
   See DECISIONS.md for requirement judgments and PM responses,
-  docs/ENGINEERING_DECISIONS.md for engineering decisions,
+  docs/engineering/ENGINEERING_DECISIONS.md for engineering decisions,
   .agents/skills/ai-native-workflow/SKILL.md for task routing,
-  AGENTS.md for context/Git rules, and docs/TOOLING.md for tool facts.
-  For baseline or delivery rules, consult docs/PRODUCT_ENGINEERING.md only as needed.
+  AGENTS.md for context/Git rules, and docs/engineering/TOOLING.md for tool facts.
+  For baseline or delivery rules, consult docs/workflow/PRODUCT_ENGINEERING.md only as needed.
   When creating or applying a Change, read relevant sections of existing Approved
-  docs/REQUIREMENTS.md, docs/PRODUCT_DESIGN.md, docs/TECHNICAL_DESIGN.md,
+  docs/product/REQUIREMENTS.md, docs/product/PRODUCT_DESIGN.md, docs/engineering/TECHNICAL_DESIGN.md,
   plus applicable Accepted Decisions; verify approval scope and source.
   These are global result baselines; OpenSpec remains the only change-level
   Spec/Design/Tasks source. Reference relevant versions/sections without copying all baselines.

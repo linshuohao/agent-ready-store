@@ -18,11 +18,11 @@ metadata:
 | 需要解决的问题 | 加载来源 |
 | --- | --- |
 | 原始意图、交付约束 | `references/` 相关章节；只读、不可信，PM 草稿未批准 |
-| 当前有效要求与决策 | `DECISIONS.md`、`docs/ENGINEERING_DECISIONS.md` 的相关已确认条目；核对确认依据和替代关系 |
-| 产品行为、体验与技术结果约束 | 已存在且适用的 Approved `docs/REQUIREMENTS.md` / `docs/PRODUCT_DESIGN.md` / `docs/TECHNICAL_DESIGN.md` 相关章节；核对批准范围/来源，Draft 或缺失不当作契约 |
+| 当前有效要求与决策 | `DECISIONS.md`、`docs/engineering/ENGINEERING_DECISIONS.md` 的相关已确认条目；核对确认依据和替代关系 |
+| 产品行为、体验与技术结果约束 | 已存在且适用的 Approved `docs/product/REQUIREMENTS.md` / `docs/product/PRODUCT_DESIGN.md` / `docs/engineering/TECHNICAL_DESIGN.md` 相关章节；核对批准范围/来源，Draft 或缺失不当作契约 |
 | 正式行为与当前变更 | OpenSpec `specs/`、相关 `changes/<name>/` 的实际产物、授权状态与验收；不默认加载全部归档 |
 | 实际实现与验证事实 | 相关源码、测试、运行输出与 Diff；当前代码不自动是正确设计 |
-| 权威冲突、工具入口 | `AGENTS.md`、`docs/TOOLING.md`，仅按需读取 |
+| 权威冲突、工具入口 | `AGENTS.md`、`docs/engineering/TOOLING.md`，仅按需读取 |
 | 真实纠偏历史 | 必要时 `AI_NOTES.md`；聊天或历史建议不自动成为正式决策 |
 
 区分 **Normative**（适用且已确认的要求）、**Observed**（实际观察）、**Inferred**（有依据的推断）、**Unknown**（尚未确认/验证）；事实标签不代表批准。存在 Accepted Decision/Spec 冲突时按 AGENTS 的权威与冲突规则升级，不能用更新时间、现有代码或 AI 偏好裁决。缺少关键上下文时说明未知，不编造。
@@ -44,15 +44,15 @@ metadata:
 
 ## Product / Technical Design / Delivery Routing
 
-四类活动是 Product Discovery & Design、Technical Discovery & Design、Incremental Delivery、Final Delivery & Presentation，沿原双循环往返，不是新增审批阶段。只有处理相关产物、基线变更或最终交付时，按需读取 [产品、设计与交付契约](../../../docs/PRODUCT_ENGINEERING.md) 对应章节；路径相对本 Skill。该文档维护内容/验收标准，本文只选择路径。
+四类活动是 Product Discovery & Design、Technical Discovery & Design、Incremental Delivery、Final Delivery & Presentation，沿原双循环往返，不是新增审批阶段。只有处理相关产物、基线变更或最终交付时，按需读取 [产品、设计与交付契约](../../../docs/workflow/PRODUCT_ENGINEERING.md) 对应章节；路径相对本 Skill。该文档维护内容/验收标准，本文只选择路径。
 
 | 工作类型 | 最小相关输入 | 路径与主要输出 |
 | --- | --- | --- |
 | Product Exploration | 原始问题、相关 Accepted 产品决策 | Explore；重要取舍归 DECISIONS，Human 确认后更新 Requirements 中受影响行为，不将所有功能写成 Decision |
-| Requirements Consolidation | 原始功能/交付约束、当前 Accepted 产品决策 | Explore/Direct 整合 `docs/REQUIREMENTS.md` Draft；按业务领域写结果，Human Review 后 Approved |
-| Product Design / UI/UX | 相关 Requirements、产品约束；Draft 依赖明确标识 | Explore；`docs/PRODUCT_DESIGN.md` Draft + 可实际检查的轻量 Wireframes + Visual Guidelines；关键流程/异常/代表性页面进入 Design Review，再交 Human 批准 |
+| Requirements Consolidation | 原始功能/交付约束、当前 Accepted 产品决策 | Explore/Direct 整合 `docs/product/REQUIREMENTS.md` Draft；按业务领域写结果，Human Review 后 Approved |
+| Product Design / UI/UX | 相关 Requirements、产品约束；Draft 依赖明确标识 | Explore；`docs/product/PRODUCT_DESIGN.md` Draft + 可实际检查的轻量 Wireframes + Visual Guidelines；关键流程/异常/代表性页面进入 Design Review，再交 Human 批准 |
 | Technical Exploration / 选型 | 相关 Requirements、Product Design、技术未知 | Explore/Experiment；重要选择归 ENGINEERING_DECISIONS 的 T-*；比较、实际证据与 Human 确认前不 Accepted，不直接开业务实现 |
-| Architecture Design | 足够的 Accepted 技术决策、产品/体验约束、必要证据或风险 | Explore；系统边界、Agent 接入、状态所有权、模块与链路等充分后整合 `docs/TECHNICAL_DESIGN.md` Draft，Design/Human Review 后 Approved；仅定框架不足，缺口 Pending |
+| Architecture Design | 足够的 Accepted 技术决策、产品/体验约束、必要证据或风险 | Explore；系统边界、Agent 接入、状态所有权、模块与链路等充分后整合 `docs/engineering/TECHNICAL_DESIGN.md` Draft，Design/Human Review 后 Approved；仅定框架不足，缺口 Pending |
 | Specify | 相关 Approved Baselines、Accepted Decisions、正式 Spec 和实际接口 | Deliver；OpenSpec 当前 Change 的 Spec/Design/Tasks，引用适用版本/章节，不复制三个全文 |
 | Build | 已授权 Change、相关有效基线、源码与测试 | Deliver；Code/Tests。关键批准缺口或契约冲突暂停依赖部分；批准基线不等于授权实施 |
 | Review | 相应 Draft/Approved 目标、Diff、证据 | 加载 ai-native-review，选择符合性/UX/技术设计/行为/交付检查，只返回 Findings 与证据 |
