@@ -88,6 +88,19 @@ metadata:
 - **冲突适配**：实际安装的 using-superpowers 有广泛触发要求，brainstorming/writing-plans 含设计/计划/审批链，executing-plans/SDD 含额外执行记录，writing-skills 含强制失败基线及 commit/push。以 Human 明确授权和项目规则优先，保留适用的质量检查，正式产物回写同一 OpenSpec Change；不重复建 `docs/superpowers/specs` / `plans`、平行 Tasks，不自动引入代理/提交/推送，不修改第三方 Skill。加载也不保证宿主自动路由已被重写；工具约束无法兼容时仅报告具体受阻动作，继续可安全完成部分。
 - **普通局部任务** 直接由 Codex 处理；工作流路由不构成安装依赖、选业务技术栈或扩大范围的授权。
 
+## Standard Lifecycle & Git Checkpoints
+
+标准功能变更沿 Planning → Planning Review → Human Approval → Implementation → Verification → Code Review → Delivery → Human Acceptance → Archive 推进；这是一条路由，不要求低风险 Bug 使用完整 OpenSpec。Planning Review Findings 定向修改同一 Change 的 Specs/Design/Tasks，必要时复核，不创建重复 Change 或重复全量 Review。
+
+- Verification 失败：Fix → Re-verification；需要 Review 时完成相应 Review 后继续。
+- Review 失败：核实 Findings → Fix → Re-verification → Re-review；只复核受影响范围。
+- Human Acceptance 未通过：修复受影响内容 → Verification → Review → Delivery；纯批准不制造空 Commit。
+- OpenSpec Planning 和 Human Approval 都完成后才进入 Implementation；Commit 不能替代 Approval。
+- 每阶段或实施任务组推进前，按 [Git Checkpoint Policy](../../../docs/workflow/GIT_CHECKPOINT_POLICY.md) 确定成果路径和必需的验证/审查/批准状态，调用 `python3 scripts/git-checkpoint-guard.py`。Guard 失败时停止阶段转换，报告阻塞及补齐方式；它不自动暂存、提交、清理、Push 或 Merge。路径之外的无关修改保留且排除。
+- Hook 仅作可选提醒；只有能可靠获得阶段和成果范围的机制才可辅助阻断。当前 Hook 未验证，阶段转换以显式 Guard 为准，不宣称 Hook 强制执行。
+
+阶段提交时机、准确参数及无文件变更规则只维护在 Git Checkpoint Policy；不要在本 Skill 或 OpenSpec 中复制另一份矩阵。
+
 ## Verification Routing
 
 依据行为契约设计验证，不把实现、自写测试和自我 Review 的一致当成正确。用实际命令与结果说明 **observed / inferred / unverified**，缺少测试或工具时报告限制，不能写成通过。
