@@ -73,10 +73,17 @@ export default async function Home({
               <p>這一頁沒有商品，請返回上一頁。</p>
             )}
             <nav className="pagination" aria-label="商品分頁">
+              <span className="pagination-count">
+                第{' '}
+                {Math.floor(
+                  Number(values.offset ?? 0) / Number(values.limit ?? 12),
+                ) + 1}{' '}
+                頁
+              </span>
               {Number(values.offset ?? 0) > 0 && (
                 <Link
                   prefetch={false}
-                  className={buttonVariants({ variant: 'outline' })}
+                  className={buttonVariants()}
                   href={pageLink(
                     Math.max(
                       0,
@@ -85,19 +92,19 @@ export default async function Home({
                     response.data.catalogRevision,
                   )}
                 >
-                  上一頁
+                  <span aria-hidden="true">←</span> 上一頁
                 </Link>
               )}
               {response.data.nextOffset !== null && (
                 <Link
                   prefetch={false}
-                  className={buttonVariants({ variant: 'outline' })}
+                  className={buttonVariants()}
                   href={pageLink(
                     response.data.nextOffset,
                     response.data.catalogRevision,
                   )}
                 >
-                  下一頁
+                  下一頁 <span aria-hidden="true">→</span>
                 </Link>
               )}
             </nav>

@@ -1,26 +1,43 @@
 generator client {
-  provider = "prisma-client"
-  output = "../src/infrastructure/database/generated/prisma"
+  provider     = "prisma-client"
+  output       = "../src/infrastructure/database/generated/prisma"
   moduleFormat = "esm"
 }
+
 datasource db {
   provider = "postgresql"
 }
+
 model Inventory {
   productId String @id
-  quantity Int
+  quantity  Int
 }
 
 model Cart {
-  id String @id @db.Uuid
-  origin String @default("HUMAN")
-  items Json
-  version Int @default(1)
-  createdAt DateTime @db.Timestamptz(3)
-  createScope String
-  createRequestId String @db.Uuid
-  createPayloadHash String
+  checkoutEpoch      BigInt   @default(0)
+  order              Order?
+  id                 String   @id @db.Uuid
+  origin             String   @default("HUMAN")
+  items              Json
+  version            Int      @default(1)
+  createdAt          DateTime @db.Timestamptz(3)
+  createScope        String
+  createRequestId    String   @db.Uuid
+  createPayloadHash  String
   encryptedCartToken String
 
   @@unique([createScope, createRequestId])
+}
+
+model Order {
+  id                 String   @id @db.Uuid
+  cartId             String   @unique @db.Uuid
+  cart               Cart     @relation(fields: [cartId], references: [id], onDelete: Restrict)
+  createdAt          DateTime @db.Timestamptz(3)
+  cartVersion        Int
+  purchaseHash       String
+  catalogRevision    String
+  pricingRuleVersion String
+  origin             String
+  snapshot           Json
 }

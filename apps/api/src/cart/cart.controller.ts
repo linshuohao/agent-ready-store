@@ -1,5 +1,8 @@
+import { randomBytes } from 'node:crypto';
+import { checkoutReviewInput } from '@store/contracts';
 import {
   Controller,
+  HttpCode,
   Get,
   Post,
   Put,
@@ -88,6 +91,79 @@ export class CartController {
     await this.send(res, async () => {
       this.checkRequest(req, true);
       return this.carts.replace(id, this.cookie(req, id), req.body);
+    });
+  }
+  private session(req: Request, res?: Response) {
+    const entries = (req.headers.cookie ?? '')
+      .split(';')
+      .map((s) => s.trim())
+      .filter((s) => s.startsWith('checkout_session='));
+    if (entries.length > 1) throw new AppError('FORBIDDEN', 403);
+    if (entries.length === 1) {
+      const value = entries[0].slice('checkout_session='.length);
+      if (!/^[A-Za-z0-9_-]{43}$/.test(value))
+        throw new AppError('FORBIDDEN', 403);
+      return value;
+    }
+    if (!res) return ''; // A completed Cart may return its order without a confirmation session.
+    const value = randomBytes(32).toString('base64url');
+    const origin = new URL(process.env.WEB_ORIGIN!);
+    const local =
+      origin.protocol === 'http:' &&
+      ['localhost', '127.0.0.1', '[::1]'].includes(origin.hostname);
+    res.cookie('checkout_session', value, {
+      httpOnly: true,
+      sameSite: 'strict',
+      path: '/api/v1',
+      secure: !(local && process.env.CART_COOKIE_SECURE === 'false'),
+    });
+    return value;
+  }
+  @Post(':id/checkout-review')
+  @HttpCode(200)
+  async review(
+    @Param('id') id: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    await this.send(res, async () => {
+      this.checkRequest(req, true);
+      if (!checkoutReviewInput.safeParse(req.body).success)
+        throw new AppError('VALIDATION_ERROR', 400);
+      return this.carts.review(
+        id,
+        this.cookie(req, id),
+        this.session(req, res),
+      );
+    });
+  }
+  @Post(':id/orders')
+  @HttpCode(200)
+  async submit(
+    @Param('id') id: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    await this.send(res, async () => {
+      this.checkRequest(req, true);
+      return this.carts.submit(
+        id,
+        this.cookie(req, id),
+        this.session(req),
+        req.body,
+      );
+    });
+  }
+  @Get(':id/order') async order(
+    @Param('id') id: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    await this.send(res, async () => {
+      this.checkRequest(req, false);
+      if (req.body && Object.keys(req.body).length)
+        throw new AppError('VALIDATION_ERROR', 400);
+      return this.carts.order(id, this.cookie(req, id));
     });
   }
 }

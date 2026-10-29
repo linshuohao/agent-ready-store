@@ -204,6 +204,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       );
       return;
     }
+    if (latest.cart.orderId) {
+      unlock();
+      setMessage('此購物車已完成購買，請明確開始新的購物。');
+      setCanRestart(true);
+      return;
+    }
     const items = latest.cart.items.map(({ productId, quantity }) => ({
       productId,
       quantity,
@@ -250,11 +256,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             : Promise.resolve(undefined),
       }}
     >
-      <nav className="cart-nav" aria-label="購物導覽">
-        <Link href={cartId ? `/cart/${cartId}` : '/cart'} prefetch={false}>
-          購物車
-        </Link>
-      </nav>
       {((message && !pathname.startsWith('/cart')) ||
         creationUnknown ||
         creationLost ||

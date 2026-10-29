@@ -4,6 +4,7 @@ import type { CartItem, CartView } from '@store/contracts';
 // These tests simulate server outcomes to exercise browser recovery, without DB writes.
 const cartId = '11111111-1111-4111-8111-111111111111';
 const view = (items: CartItem[], version = 1): CartView => ({
+  orderId: null,
   cartId,
   origin: 'HUMAN',
   cartVersion: version,
@@ -262,7 +263,6 @@ for (const recover of [false, true]) {
     page,
   }) => {
     const createdId = '22222222-2222-4222-8222-222222222222';
-    let reads = 0;
     let attempts = 0;
     let original: { cartToken: string; createRequestId: string } | undefined;
     let saved: { expectedCartVersion: number; items: CartItem[] } | undefined;
@@ -276,7 +276,8 @@ for (const recover of [false, true]) {
         return route.fulfill({ json: success(view(saved!.items, 2)) });
       }
       // A previously inaccessible B remains in the same document's history.
-      if (++reads === 1)
+      // Strict Mode may read more than once; B stays inaccessible until creation begins.
+      if (attempts === 0)
         return route.fulfill({ status: 403, json: failure('FORBIDDEN') });
       await route.fulfill({
         json: success(view([{ productId: 'P001', quantity: 1 }])),

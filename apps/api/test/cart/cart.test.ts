@@ -33,6 +33,7 @@ const request = () => ({
       other = new CartService(catalog, second, new CartCredentials(key));
     });
     beforeEach(async () => {
+      await db.order.deleteMany();
       await db.cart.deleteMany();
       await db.inventory.deleteMany();
       await seedInventory(db, catalog);

@@ -95,10 +95,12 @@ jobs:
           done
           API_BASE_URL=http://127.0.0.1:3002 \
           S2_API_BASE_URL=http://127.0.0.1:3002/api/v1 \
+          S3_API_BASE_URL=http://127.0.0.1:3002/api/v1 \
           pnpm exec vitest run \
             apps/api/test/http/http.test.ts \
             apps/api/test/mcp/mcp.test.ts \
-            apps/api/test/cart/http.test.ts
+            apps/api/test/cart/http.test.ts \
+            apps/api/test/cart/checkout-http.test.ts
 
       - name: Run database and unit tests
         run: pnpm test --no-file-parallelism

@@ -133,6 +133,7 @@ export interface CartIssue {
   code: string;
 }
 export interface CartView {
+  orderId: string | null;
   cartId: string;
   origin: CartOrigin;
   cartVersion: number;
@@ -184,6 +185,7 @@ const quoteOutput = z
   .strict();
 export const cartViewOutput: z.ZodType<CartView> = z
   .object({
+    orderId: z.uuid().nullable(),
     cartId: cartIdInput,
     origin: z.enum(['HUMAN', 'AGENT']),
     cartVersion: z.number().int().positive(),
@@ -230,6 +232,95 @@ export const cartResultOutput = z.discriminatedUnion('ok', [
           currentCartVersion: z.number().int().positive().optional(),
         })
         .strict(),
+      requestId: z.string(),
+    })
+    .strict(),
+]);
+
+export const checkoutReviewInput = z.object({}).strict();
+export const orderSubmitInput = z
+  .object({ confirmation: z.string().min(1).max(4096) })
+  .strict();
+const purchaseLineOutput = cartItemInput
+  .extend({
+    name: z.string(),
+    brand: z.string(),
+    specs: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])),
+    unitPrice: moneyOutput,
+    lineSubtotal: moneyOutput,
+  })
+  .strict();
+export const purchaseSummaryOutput = z
+  .object({
+    cartId: cartIdInput,
+    cartVersion: z.number().int().positive(),
+    origin: z.enum(['HUMAN', 'AGENT']),
+    items: z.array(purchaseLineOutput).min(1).max(100),
+    quote: quoteOutput,
+    pricingRuleVersion: z.literal('pricing-v1'),
+  })
+  .strict();
+export type PurchaseSummary = z.infer<typeof purchaseSummaryOutput>;
+export const orderOutput = z
+  .object({
+    orderId: z.uuid(),
+    cartId: cartIdInput,
+    createdAt: z.iso.datetime(),
+    purchaseHash: z.string().regex(/^[a-f0-9]{64}$/),
+    catalogRevision: z.string(),
+    snapshot: purchaseSummaryOutput,
+  })
+  .strict();
+export type OrderResult = z.infer<typeof orderOutput>;
+export const checkoutReviewOutput = z.discriminatedUnion('state', [
+  z
+    .object({
+      state: z.literal('ready'),
+      summary: purchaseSummaryOutput,
+      purchaseHash: z.string(),
+      confirmation: z.string(),
+      confirmationExpiresAt: z.iso.datetime(),
+    })
+    .strict(),
+  z.object({ state: z.literal('blocked'), cart: cartViewOutput }).strict(),
+  z.object({ state: z.literal('success'), order: orderOutput }).strict(),
+]);
+export type CheckoutReview = z.infer<typeof checkoutReviewOutput>;
+export const checkoutErrorOutput = z
+  .object({
+    code: z.string(),
+    message: z.string(),
+    retryable: z.boolean(),
+    issues: z
+      .array(z.object({ productId: z.string(), code: z.string() }))
+      .optional(),
+    currentCartVersion: z.number().optional(),
+  })
+  .strict();
+export const orderResultOutput = z.discriminatedUnion('ok', [
+  z
+    .object({ ok: z.literal(true), data: orderOutput, requestId: z.string() })
+    .strict(),
+  z
+    .object({
+      ok: z.literal(false),
+      error: checkoutErrorOutput,
+      requestId: z.string(),
+    })
+    .strict(),
+]);
+export const checkoutResultOutput = z.discriminatedUnion('ok', [
+  z
+    .object({
+      ok: z.literal(true),
+      data: checkoutReviewOutput,
+      requestId: z.string(),
+    })
+    .strict(),
+  z
+    .object({
+      ok: z.literal(false),
+      error: checkoutErrorOutput,
       requestId: z.string(),
     })
     .strict(),

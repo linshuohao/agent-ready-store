@@ -1,10 +1,24 @@
 import type { Quote } from '@store/contracts';
 import { formatMoney } from '@/lib/money';
-export function MoneyBreakdown({ quote }: { quote: Quote }) {
+export function MoneyBreakdown({
+  quote,
+  mode = 'estimate',
+}: {
+  quote: Quote;
+  mode?: 'estimate' | 'confirmation' | 'completed';
+}) {
   return (
     <section className="cart-totals" aria-labelledby="quote-heading">
-      <h2 id="quote-heading">目前已儲存報價</h2>
-      <p className="hint">未儲存的調整尚未計入報價；庫存與價格仍可能變動。</p>
+      <h2 id="quote-heading">
+        {mode === 'completed'
+          ? '成交金額'
+          : mode === 'confirmation'
+            ? '本次確認金額'
+            : '目前已儲存報價'}
+      </h2>
+      {mode === 'estimate' && (
+        <p className="hint">未儲存的調整尚未計入報價；庫存與價格仍可能變動。</p>
+      )}
       <dl>
         {[
           ['商品小計', quote.subtotal],
