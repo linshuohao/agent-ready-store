@@ -1,6 +1,8 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import type { ProductSummary } from '@store/contracts';
+import { AddButton } from '@/features/cart/add-button';
+import { formatMoney } from '@/lib/money';
 export const reasonText = {
   SOLD_OUT: '已售罄',
   INVENTORY_ANOMALY: '庫存異常',
@@ -56,13 +58,12 @@ export function ProductCard({ product }: { product: ProductSummary }) {
           {product.name}
         </Link>
       </h3>
-      <p className="price">
-        NT${' '}
-        {Number(product.price).toLocaleString('zh-TW', {
-          minimumFractionDigits: 2,
-        })}
-      </p>
+      <p className="price">{formatMoney(product.price)}</p>
       <Availability product={product} />
+      <AddButton
+        productId={product.id}
+        canPurchase={product.availability.canPurchase}
+      />
     </article>
   );
 }

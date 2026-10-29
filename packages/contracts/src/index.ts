@@ -147,3 +147,90 @@ export interface CartView {
   canCheckout: boolean;
   expiresAt: string;
 }
+
+const moneyOutput = z.string().regex(/^\d+\.\d{2}$/);
+const availabilityOutput = z
+  .object({
+    canPurchase: z.boolean(),
+    reasons: z.array(
+      z.enum([
+        'SOLD_OUT',
+        'INVENTORY_ANOMALY',
+        'PRICE_PENDING',
+        'INVENTORY_UNAVAILABLE',
+      ]),
+    ),
+    currentQuantity: z.number().int().nullable(),
+  })
+  .strict();
+const quoteOutput = z
+  .object({
+    currency: z.literal('TWD'),
+    items: z
+      .array(
+        cartItemInput.extend({
+          name: z.string(),
+          unitPrice: moneyOutput,
+          lineSubtotal: moneyOutput,
+        }),
+      )
+      .max(100),
+    subtotal: moneyOutput,
+    thresholdDiscount: moneyOutput,
+    aiDiscount: moneyOutput,
+    shipping: moneyOutput,
+    total: moneyOutput,
+  })
+  .strict();
+export const cartViewOutput: z.ZodType<CartView> = z
+  .object({
+    cartId: cartIdInput,
+    origin: z.enum(['HUMAN', 'AGENT']),
+    cartVersion: z.number().int().positive(),
+    items: z
+      .array(
+        cartItemInput.extend({
+          name: z.string().nullable(),
+          unitPrice: moneyOutput.nullable(),
+          availability: availabilityOutput.nullable(),
+        }),
+      )
+      .max(100),
+    quote: quoteOutput.nullable(),
+    quoteHash: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .nullable(),
+    issues: z
+      .array(z.object({ productId: z.string(), code: z.string() }).strict())
+      .max(500),
+    canCheckout: z.boolean(),
+    expiresAt: z.iso.datetime(),
+  })
+  .strict();
+export const cartResultOutput = z.discriminatedUnion('ok', [
+  z
+    .object({
+      ok: z.literal(true),
+      data: cartViewOutput,
+      requestId: z.string(),
+    })
+    .strict(),
+  z
+    .object({
+      ok: z.literal(false),
+      error: z
+        .object({
+          code: z.string(),
+          message: z.string(),
+          retryable: z.boolean(),
+          issues: z
+            .array(z.object({ productId: z.string(), code: z.string() }))
+            .optional(),
+          currentCartVersion: z.number().int().positive().optional(),
+        })
+        .strict(),
+      requestId: z.string(),
+    })
+    .strict(),
+]);

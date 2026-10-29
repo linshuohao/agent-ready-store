@@ -25,17 +25,15 @@ app.use(
     )
       return next(error);
     res.setHeader('Cache-Control', 'no-store');
-    res
-      .status(error.type === 'entity.too.large' ? 413 : 400)
-      .json({
-        ok: false,
-        error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Invalid request body',
-          retryable: false,
-        },
-        requestId: randomUUID(),
-      });
+    res.status(error.type === 'entity.too.large' ? 413 : 400).json({
+      ok: false,
+      error: {
+        code: 'VALIDATION_ERROR',
+        message: 'Invalid request body',
+        retryable: false,
+      },
+      requestId: randomUUID(),
+    });
   },
 );
 attachMcp(app.getHttpAdapter().getInstance(), app.get(CatalogService));

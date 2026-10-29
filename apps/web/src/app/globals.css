@@ -308,3 +308,73 @@ dd {
     grid-template-columns: 1fr;
   }
 }
+
+.cart-nav,
+.cart-feedback {
+  max-width: 1180px;
+  margin: auto;
+  padding: 12px 32px;
+}
+.cart-nav {
+  text-align: right;
+}
+.cart-feedback {
+  background: #f5f5f3;
+}
+.cart-feedback a,
+.cart-feedback button {
+  margin-right: 16px;
+}
+.cart-page h1 {
+  font-size: 30px;
+  margin-block: 20px;
+}
+.cart-layout {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 40px;
+  margin-block: 28px;
+  align-items: start;
+}
+.cart-line {
+  border-top: 1px solid var(--border);
+  padding: 20px 0;
+}
+.cart-line h2 {
+  font-size: 18px;
+}
+.cart-line input {
+  max-width: 120px;
+  display: inline-block;
+  margin: 8px 16px;
+}
+.cart-issue,
+#cart-error {
+  color: var(--destructive);
+}
+.cart-totals {
+  padding: 24px;
+  background: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.cart-totals dl > div {
+  justify-content: space-between;
+  gap: 12px;
+}
+.cart-totals dt {
+  width: auto;
+}
+.cart-totals li {
+  font-size: 12px;
+  margin-block: 8px;
+}
+@media (max-width: 700px) {
+  .cart-layout {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+  .cart-nav,
+  .cart-feedback {
+    padding: 12px 20px;
+  }
+}
