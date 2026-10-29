@@ -14,6 +14,7 @@ model Inventory {
 }
 
 model Cart {
+  handoffIssuedAt    DateTime? @db.Timestamptz(3)
   checkoutEpoch      BigInt   @default(0)
   order              Order?
   id                 String   @id @db.Uuid

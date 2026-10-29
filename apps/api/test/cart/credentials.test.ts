@@ -43,3 +43,23 @@ it('requires a stable 256-bit configured key', () => {
     'CART_ENCRYPTION_KEY',
   );
 });
+it('uses the first handoff deadline instead of the creation deadline', () => {
+  const created = new Date('2026-10-29T00:00:00Z');
+  const issued = new Date('2026-10-29T23:00:00Z');
+  expect(
+    cartAccessExpired(created, new Date('2026-10-30T00:00:00Z'), issued),
+  ).toBe(false);
+  expect(
+    cartAccessExpired(created, new Date('2026-10-30T23:00:00Z'), issued),
+  ).toBe(true);
+});
+it('recovers the original token and separates service creation scopes from browser scopes', () => {
+  const credentials = new CartCredentials('ab'.repeat(32));
+  const token = randomBytes(32).toString('base64url');
+  const id = randomUUID();
+  expect(credentials.recover(id, credentials.encrypt(id, token))).toBe(token);
+  expect(credentials.principalScope(token)).not.toBe(credentials.scope(token));
+  expect(credentials.principalScope('a')).not.toBe(
+    credentials.principalScope('b'),
+  );
+});

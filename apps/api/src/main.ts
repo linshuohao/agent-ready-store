@@ -1,4 +1,5 @@
 import type { NestExpressApplication } from '@nestjs/platform-express';
+import { CartService } from './cart/cart.service.js';
 import { attachMcp } from './mcp/mcp.adapter.js';
 import { CatalogService } from './catalog/catalog.service.js';
 import 'reflect-metadata';
@@ -10,7 +11,7 @@ const app = await NestFactory.create<NestExpressApplication>(AppModule, {
   bodyParser: false,
 });
 app.enableShutdownHooks();
-app.use('/api/v1/carts', json({ limit: '64kb' }));
+app.use(['/api/v1/carts', '/api/v1/handoffs'], json({ limit: '64kb' }));
 app.useBodyParser('json', { limit: '100kb' });
 app.use(
   (
@@ -36,7 +37,11 @@ app.use(
     });
   },
 );
-attachMcp(app.getHttpAdapter().getInstance(), app.get(CatalogService));
+attachMcp(
+  app.getHttpAdapter().getInstance(),
+  app.get(CatalogService),
+  app.get(CartService),
+);
 await app.listen(
   Number(process.env.PORT ?? 3001),
   process.env.HOST ?? '127.0.0.1',

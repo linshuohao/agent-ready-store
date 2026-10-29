@@ -22,6 +22,6 @@ it('binds confirmation to browser and rejects tampering and expiry without a sep
     'CONFIRMATION_INVALID',
   );
   expect(() => signing.verify(value, session, payload.expiresAt)).toThrow(
-    'CREDENTIAL_EXPIRED',
+    'CONFIRMATION_EXPIRED',
   );
 });

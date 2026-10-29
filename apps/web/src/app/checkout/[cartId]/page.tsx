@@ -1,9 +1,9 @@
-import { CheckoutPage } from '@/features/checkout/checkout-page';
+import { HandoffEntry } from '@/features/checkout/handoff-entry';
 export default async function Checkout({
   params,
 }: {
   params: Promise<{ cartId: string }>;
 }) {
   const { cartId } = await params;
-  return <CheckoutPage key={cartId} id={cartId} />;
+  return <HandoffEntry key={cartId} id={cartId} />;
 }

@@ -29,9 +29,11 @@ const errorText = (code: string) =>
     ? '無法存取這個購物車，請確認原連結。'
     : code === 'CREDENTIAL_EXPIRED'
       ? '購物車已過期，無法繼續購買。'
-      : code === 'CONFIRMATION_INVALID'
-        ? '確認資料與目前瀏覽器不符，請重新審閱。'
-        : '購買內容或確認資料已變更，請重新審閱。';
+      : code === 'CONFIRMATION_EXPIRED'
+        ? '確認資料已到期，請重新審閱。'
+        : code === 'CONFIRMATION_INVALID'
+          ? '確認資料與目前瀏覽器不符，請重新審閱。'
+          : '購買內容或確認資料已變更，請重新審閱。';
 export function CheckoutPage({ id }: { id: string }) {
   const router = useRouter(),
     { remember } = useOrderMemory();
@@ -111,9 +113,11 @@ export function CheckoutPage({ id }: { id: string }) {
     if (phase !== 'ready' || !ready) return;
     const timeout = setTimeout(
       () => {
+        if (busy.current) return;
+        setPrevious(ready.summary);
         setReady(null);
-        setPhase('expired');
-        setMessage('購物車已過期，無法繼續購買。');
+        setPhase('changed');
+        setMessage('確認資料已到期，請重新審閱。');
       },
       Math.max(0, Date.parse(ready.confirmationExpiresAt) - Date.now()),
     );

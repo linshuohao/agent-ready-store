@@ -8,8 +8,13 @@ import {
 } from 'node:crypto';
 
 export const cartLifetime = 24 * 60 * 60 * 1000;
-export const cartAccessExpired = (createdAt: Date, now: Date) =>
-  now.getTime() >= createdAt.getTime() + cartLifetime;
+export const cartExpiresAt = (createdAt: Date, handoffIssuedAt?: Date | null) =>
+  new Date((handoffIssuedAt ?? createdAt).getTime() + cartLifetime);
+export const cartAccessExpired = (
+  createdAt: Date,
+  now: Date,
+  handoffIssuedAt?: Date | null,
+) => now.getTime() >= cartExpiresAt(createdAt, handoffIssuedAt).getTime();
 
 export class CartCredentials {
   readonly confirmation: CheckoutConfirmation;
@@ -27,6 +32,11 @@ export class CartCredentials {
   scope(token: string) {
     return createHmac('sha256', this.scopeKey).update(token).digest('hex');
   }
+  principalScope(principal: string) {
+    return createHmac('sha256', this.scopeKey)
+      .update(JSON.stringify(['mcp-principal-v1', principal]))
+      .digest('hex');
+  }
   encrypt(cartId: string, token: string) {
     const nonce = randomBytes(12);
     const cipher = createCipheriv('aes-256-gcm', this.key, nonce);
@@ -42,7 +52,7 @@ export class CartCredentials {
       encrypted.toString('base64url'),
     ].join('.');
   }
-  matches(cartId: string, encrypted: string, token: string) {
+  recover(cartId: string, encrypted: string) {
     const [version, iv, tag, data] = encrypted.split('.');
     if (version !== 'v1' || !iv || !tag || !data)
       throw new Error('Invalid encrypted cart capability');
@@ -57,6 +67,10 @@ export class CartCredentials {
       decipher.update(Buffer.from(data, 'base64url')),
       decipher.final(),
     ]);
+    return expected.toString('utf8');
+  }
+  matches(cartId: string, encrypted: string, token: string) {
+    const expected = Buffer.from(this.recover(cartId, encrypted));
     const presented = Buffer.from(token);
     return (
       expected.length === presented.length &&

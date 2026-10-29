@@ -325,3 +325,36 @@ export const checkoutResultOutput = z.discriminatedUnion('ok', [
     })
     .strict(),
 ]);
+
+// Service adapters own source and capability issuance; callers cannot override them.
+export const agentCreateInput = z
+  .object({
+    createRequestId: z.uuid(),
+    items: cartItemsInput.refine((items) => items.length > 0, {
+      message: 'Agent cart must not be empty',
+    }),
+  })
+  .strict();
+export const cartCapabilityInput = z
+  .object({ cartId: cartIdInput, cartAccessToken: cartTokenInput })
+  .strict();
+export const agentUpdateInput = cartCapabilityInput
+  .extend({
+    expectedCartVersion: cartReplaceInput.shape.expectedCartVersion,
+    items: cartItemsInput,
+  })
+  .strict();
+export const handoffOutput = z
+  .object({
+    cart: cartViewOutput,
+    handoff: z
+      .object({
+        url: z.url(),
+        issuedAt: z.iso.datetime(),
+        expiresAt: z.iso.datetime(),
+      })
+      .strict(),
+    requiresHumanConfirmation: z.literal(true),
+  })
+  .strict();
+export const exchangeResultOutput = cartResultOutput;
