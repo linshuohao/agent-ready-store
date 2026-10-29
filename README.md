@@ -8,6 +8,8 @@
 
 S2当前状态见 [Cart与报价Change](openspec/changes/archive/2026-10-29-s2-cart-quote/proposal.md)及[Tasks](openspec/changes/archive/2026-10-29-s2-cart-quote/tasks.md)。Web/HTTP购物车与报价已实现，完成自动验证、独立Review及定向修复复核，Human于2026-10-29明确验收通过；两份正式Spec已同步，S2 Change已按Human授权归档。未交接创建起24h、现有恢复限制及S2 Web/HTTP—S4 MCP写工具分期的正式来源见[D-04补充](DECISIONS.md#d-04--交接链接有效期)。S3订单与S4交接均尚未实现，不能将当前Cart报价视为完成购买。
 
+S3已开启规划：[Proposal](openspec/changes/s3-hosted-checkout-order/proposal.md)、[Design](openspec/changes/s3-hosted-checkout-order/design.md)、[Tasks](openspec/changes/s3-hosted-checkout-order/tasks.md)。Human已确认到期准入/结果访问/无自动清理的三项限定边界，见[D-21补充](DECISIONS.md#s3-checkout-boundary-20261029)；Human于2026-10-30明确“批准，然后开始去实施”，完整规划已批准、实施已授权；规划Checkpoint提交授权仍待取得。S3范围为普通Web Hosted Checkout与原子订单，S4 Agent交接等后续分期保持。
+
 ## S1 本地开发
 
 需要 Node 24、pnpm 12.11.2、Docker/Compose。版本锁定于 package.json 与 pnpm-lock.yaml。以下为本项目操作入口，首次运行需下载依赖/镜像；S1 自动验证与真实 Codex Host 验证已完成，Human 已验收 S1。真实读屏实测仍无证据，本轮 Review 修订的验证与限制见 Tasks。

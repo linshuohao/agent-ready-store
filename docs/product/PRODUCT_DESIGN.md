@@ -1,5 +1,9 @@
 # Agent-Ready Store — Product Design
 
+**2026-10-30限定补充（Human Accepted）：** 确认材料与Cart截止一致、同步生单及成交价格固定的定义和批准来源见[D-21追加确认](../../DECISIONS.md#s3-confirmation-lifetime-20261030)；不另设支付或独立短期确认倒计时，既有绑定/重验与整体实施授权边界保持。
+
+**S3限定补充（Human Accepted，2026-10-29）：** §4与§8的未知结果/到期体验按[D-21 S3限定补充](../../DECISIONS.md#s3-checkout-boundary-20261029)执行其已确认边界；具体确认与恢复交互仍待S3规划批准，不代表运行验收、实施或Git授权。
+
 - **Status：Approved — Product Design Baseline v0.2（批准范围及保留项见下表）**。
 - **版本 / 适用范围：** v0.2；归档 Human Web 与 Agent Handoff 的购物体验、五页线框结构、三个代表性视觉稿、视觉与响应式方向及必要异常状态。已接受的设计结构与方向范围见下表；本基线已获 Human 正式批准；批准不等于完整验收通过或业务实现授权。
 - **整理日期：** 2026-10-28（Asia/Shanghai）；2026-10-29 完成目录合并后的最终一致性修订，承接 Human「Product Design Baseline — Final Review & Alignment」指令；同日获 Human 最终批准，范围如下。

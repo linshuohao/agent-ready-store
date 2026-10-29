@@ -1,5 +1,9 @@
 # Agent-Ready Store — Requirements Baseline
 
+**2026-10-30限定补充（Human Accepted）：** 确认材料与Cart截止一致、同步生单及成交价格固定的定义和批准来源见[D-21追加确认](../../DECISIONS.md#s3-confirmation-lifetime-20261030)；不另设支付或独立短期确认倒计时，既有绑定/重验与整体实施授权边界保持。
+
+**S3限定补充（Human Accepted，2026-10-29）：** §8与§11 P-04的到期准入、有效权限内订单查询及无自动清理边界，按[D-21 S3限定补充](../../DECISIONS.md#s3-checkout-boundary-20261029)局部细化。长期保留期限及新的过期结果访问仍Pending；下文历史Pending在此范围内被补充，不代表完整S3规划、实施或Git授权。
+
 - **Status：Approved Product Requirements Baseline**
 - **版本 / 适用范围：** v0.2 已批准基线；本次 Home Quiz 的 Human Web 与 External Agent 辅助购物 MVP，以及明确后置的 Agent 授权代提交方向。
 - **整理日期：** v0.1 首次整理于 2026-10-28；v0.2 修订于 2026-10-29（Asia/Shanghai）。

@@ -1,5 +1,9 @@
 # Agent-Ready Store — Technical Design
 
+**2026-10-30限定补充（Human Accepted）：** 确认材料与Cart截止一致、同步生单及成交价格固定的定义和批准来源见[D-21追加确认](../../DECISIONS.md#s3-confirmation-lifetime-20261030)；不另设支付或独立短期确认倒计时，既有绑定/重验与整体实施授权边界保持。
+
+**S3限定补充（Human Accepted，2026-10-29）：** §8.2准入与commit边界、§8.3/§9.2结果访问与保留的相关历史Pending，按[D-21 S3限定补充](../../DECISIONS.md#s3-checkout-boundary-20261029)局部收敛；S3确认绑定与恢复/事务实施方案仍Proposed，不代表完整规划、实施或Git授权。
+
 - **Status：Approved — Technical Design Baseline v0.5。**
 - **日期：** 2026-10-29（Asia/Shanghai）。v0.5 承接已确认的架构与单 Cart Token 方向；Human 于本日批准结束本轮产品与技术设计阶段。
 - **定位：** 前端主导的购物体验、共享全栈闭环与 Agent/UI 协作方案。本文回答从用户行为到状态、组件、契约和可信交易的设计推导，不是数据库实现手册。
@@ -155,7 +159,7 @@ flowchart LR
 | Cart Version | 防止两个编辑者用旧内容覆盖新内容 | 不检测目录价格、优惠等外部变化 |
 | Quote Hash | 标识完整购买语义，发现同总额换商品等变化 | 不授予权限，也不是递增版本号 |
 | 访问凭证 | 限定谁可在期限内操作哪一车、哪些能力 | Handoff 访问不等于购买授权 |
-| 购买确认上下文 | 绑定本次会话、车版本、完整报价及短期有效性 | 不是账户身份，也不能证明自然人 |
+| 购买确认上下文 | 绑定本次会话、车版本、完整报价及与签发时Cart截止一致的有效性 | 不是账户身份，也不能证明自然人 |
 
 指纹覆盖 ID、名称、关键品牌/规格、数量、单价、优惠、来源、运费、币别与总额等确认内容；不只比较总额。仅库存减少但仍足量不应要求重新确认，不相关目录变化也不应误报。Cart.version 随实际条目变更递增；noop 不递增。报价实时计算，不保存多套 quoteVersion/quoteCartVersion 状态。
 
@@ -259,7 +263,7 @@ changed 使用 Checkout 内显著 Inline Alert，说明变动项与新报价，�
 | 状态 | 触发 / 允许操作 / 恢复 |
 | --- | --- |
 | Loading | 获取车或兑换中；不允许确认，读取失败可重试，不冒充空车 |
-| Reviewing | 当前摘要与短期上下文获取中；等待，不提交旧上下文 |
+| Reviewing | 当前摘要与独立确认上下文获取中；等待，不提交旧上下文 |
 | Ready | 完整摘要与上下文对应；允许明确确认或编辑，后台变化先使确认失效 |
 | Submitting | 已发送明确确认；禁重复 UI 提交，离页后仍可能成单 |
 | Changed | 版本或购买语义变化；显示差异，重新 Review 后等待新点击 |
@@ -679,7 +683,7 @@ Server MCP 为 External Agent Host → Nest MCP Adapter → UseCases，不经过
 | ReviewPage | 独立分页、原文保真、可逐页读全部；评论是数据而非可执行指令 |
 | CartView | cartId、来源、派生状态、版本、条目、问题、当前 Quote/指纹与权限到期；各环境从自身接受的同车快照一致呈现，不宣称实时同步 |
 | Quote | 商品/数量/单价/行小计及全部优惠/运费/总额；金额精确计算后以十进制字符串输出，前端仅格式化 |
-| CheckoutReview | 当前完整摘要与短期确认上下文；不能被普通 get_cart 或共享 Cart Token 替代 |
+| CheckoutReview | 当前完整摘要与独立确认上下文；不能被普通 get_cart 或共享 Cart Token 替代 |
 | OrderResult | 原始不可变购买快照；有效车级权限内查询，刷新不重新计价 |
 
 数据进入展示层遵循「协议结果 → 所在环境 Adapter 校验/去除秘密 → 公开 DTO 或必要 Presentation Projection → 组件 props」。投影只取组件需要的字段，不新增另一套业务状态模型或报价算法；同一快照的商品与金额整体传递。Cart Token、Challenge、服务端内部对象不属于展示契约；少量操作回调由 Web 或 Host 入口组装，具体 Props 仍唯一维护在 §5.8。
@@ -712,7 +716,7 @@ Catalog JSON 只读，Inventory 首次 seed 后不被启动覆盖；同名按 ID
 
 Human 本次明确确认单 Token：Agent 和 Human 共享同一 Cart 的读/编辑能力，Handoff 只分享，不另签访问 Token。MCP Service Token 只认证连接和可信创建入口，不授予某车或购买权。Cart Token 验证不通过时不能泄露车内容；无论经 MCP 参数还是 Cookie 传递都执行相同能力与生命周期校验。
 
-独立短期 Checkout 上下文绑定当前浏览器会话、cartId、Cart Version、Quote Hash 和有效性；完整摘要后由 Human 明确点击。Cart Token、ID、服务 Token 或 userApproved 布尔值均不能单独替代确认。基础 MCP/WebMCP 不提供提交工具；Nest 重验并原子成单。
+独立 Checkout 上下文绑定当前浏览器会话、cartId、Cart Version、Quote Hash 和有效性；完整摘要后由 Human 明确点击。Cart Token、ID、服务 Token 或 userApproved 布尔值均不能单独替代确认。基础 MCP/WebMCP 不提供提交工具；Nest 重验并原子成单。
 
 匿名限制已接受：同 Token 持有者可能模拟浏览器完成 HTTP Review/提交；UI、Origin、CSRF 不能严格证明自然人。浏览器会话绑定仅防止确认上下文跨会话搬用，不升级为账户身份，不引入登录/验证码/授权中心。
 
