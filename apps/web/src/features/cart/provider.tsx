@@ -23,6 +23,7 @@ import {
 } from './commands';
 
 type Creation = {
+  selectionVersion: number;
   createRequestId: string;
   cartToken: string;
   items: CartItem[];
@@ -46,6 +47,7 @@ export const useCartOperations = () => {
 };
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const currentId = useRef<string | null>(null);
+  const selectionVersion = useRef(0);
   const creation = useRef<Creation | null>(null);
   const lock = useRef(true);
   const inFlight = useRef(false);
@@ -68,6 +70,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [cartId, setCartId] = useState<string | null>(null);
   const [canRestart, setCanRestart] = useState(false);
   const select = useCallback((id: string | null) => {
+    selectionVersion.current++;
     currentId.current = id;
     setCartId(id);
     if (id) sessionStorage.setItem('currentCartId', id);
@@ -134,7 +137,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     inFlight.current = true;
     lock.current = true;
     setBusy(true);
-    const result = await createCart(creation.current);
+    const { selectionVersion: owner, ...input } = creation.current;
+    const result = await createCart(input);
     inFlight.current = false;
     if (result.kind === 'unknown') {
       setCreationUnknown(true);
@@ -143,14 +147,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
     setCreationUnknown(false);
     creation.current = null;
-    if (result.kind === 'success') {
-      select(result.cart.cartId);
-      setMessage('已加入購物車');
-    } else {
-      setMessage(failureText(result.error));
-      setCanRestart(
-        ['FORBIDDEN', 'CREDENTIAL_EXPIRED'].includes(result.error.code),
-      );
+    // A later URL selection owns navigation, including across creation retries.
+    if (selectionVersion.current === owner) {
+      if (result.kind === 'success') {
+        select(result.cart.cartId);
+        setMessage('已加入購物車');
+      } else {
+        setMessage(failureText(result.error));
+        setCanRestart(
+          ['FORBIDDEN', 'CREDENTIAL_EXPIRED'].includes(result.error.code),
+        );
+      }
     }
     sessionStorage.removeItem(creationPendingKey);
     unlock();
@@ -172,6 +179,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         .replace(/\//g, '_')
         .replace(/=+$/, '');
       creation.current = {
+        selectionVersion: selectionVersion.current,
         createRequestId: crypto.randomUUID(),
         cartToken: token,
         items: [{ productId, quantity: 1 }],

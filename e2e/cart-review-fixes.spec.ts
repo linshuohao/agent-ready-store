@@ -256,3 +256,79 @@ test('clears the pending creation marker after explicit rejection', async ({
   await expect(addButton(page)).toBeEnabled();
   await expect(page.getByText(/建立結果無法確認/)).toHaveCount(0);
 });
+
+for (const recover of [false, true]) {
+  test(`keeps the selected cart after a late creation ${recover ? 'retry' : 'success'}`, async ({
+    page,
+  }) => {
+    const createdId = '22222222-2222-4222-8222-222222222222';
+    let reads = 0;
+    let attempts = 0;
+    let original: { cartToken: string; createRequestId: string } | undefined;
+    let saved: { expectedCartVersion: number; items: CartItem[] } | undefined;
+    let release!: () => void;
+    const barrier = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await page.route(`**/api/v1/carts/${cartId}{,/items}`, async (route) => {
+      if (route.request().method() === 'PUT') {
+        saved = route.request().postDataJSON();
+        return route.fulfill({ json: success(view(saved!.items, 2)) });
+      }
+      // A previously inaccessible B remains in the same document's history.
+      if (++reads === 1)
+        return route.fulfill({ status: 403, json: failure('FORBIDDEN') });
+      await route.fulfill({
+        json: success(view([{ productId: 'P001', quantity: 1 }])),
+      });
+    });
+    await page.route('**/api/v1/carts', async (route) => {
+      const input = route.request().postDataJSON();
+      if (++attempts === 1) {
+        original = input;
+        await barrier;
+        if (recover) return route.abort('failed');
+      } else {
+        expect(input.cartToken === original!.cartToken).toBe(true);
+        expect(input.createRequestId === original!.createRequestId).toBe(true);
+      }
+      await route.fulfill({
+        status: 201,
+        json: success({ ...view(input.items), cartId: createdId }),
+      });
+    });
+    await page.goto(`/cart/${cartId}`);
+    await page
+      .getByRole('button', { name: '重新發起購物', exact: true })
+      .click();
+    await page.getByRole('link', { name: '返回商品列表', exact: true }).click();
+    await addButton(page).click();
+    await expect.poll(() => attempts).toBe(1);
+    await page.goBack();
+    const nav = page.getByRole('link', { name: '購物車', exact: true });
+    await expect(nav).toHaveAttribute('href', `/cart/${cartId}`);
+    release();
+    if (recover) {
+      await page
+        .getByRole('button', { name: '重試原建立', exact: true })
+        .click();
+      await expect.poll(() => attempts).toBe(2);
+    }
+    await expect
+      .poll(() =>
+        page.evaluate(() => sessionStorage.getItem('cartCreationPending')),
+      )
+      .toBe(null);
+    await expect(nav).toHaveAttribute('href', `/cart/${cartId}`);
+    expect(
+      await page.evaluate(() => sessionStorage.getItem('currentCartId')),
+    ).toBe(cartId);
+    await page.getByRole('link', { name: /^(繼續選購|返回商品列表)$/ }).click();
+    await addButton(page).click();
+    await expect(
+      page.getByRole('status').filter({ hasText: '已加入購物車' }),
+    ).toBeVisible();
+    expect(saved?.expectedCartVersion).toBe(1);
+    expect(saved?.items.some((item) => item.productId === 'P001')).toBe(true);
+  });
+}

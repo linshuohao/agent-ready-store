@@ -1,6 +1,6 @@
 # Tasks
 
-状态：规划Approved、S2实施已授权（2026-10-29，Human；来源见Proposal），全部任务尚未实施。范围见 [Proposal](proposal.md)，实现与验证依据见 [Design](design.md) 和两份 [Cart](specs/shopping-cart/spec.md) / [Pricing](specs/cart-pricing/spec.md) 规格。
+状态：规划Approved、S2实施已授权，18项任务已完成，Human验收通过（2026-10-29，Asia/Shanghai）。规划授权来源见Proposal；本聊天在最终独立Review后，Human明确回复“验收通过”，验收对象为`7b082a1`及随本记录提交的迟到创建响应修复。范围见 [Proposal](proposal.md)，实现与验证依据见 [Design](design.md) 和两份 [Cart](specs/shopping-cart/spec.md) / [Pricing](specs/cart-pricing/spec.md) 规格。已披露的真实读屏/Host等验证限制保留；Spec同步及归档待对应授权。
 
 实施交接条件：规划复核已完成，Human已明确批准整份S2规划并发起实施，L-01等决定已记录并传播。按最新版Git Checkpoint Policy，本Change涉及金额、幂等和权限不变量，进入实施及需要交接的高风险任务组前形成适用Checkpoint并运行Guard；不以任务数量机械增加提交。Git授权仍独立核对，任务完成以真实实现和验证为准。
 
@@ -38,6 +38,7 @@
 
 - [x] 6.1 按Human选择的A方案修复冲突草稿：全部待提交条目可见、可改量/移除，展示最新已保存内容，明确以草稿保存或放弃草稿载入最新；覆盖他端删除/新增、最新空车及失效条目。
 - [x] 6.2 按Human选择的A方案修复建车刷新：发请求前保存不含秘密的标签页待确认标记，结果未明保留，刷新后提示且阻止新建，明确重新发起才清除；补失败回归、成功/明确拒绝清理与原材料重试回归并复核。
+- [x] 6.3 修复独立Review确认的迟到创建响应覆盖当前车：历史导航选择B后，A的首次成功/原材料重试成功均不得改写当前选择、导航或后续加购目标；补失败回归与受影响范围重验，再定向独立复核。
 
 - 按最新版Git Checkpoint Policy依据金额、权限、幂等风险与交接需要安排Checkpoint，复用同一逻辑增量的验证/审查；不要求每Task或每任务组独立提交，不为Guard新造提交。本Change适用的高风险阶段/任务组交接在条件满足后运行Guard，Git授权仍单独核对。
 - Human验收及相应归档授权后同步两份正式规格并归档，保留旧S1历史；本轮不执行。
@@ -83,3 +84,11 @@
 - 最终源码通过既有隔离`agent-ready-store-s2-web`容器的contracts/Web生产构建，Next16.4.3生产server运行于`http://127.0.0.1:3005`。`WEB_BASE_URL=http://127.0.0.1:3005 pnpm test:e2e --workers 1`：**48 passed**（含新增14项和既有34项，桌面/移动）；既有场景真实经Next反代写入专用store_test，包含原创建材料重试、版本冲突、PUT未知恢复、多车隔离与S1回归。未重跑无改动的API金额/DB并发测试，复用此前匹配的证据；未重启或迁移演示API/DB。
 - Web lint/typecheck、相关Prettier与Git空白检查通过；OpenSpec结构校验通过。实际检查390px模拟冲突/材料遗失截图，无横向溢出；未新增真实读屏证据。本轮行为复核为实现者自查，沿ai-native-review核对两项Finding及React组件状态/可访问性，未发现新的阻塞项，不冒称独立Review。
 - Git：沿`docs/s2-cart-quote-planning`原审查单元修改；提交前Checkpoint Guard返回BLOCKED，原因是本轮成果尚未进入checkpoint commit、仍有未提交修改。Human随后选择方案1，授权先提交本次修复，再将当前S2分支rebase到最新main；实际提交、rebase与Guard结果留当前对话，不Push/Merge/同步Spec/归档或启动后续切片。Human最终验收仍待进行。
+
+### 独立Review及迟到创建修复（2026-10-29）
+
+- rebase后对`ae2d3b6..7b082a1`完整S2变更执行一次全新上下文的只读独立代码审查，实际Reviewer为`s2_independent_review`。覆盖范围包含报价、持久Cart/权限/期限/幂等、Web状态与恢复；未宣称穷尽所有运行组合。确认一项P2：首建A期间历史导航进入B，迟到A成功响应无条件改写导航及sessionStorage；主执行者使用模拟HTTP在浏览器复现。另一条跨页加购冲突草稿线索，经核对Design §5允许离页丢失的批准限制后撤回，不作为缺陷或扩大修复范围。
+- Human授权修复后再验收。本轮仅增加创建操作的内存选择版本，后续明确选择使旧owner失效；首次及原材料重试成功均只结束恢复，不覆盖后选车。未切车创建保持原行为，客户端归属字段在请求前剥离，不进入严格HTTP输入、不持久化。后台已创建Cart不因丢弃迟到UI选择而回滚。
+- 新增桌面/移动共4项模拟时序回归，先运行桌面两项均失败（预期B、实际导航A），修复后验证导航、sessionStorage及后续PUT仍属B；原材料重试断言Token/请求键保持。最终`WEB_BASE_URL=http://127.0.0.1:3005 pnpm test:e2e --workers 1` **52 passed**，包含原48项及新增4项。现有隔离Web容器完成生产构建；Web lint/typecheck、格式、Git空白与OpenSpec校验通过。后端无改动，未重跑DB并发/真实Host或新增读屏证据，复用仍适用证据与限制。
+- 同一独立Reviewer对本轮未提交Provider/test Diff作定向复核：确认原P2解决，未发现新增明确回归；Reviewer未亲自运行测试，52项运行证据由主执行者取得。无布局变化，短行为摘要足以交接，不另建可视化。Human体验验收待进行；当前新增修复尚未提交，提交/合并/归档权限单独核对。
+- 随后全新上下文`final_acceptance_review`对最终working tree作验收前独立复核，核对契约、创建/重试/选车、CartPage/commands/路由隔离及交付证据，未发现新增可操作P1/P2；复用52项等验证，未重复全量后端或新增真实读屏/Host运行。Human明确“验收通过”，随后对提交这4个修复/测试/验收文件明确“授权”。本记录与修复一并提交；实际commit及Checkpoint结果留当前对话，合并/同步Spec/归档仍待对应授权。
