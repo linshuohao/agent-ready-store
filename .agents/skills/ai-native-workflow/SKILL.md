@@ -96,8 +96,8 @@ metadata:
 - Review 失败：核实 Findings → Fix → Re-verification → Re-review；只复核受影响范围。
 - Human Acceptance 未通过：修复受影响内容 → Verification → Review → Delivery；纯批准不制造空 Commit。
 - OpenSpec Planning 和 Human Approval 都完成后才进入 Implementation；Commit 不能替代 Approval。
-- 每阶段或实施任务组推进前，按 [Git Checkpoint Policy](../../../docs/workflow/GIT_CHECKPOINT_POLICY.md) 确定成果路径和必需的验证/审查/批准状态，调用 `python3 scripts/git-checkpoint-guard.py`。Guard 失败时停止阶段转换，报告阻塞及补齐方式；它不自动暂存、提交、清理、Push 或 Merge。路径之外的无关修改保留且排除。
-- Hook 仅作可选提醒；只有能可靠获得阶段和成果范围的机制才可辅助阻断。当前 Hook 未验证，阶段转换以显式 Guard 为准，不宣称 Hook 强制执行。
+- 每次按 [Git Checkpoint Policy](../../../docs/workflow/GIT_CHECKPOINT_POLICY.md) 的风险条件判断是否需要 Checkpoint Guard。高风险、难回滚或需要明确交接时调用 `python3 scripts/git-checkpoint-guard.py`；单点低风险且可聚焦验证的 Direct/维护任务可跳过，并在当前对话简要说明依据，不为满足形式额外造提交或报告。Guard 适用且失败时暂停依赖该交接的阶段转换；它不自动暂存、提交、清理、Push 或 Merge。路径之外的无关修改保留且排除。
+- Hook 仅作可选提醒；只有能可靠获得阶段、风险条件和成果范围的机制才可辅助阻断。当前 Hook 未验证，不宣称 Hook 强制执行。
 
 阶段提交时机、准确参数及无文件变更规则只维护在 Git Checkpoint Policy；不要在本 Skill 或 OpenSpec 中复制另一份矩阵。
 
