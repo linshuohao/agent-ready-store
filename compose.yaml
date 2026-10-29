@@ -40,6 +40,8 @@ services:
       PORT: 3001
       HOST: 0.0.0.0
       WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:3000}
+      CART_ENCRYPTION_KEY: ${CART_ENCRYPTION_KEY:?Set stable CART_ENCRYPTION_KEY in .env}
+      CART_COOKIE_SECURE: ${CART_COOKIE_SECURE:-true}
       MCP_SERVICE_TOKEN: ${MCP_SERVICE_TOKEN:?Set MCP_SERVICE_TOKEN in .env}
       MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:-localhost:3002,127.0.0.1:3002}
     ports:

@@ -15,6 +15,7 @@ export async function result<T>(
         code: known ? error.code : 'TEMPORARY_UNAVAILABLE',
         message: known ? error.code : 'Service temporarily unavailable',
         retryable: !known,
+        ...(known ? error.details : {}),
       },
       requestId,
     };

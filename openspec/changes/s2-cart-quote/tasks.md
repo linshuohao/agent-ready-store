@@ -12,14 +12,14 @@
 
 ## 2. Cart 持久化、幂等与版本
 
-- [ ] 2.1 添加最小Cart schema/迁移，使用持久createdAt推导创建起24h截止，不存重复expiresAt；读取/编辑/创建重放均拒绝now>=截止时刻，PUT取锁后使用服务端实时钟重验。保留Inventory数据，创建原始意图和当前items分离，不存派生报价；首次分享字段及期限切换留S4。
-- [ ] 2.2 在 `apps/api/src/cart/` 实现 CreateCart/GetCart/ReplaceCartItems，复用 Catalog 导出能力与既有 infrastructure/database；先识别和恢复已有创建请求，仅新请求执行当前库存校验，以唯一键事务仲裁首次查找未命中的并发；整车原子保存/条件版本递增，编辑后重放不覆盖新内容，读取保留失效问题项，不预留/扣库存。
-- [ ] 2.3 在专用真实PostgreSQL以独立连接/barrier验证创建同键并发/异内容、同版本双写、失败候选行回滚、持久重启恢复；覆盖“成功丢响应→库存下降/售罄/商品失效→重启重试”及首次未命中后另一请求提交的时序；另覆盖PUT恢复GET读旧版本后，原请求/同版本同条目重试/第三方写入各自先提交的顺序，断言同版本最多一次写入成功、最终版本/内容、原访问能力和Inventory零净变化。
+- [x] 2.1 添加最小Cart schema/迁移，使用持久createdAt推导创建起24h截止，不存重复expiresAt；读取/编辑/创建重放均拒绝now>=截止时刻，PUT取锁后使用服务端实时钟重验。保留Inventory数据，创建原始意图和当前items分离，不存派生报价；首次分享字段及期限切换留S4。
+- [x] 2.2 在 `apps/api/src/cart/` 实现 CreateCart/GetCart/ReplaceCartItems，复用 Catalog 导出能力与既有 infrastructure/database；先识别和恢复已有创建请求，仅新请求执行当前库存校验，以唯一键事务仲裁首次查找未命中的并发；整车原子保存/条件版本递增，编辑后重放不覆盖新内容，读取保留失效问题项，不预留/扣库存。
+- [x] 2.3 在专用真实PostgreSQL以独立连接/barrier验证创建同键并发/异内容、同版本双写、失败候选行回滚、持久重启恢复；覆盖“成功丢响应→库存下降/售罄/商品失效→重启重试”及首次未命中后另一请求提交的时序；另覆盖PUT恢复GET读旧版本后，原请求/同版本同条目重试/第三方写入各自先提交的顺序，断言同版本最多一次写入成功、最终版本/内容、原访问能力和Inventory零净变化。
 
 ## 3. 车级权限与 HTTP
 
-- [ ] 3.1 按批准设计实现浏览器创建证明、Token认证加密、稳定环境密钥、每车Cookie与到期访问规则；缺密钥拒绝，响应/日志不泄漏秘密，不凭公共ID恢复。
-- [ ] 3.2 在 Cart 模块添加创建/读取/整车替换HTTP adapter，由 AppModule 组合，固定普通HUMAN来源、严格Origin/JSON/输入白名单/body上限、no-store及可操作错误；复用 `src/shared/` Result/AppError 并验证对现有只读接口兼容。
+- [x] 3.1 按批准设计实现浏览器创建证明、Token认证加密、稳定环境密钥、每车Cookie与到期访问规则；缺密钥拒绝，响应/日志不泄漏秘密，不凭公共ID恢复。
+- [x] 3.2 在 Cart 模块添加创建/读取/整车替换HTTP adapter，由 AppModule 组合，固定普通HUMAN来源、严格Origin/JSON/输入白名单/body上限、no-store及可操作错误；复用 `src/shared/` Result/AppError 并验证对现有只读接口兼容。
 - [ ] 3.3 验证错车、猜ID、异证明同键、伪造origin/price、跨站写；覆盖创建起24h截止前/等号/之后、等待写锁期间到期、编辑/创建重放/Cookie重设不续期；经真实Next同源代理验证Cookie与权限，包含A/B并行车和响应丢失/有效原材料重试/密钥错误。S4首次分享切换仅作为兼容约束，不伪造本切片运行证据。
 
 ## 4. Web 加购和独立购物车
@@ -46,3 +46,5 @@
 - 后续按Human指令rebase到main `03c51eb`，并按已确认的Review改进意见修订幂等恢复顺序、页面级加购协调、对应Spec/验证任务及源码分层/风险驱动Checkpoint表述。两项设计Finding已补齐方案和反例，运行行为仍待实施验证；当时Human Review Queue保留待裁决；随后Human明确“批准这些建议”，三项已接受，当前状态以Design的Human Review Queue为准。
 
 - S2任务组1实施证据：decimal.js 10.6.0、lossless-json 4.3.3已锁定；新增测试首先因缺失契约/计价实现失败，实施后契约/金额/Catalog共28项通过。contracts/API typecheck、lint及API build通过；完整Vitest为28 passed / 6 skipped（DB/API环境未配置），不作集成通过。无商品原件修改。
+
+- S2后端任务组证据：真实PostgreSQL Cart 9项、Inventory回归3项通过；包含数据库锁等待barrier及原请求/重试/第三方先提交场景，非随机sleep制造竞争。隔离API的Cart HTTP 3项通过；凭证/精确到期边界3项通过，API typecheck/lint/build通过。已定位并修复容器直接导入Express但未声明依赖的启动问题，直接依赖与Nest使用的Express 5.3.0对齐。3.3的Next反代/浏览器Cookie验证留Web任务组，未提前勾选；未连接演示库执行破坏性验证。

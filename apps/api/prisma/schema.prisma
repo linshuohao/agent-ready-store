@@ -10,3 +10,17 @@ model Inventory {
   productId String @id
   quantity Int
 }
+
+model Cart {
+  id String @id @db.Uuid
+  origin String @default("HUMAN")
+  items Json
+  version Int @default(1)
+  createdAt DateTime @db.Timestamptz(3)
+  createScope String
+  createRequestId String @db.Uuid
+  createPayloadHash String
+  encryptedCartToken String
+
+  @@unique([createScope, createRequestId])
+}
