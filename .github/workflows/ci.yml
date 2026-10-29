@@ -37,7 +37,7 @@ jobs:
       TEST_DATABASE_URL: postgresql://store_test:test_only@localhost:5432/store_test
       CATALOG_PATH: references/products.json
       CART_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
-      MCP_SERVICE_TOKEN: ci-test-token
+      MCP_SERVICE_TOKEN: ci-integration-token-long-enough
       MCP_ALLOWED_HOSTS: localhost:3002,127.0.0.1:3002
       WEB_ORIGIN: http://localhost:3000
     steps:
@@ -76,7 +76,7 @@ jobs:
       - name: Migrate and initialize test database
         run: |
           pnpm db:migrate
-          pnpm db:seed
+          CATALOG_PATH=../../references/products.json pnpm db:seed
 
       - name: Run API integration tests
         run: |
@@ -101,4 +101,4 @@ jobs:
             apps/api/test/cart/http.test.ts
 
       - name: Run database and unit tests
-        run: pnpm test -- --no-file-parallelism
+        run: pnpm test --no-file-parallelism
