@@ -24,7 +24,7 @@
 Guard 通过条件：
 
 1. 所要求的 Verification、Review、Human Approval 均明确为 `pass` / `approved`；不适用项须显式标记 `na` 并给出理由。
-2. 有持久文件变更时，指定 checkpoint 是当前仓库可解析的 commit，且该 commit 包含列出的全部成果路径。
+2. 有持久文件变更时，指定一个或多个 checkpoint commit；这些 commit 均须是当前 HEAD 的祖先，且合并覆盖列出的全部成果路径。
 3. 列出的成果路径自 checkpoint 后没有 staged、unstaged 或 untracked 变更。
 4. 不检查或要求清理成果路径之外的无关工作区变更。
 5. 没有成果路径且显式声明 `--no-change` 时，允许无提交通过；不创建空提交。
@@ -43,7 +43,7 @@ python3 scripts/git-checkpoint-guard.py \
   --checkpoint HEAD
 ```
 
-若阶段要求 Human Approval，使用 `--approval approved`；缺少批准必须阻断。仅无文件变更时使用 `--no-change`，路径参数不得同时提供。
+若阶段要求 Human Approval，使用 `--approval approved`；缺少批准必须阻断。若本阶段成果分布在多个逻辑提交，重复传入 `--checkpoint <commit>`。仅无文件变更时使用 `--no-change`，路径参数不得同时提供。
 
 ### Hook 协作与限制
 

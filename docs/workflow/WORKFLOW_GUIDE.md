@@ -65,7 +65,7 @@ python3 scripts/git-checkpoint-guard.py \
   --checkpoint HEAD
 ```
 
-有必要 Human Approval 时使用 `--approval approved`；缺少批准、必要验证/审查未通过、成果未被指定 commit 覆盖，或成果路径在提交后仍有修改时，Guard 会阻断阶段转换。若没有持久文件变更，使用 `--no-change` 和显式的 `na` 理由，不制造空提交。成果范围以外的无关修改不会被该 Guard 要求清理。
+有必要 Human Approval 时使用 `--approval approved`；缺少批准、必要验证/审查未通过、成果未被所列 checkpoint commit 覆盖，或成果路径在提交后仍有修改时，Guard 会阻断阶段转换。若成果分布在多个逻辑提交，可重复传入 `--checkpoint <commit>`。若没有持久文件变更，使用 `--no-change` 和显式的 `na` 理由，不制造空提交。成果范围以外的无关修改不会被该 Guard 要求清理。
 
 Guard 只核对 Git 可证明的提交覆盖和路径状态。Verification、Review 与 Human Approval 状态由 Workflow 根据实际证据与记录提供；Hook 当前未验证为强制机制，不能拿 Hook 提示代替显式 Guard。Guard 通过不自动 Push、Merge 或启动新 Slice。
 

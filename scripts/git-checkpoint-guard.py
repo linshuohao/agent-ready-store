@@ -27,7 +27,7 @@ def main() -> int:
     parser.add_argument("--review-reason")
     parser.add_argument("--approval", choices=("approved", "na", "pending", "rejected"), required=True)
     parser.add_argument("--approval-reason")
-    parser.add_argument("--checkpoint", help="commit expected to contain all deliverable paths")
+    parser.add_argument("--checkpoint", action="append", default=[], help="checkpoint commit; repeat to cover a stage split across logical commits")
     parser.add_argument("--no-change", action="store_true", help="stage has no persistent file changes")
     args = parser.parse_args()
 
@@ -49,20 +49,22 @@ def main() -> int:
     elif not args.path:
         errors.append("Provide exact --path values, or use --no-change when there are no persistent changes.")
     elif not args.checkpoint:
-        errors.append("A checkpoint commit is required when deliverable paths are provided.")
+        errors.append("At least one --checkpoint commit is required when deliverable paths are provided.")
 
     if args.path and args.checkpoint:
         try:
-            checkpoint = git("rev-parse", "--verify", f"{args.checkpoint}^{{commit}}").strip()
-            committed = set(git("diff-tree", "--root", "--no-commit-id", "--name-only", "-r", checkpoint).splitlines())
+            committed: set[str] = set()
+            head = git("rev-parse", "HEAD").strip()
+            checkpoints = [git("rev-parse", "--verify", f"{value}^{{commit}}").strip() for value in args.checkpoint]
+            for checkpoint in checkpoints:
+                git("merge-base", "--is-ancestor", checkpoint, head)
+                committed.update(git("diff-tree", "--root", "--no-commit-id", "--name-only", "-r", checkpoint).splitlines())
             for path in args.path:
                 if path not in committed:
-                    errors.append(f"Checkpoint {checkpoint[:12]} does not contain deliverable path: {path}")
+                    errors.append(f"No supplied checkpoint commit contains deliverable path: {path}")
             changed = set(git("status", "--porcelain", "--", *args.path).splitlines())
             if changed:
                 errors.append("Deliverable paths have changes after the checkpoint: " + ", ".join(sorted(args.path)))
-            head = git("rev-parse", "HEAD").strip()
-            git("merge-base", "--is-ancestor", checkpoint, head)
         except RuntimeError as exc:
             errors.append(str(exc))
 
