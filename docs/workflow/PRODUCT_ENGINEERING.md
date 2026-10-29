@@ -4,6 +4,7 @@
 
 - **批准记录：** Human，2026-10-29（Asia/Shanghai）；直接依据为本聊天「PRODUCT_ENGINEERING — Governance Review Finalization」：Human + ChatGPT 已完成 Review，整体接受现有治理契约，并授权本次小幅修订和定稿。对应决策见 [ENG-012](../engineering/ENGINEERING_DECISIONS.md#eng-012--产品设计与最终交付集成)。
 - **历史与范围：** 2026-10-28 首次形成治理草案；本次在保留职责分工和取舍的基础上定稿，草案演进见 ENG-012 与 Git Diff。治理契约的批准与项目 Requirements / Product Design / Technical Design 的批准分别记录；ENG-008/009 仍待独立 Review。
+- **精益执行修订依据：** Human 于 2026-10-29「AI-Native Workflow — Lean Execution Alignment」授权调整默认执行规范及其应用方式；保留上述批准历史、权限和验收边界，不扩展为业务实施或 Workflow / Review Skill 机制批准。
 
 ## 工作活动与双循环
 
@@ -26,6 +27,19 @@
 | Project Showcase：拟用 `presentation/index.html` | 如何让面试官找到真实成果与依据？关键产物存在后逐步制作，最终交付时核对全部入口 | 导航、摘要与证据索引，不是权威设计源，也不是第二商城。当前不创建 HTML；既有 Workflow 讲解页只是其中未来可引用的材料 |
 
 三个 Baseline 只维护全局当前有效结果；OpenSpec 仍管理增量及变更生命周期，不在全局文档另建逐切片 Spec、Plan 或 Tasks。Requirements 不代替 DECISIONS，Technical Design 不代替技术决策理由。
+
+## 精益执行的工作流应用
+
+执行原则唯一正文见 [AGENTS 默认执行原则](../../AGENTS.md#默认执行原则)。以下只规定它们在现有流程中的应用，不新增审批阶段、质量评分、报告模板或流程管理文件。
+
+| 活动 | 应用方式 |
+| --- | --- |
+| Planning | OpenSpec 按 Slice 或独立可审查的正式行为/重要契约变更管理；已有 Change 内的普通内部任务不另建 Change，局部低风险维护按现有 Direct/Fix 路径处理。Proposal 简述目标、范围、非目标；Spec 只写必需的可观察行为与核心约束，不为组件、Hook、函数或纯配置虚构产品需求；Design 只补相对基线的实施细节与重要取舍；Tasks 按可执行、可验收的逻辑组拆解，不拆到文件/函数。各产物引用职责来源，不重复维护同一正文 |
+| Implementation | 在已批准且获实施授权的 Spec/Tasks 范围内按逻辑任务组连续执行，随功能落地必要测试与使用说明；进度只更新现有 Tasks。每组完成针对性验证，取得相应 Git 授权后可分批 Commit，不强制全部开发一个提交或逐 Task 审批 |
+| Verification | 低风险展示/配置用 typecheck、构建或 smoke，无需强制独立单测；中风险查询、状态与 API 契约验证核心正常路径及少量明确异常，复用现有设施；高风险按 AGENTS 保留真实行为和不变量证据。完整 build、集成及关键 E2E 在 Slice/阶段验收或跨模块影响确有需要时执行；不重复运行仍有效检查，失败先定位根因再重验 |
+| Review | 沿既有 Review Skill 聚焦可行动的正确性、契约、安全及交付风险，复用已有有效证据，只补缺口；一般风格偏好或普通实现细节不反复中断执行。实质决策变化、冲突和阻塞才升级，必要 Review、Human 验收与残余风险接受仍保留 |
+
+先使当前最小闭环实际运行，再根据运行反馈最小修订当前产物；不并行尝试多套完整方案或提前铺设后续 Slice。上述执行方式不替代下文的产物生效条件、变更传播与最终交付要求。
 
 每份 Baseline 的开头记录 **Status、适用范围/版本、依据、批准记录（确认人、日期与可追溯来源）、取代关系、Pending**。无批准记录保持 Draft，AI Review 通过不等于 Human 批准。若已有 Approved 版本，修订未批前仍保留有效旧版及可追溯 Diff，明确拟改部分，不将混合正文整体冒充 Approved。正式替代时记录 Superseded 与后继版本，不覆盖批准历史。
 

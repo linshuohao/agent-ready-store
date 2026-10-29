@@ -21,6 +21,8 @@
 | Workflow v0.4：任务切换与 Git 收尾提醒 | 本轮实际核对 Git 状态与任务范围，确认治理文档补充可在原分支继续；Skill 格式、相关本地链接与 Diff 空白检查通过 | 仅当前任务预检与静态验证；未运行独立的无关任务切换案例，未执行提交或分支切换 |
 | Workflow v0.5 + Review v0.2：产品、设计与交付集成 | 修改前 1 个独立上下文应用旧版两个 Skill，发现 UI/UX、总体技术方案、最终交付缺少明确输出/检查；修改后 1 个全新上下文显式读取并应用新版两个 Skill，完成 A–G 七项只读模拟路由；另 1 个独立上下文应用 Review 做真实治理 Design/Delivery 审查，发现重要交互传播遗漏相关 OpenSpec，修订后复核关闭。两个 Skill 的 quick_validate、相关本地链接/锚点、Git 空白检查通过 | A 新需求、B UI/UX、C 技术选型、D 总体方案、E 功能切片、F 局部 Bug、G 最终交付均为模拟请求；未产生业务设计/代码、真实购物 Agent 或 CI 结果。属于代表性应用验证，不是自动触发成功率或业务验收 |
 
+| Review v0.3：风险自适应代码审查补强（2026-10-29） | 按 Human 提供的提示词对照旧版，补充范围/契约摘要、设计符合性、复杂度判断及五项报告内容；skill-creator quick_validate 与 Git 空白检查通过 | 仅正文对照和静态检查；未进行独立模型行为验证或重跑 S1 测试，不声称新版本已完成业务 Review。ENG-009 保持 Proposed |
+
 历史两次原生发现均返回相应项目 Skills 为 repo/enabled、errors=[]。本轮通过 Codex app-server 的 `initialize → skills/list`（项目 cwd、forceReload=true）再次发现 Workflow/Review，返回更新后的 description、repo/enabled、errors=[]；首次受沙箱禁止状态目录初始化阻断，获准访问本地 Codex 状态后同一查询成功，未创建线程或调用模型。显式读取并应用可用；自动触发、桌面选择器刷新、CLI 模型审阅、真实业务和完整 Apply/Archive 尚未验证。
 
 本轮 `openspec --version` 为 1.15.0，`list --json` 返回本仓库 root、changes=[]，`schemas --json` 仍为原生 spec-driven（proposal/specs/design/tasks）；`validate --all --json` 返回 0 items，不算业务验收。两个只读原件哈希与下方基线一致；DECISIONS、AI_NOTES、Handoff 模板及既有讲解 HTML 均未改动。未重新初始化工具或修改第三方 Skills。
