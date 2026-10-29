@@ -2,17 +2,17 @@
 
 面向人类与 AI Agent 的商店作业。目标与交付约束见只读的 [作业原件](references/home-quiz.md) 和 [商品原件](references/products.json)；PM 需求仍是草稿。
 
-本轮产品与技术设计阶段已由 Human 批准结束（2026-10-29，Asia/Shanghai）：Requirements v0.2、Product Design v0.2 与 [Technical Design v0.5](docs/engineering/TECHNICAL_DESIGN.md) 均为 Approved Baseline；产品/技术决策及演进保留。已批准五页结构、三份视觉方向和前端主导的 Next.js/NestJS/Agent 架构；其余 Proposed Implementation Details、P-04、WebMCP 来源及运行验收缺口继续保留；L-01 已由 S2 限定补充批准解决，见下方当前规划。基础 MCP、WebMCP、MCP Apps 均属本次完整交付目标，S1 商品发现已实现并记录 Human 验收，Web交易已实现，S4基础MCP闭环等待本轮Human验收；WebMCP/MCP Apps尚未实施。
+本轮产品与技术设计阶段已由 Human 批准结束（2026-10-29，Asia/Shanghai）：Requirements v0.2、Product Design v0.2 与 [Technical Design v0.5](docs/engineering/TECHNICAL_DESIGN.md) 均为 Approved Baseline；产品/技术决策及演进保留。已批准五页结构、三份视觉方向和前端主导的 Next.js/NestJS/Agent 架构；其余 Proposed Implementation Details、P-04、WebMCP 来源及运行验收缺口继续保留；L-01 已由 S2 限定补充批准解决，见下方当前规划。基础 MCP、WebMCP、MCP Apps 均属本次完整交付目标，S1 商品发现已实现并记录 Human 验收，Web交易已实现，S4基础MCP闭环已通过Human验收（真实接手链路补证限制见S4 Tasks）；WebMCP/MCP Apps尚未实施。
 
 阶段关闭记录见 [Technical Design §10.4](docs/engineering/TECHNICAL_DESIGN.md#104-设计阶段关闭与交接--2026-10-29)。Human 已批准 [S1 规划](openspec/changes/archive/2026-10-29-s1-product-discovery/proposal.md) 并授权实施；S1 已完成本轮 Review 并归档，运行证据与保留限制见 [归档 Tasks](openspec/changes/archive/2026-10-29-s1-product-discovery/tasks.md)；后续切片等待对应授权。精益执行原则见 [AGENTS](AGENTS.md#默认执行原则)。
 
-S2当前状态见 [Cart与报价Change](openspec/changes/archive/2026-10-29-s2-cart-quote/proposal.md)及[Tasks](openspec/changes/archive/2026-10-29-s2-cart-quote/tasks.md)。Web/HTTP购物车与报价已实现，完成自动验证、独立Review及定向修复复核，Human于2026-10-29明确验收通过；两份正式Spec已同步，S2 Change已按Human授权归档。未交接创建起24h、现有恢复限制及S2 Web/HTTP—S4 MCP写工具分期的正式来源见[D-04补充](DECISIONS.md#d-04--交接链接有效期)。S3订单已实现并通过Human验收，S4交接已实施、尚待Human验收，不能将当前Cart报价视为完成购买。
+S2当前状态见 [Cart与报价Change](openspec/changes/archive/2026-10-29-s2-cart-quote/proposal.md)及[Tasks](openspec/changes/archive/2026-10-29-s2-cart-quote/tasks.md)。Web/HTTP购物车与报价已实现，完成自动验证、独立Review及定向修复复核，Human于2026-10-29明确验收通过；两份正式Spec已同步，S2 Change已按Human授权归档。未交接创建起24h、现有恢复限制及S2 Web/HTTP—S4 MCP写工具分期的正式来源见[D-04补充](DECISIONS.md#d-04--交接链接有效期)。S3订单已实现并通过Human验收，S4交接已通过Human验收，不能将当前Cart报价视为完成购买。
 
-S3已完成实施并于2026-10-30通过Human验收：[Proposal](openspec/changes/archive/2026-10-30-s3-hosted-checkout-order/proposal.md)、[Design](openspec/changes/archive/2026-10-30-s3-hosted-checkout-order/design.md)、[Tasks与验收记录](openspec/changes/archive/2026-10-30-s3-hosted-checkout-order/tasks.md)。Human已确认到期准入/结果访问/无自动清理的三项限定边界，见[D-21补充](DECISIONS.md#s3-checkout-boundary-20261029)。三份正式Spec已同步，S3 Change已按Human授权归档；Push/Merge须对应授权。S3范围为普通Web Hosted Checkout与原子订单，S4 Agent交接等后续分期保持。
+S3已完成实施并于2026-10-30通过Human验收：[Proposal](openspec/changes/archive/2026-10-30-s3-hosted-checkout-order/proposal.md)、[Design](openspec/changes/archive/2026-10-30-s3-hosted-checkout-order/design.md)、[Tasks与验收记录](openspec/changes/archive/2026-10-30-s3-hosted-checkout-order/tasks.md)。Human已确认到期准入/结果访问/无自动清理的三项限定边界，见[D-21补充](DECISIONS.md#s3-checkout-boundary-20261029)。三份正式Spec已同步，S3 Change已按Human授权归档；Push/Merge须对应授权。S3范围为普通Web Hosted Checkout与原子订单，S4 Agent交接状态见下文，S5/S6后续分期保持。
 
 ## S4 Agent Handoff
 
-[S4 Change](openspec/changes/s4-agent-handoff/proposal.md) 已获规划批准与实施授权；当前实现七工具、同车分享/兑换及本地有效创建统计，验证与剩余验收见 [Tasks](openspec/changes/s4-agent-handoff/tasks.md)。尚未归档或取得 Human 最终验收，S5/S6 未实施。
+[S4 Change](openspec/changes/archive/2026-10-30-s4-agent-handoff/proposal.md) 已实施七工具、同车分享/兑换及本地有效创建统计，并于2026-10-30通过Human验收；验证与保留限制见 [Tasks](openspec/changes/archive/2026-10-30-s4-agent-handoff/tasks.md)。四份正式Spec已同步，Change已归档。真实Host七工具已有证据，Human实际接手/编辑/确认的新增可核对证据未补齐，按Human知悉限制后的明确授权保留此缺口归档；S5/S6未实施。
 
 基础 MCP 仍为 `http://localhost:3002/mcp`，使用本机 `MCP_SERVICE_TOKEN` 的 Bearer 认证及既有 Host/Origin 限制。七工具为 `search_products`、`get_product`、`list_product_reviews`、`create_cart`、`get_cart`、`update_cart`、`create_handoff`。无订单提交工具。单个配置的服务身份共享创建键命名空间，不能区分 Host 或顾客；每个新意图使用随机 UUID `createRequestId`。
 
@@ -113,7 +113,7 @@ HTTP GET `/api/v1/products`、`/api/v1/products/:id`、`/api/v1/products/:id/rev
 
 固定目錄/庫存/條件時分頁穩定；可購篩選翻頁間若庫存改變，不保證跨頁快照，需從第一頁重查。評論目錄版本固定時可逐頁讀完。評論是純文字資料，不能成為購買授權。
 
-Agent Host 的手動 MCP 接入步驟、Codex 範例、憑證方式與信任邊界見 [MCP 接入說明](docs/engineering/MCP_CONNECT.md)。目前只提供唯讀的 `search_products`、`get_product`、`list_product_reviews`；不得公開本機 `.env` 或 loopback 服務。
+Agent Host 的手動 MCP 接入步驟、Codex 範例、憑證方式與信任邊界見 [MCP 接入說明](docs/engineering/MCP_CONNECT.md)。S4目前提供上文所列七工具，其中三個商品查詢工具唯讀；不得公開本機 `.env` 或 loopback 服務。
 
 隔離資料庫整合測試：
 

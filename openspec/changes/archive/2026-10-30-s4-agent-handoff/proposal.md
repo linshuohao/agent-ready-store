@@ -32,6 +32,6 @@ S3 已验收并合并，但 Agent 仍只能查询商品，不能将选购内容�
 
 涉及 packages/contracts、Nest MCP adapter、CartService/Credentials/Controller、Prisma Cart 向前迁移、Web Checkout 入口与当前车选择、相关测试和 README。预计仅新增 Cart.handoffIssuedAt，无新服务、表或依赖；实现中如出现关键契约变化须升级。
 
-依据：Approved [Requirements v0.2](../../../docs/product/REQUIREMENTS.md) §3.2、§5～9、AC-02/08/09/12；Approved [Product Design v0.2](../../../docs/product/PRODUCT_DESIGN.md) Agent 接手、EX-01～03；Approved [Technical Design v0.5](../../../docs/engineering/TECHNICAL_DESIGN.md) §6、§8～10（含 S2/S3 限定补充）；Accepted [D-04](../../../DECISIONS.md#d-04--交接链接有效期)、D-07、D-13、D-22 及 T-05 单 Token 演进。S3 确认/准入/结果权限沿[现有归档 Design](../archive/2026-10-30-s3-hosted-checkout-order/design.md)，不重开已批准选择。
+依据：Approved [Requirements v0.2](../../../../docs/product/REQUIREMENTS.md) §3.2、§5～9、AC-02/08/09/12；Approved [Product Design v0.2](../../../../docs/product/PRODUCT_DESIGN.md) Agent 接手、EX-01～03；Approved [Technical Design v0.5](../../../../docs/engineering/TECHNICAL_DESIGN.md) §6、§8～10（含 S2/S3 限定补充）；Accepted [D-04](../../../../DECISIONS.md#d-04--交接链接有效期)、D-07、D-13、D-22 及 T-05 单 Token 演进。S3 确认/准入/结果权限沿[现有归档 Design](../2026-10-30-s3-hosted-checkout-order/design.md)，不重开已批准选择。
 
 不包含 S5 WebMCP、S6 MCP Apps、Agent 代提交、真实支付、登录、长期过期结果查询、自动清理、分析后台、运营指标达标或公网发布。统计输出为本地受控操作；不新增第八个 MCP 工具。P-04 长期保留/额外结果访问继续 Pending；本轮保留无自动清理及到期拒绝读取的既有边界。
