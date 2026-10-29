@@ -17,7 +17,7 @@
 | 产物 / 位置 | 回答的问题、生成时机 | 生效与维护 |
 | --- | --- | --- |
 | AGENTS：`AGENTS.md` | 项目级约束与权限是什么？ | 项目权限与权威冲突处理入口；本文不复制其规则 |
-| Workflow / Review Skills | 如何分类、路由和协调任务；如何按风险审查设计、行为与交付？ | Workflow 负责执行协调，Review 负责审查方法；各自正文是唯一维护源，本次不批准或修改其机制 |
+| Workflow / Review Skills | 如何分类、路由和协调任务；如何按风险审查设计、行为与交付？ | Workflow 负责执行协调，Review 负责审查路由与按需可视化，代码审查复用 Superpowers；各自正文是唯一维护源，v1.0 批准不包含其机制，本轮仅按 Human 授权同步职责引用 |
 | Product Decision：`DECISIONS.md` | 为什么这样定义产品？出现重要取舍或需求歧义时，记录来源、问题、假设、备选、商业/体验权衡、选择、放弃理由、PM 回应和未决项 | Human 确认后 Accepted；保留 ID、历史及替代关系。不把无争议功能或验收条目都升级为 Decision |
 | Requirements：`docs/product/REQUIREMENTS.md` | What？关键产品选择足以形成稳定行为后，按 Product、Cart、Pricing、Handoff、Checkout、Order 等领域整理结果 | 初始 Draft，Human Review 后 Approved；关联重要 Decision，不按历史重抄讨论 |
 | Product Design：`docs/product/PRODUCT_DESIGN.md` 与必要设计资产 | Experience？基于相关 Requirements 设计页面、流程、交互及视觉；可用 Draft Requirements 探索，但明确未批准依赖 | 初始 Draft；Design Review 与 Human Review 后成为 Approved Product Design Baseline，约束 Web 交互及视觉验收 |
@@ -82,7 +82,7 @@ Technical Design 整合足够的 Accepted Tech Decisions 和适用产品/体验�
 
 创建 Change 时仅读取相关 Approved Requirements、Product Design、Technical Design 的章节、Accepted Decisions、现有正式 Spec 和实际源码/接口。记录适用版本/章节和未决依赖；Draft 可作探索输入，不能当作实施依据。缺少相关批准基线且影响关键契约时，先补足或请 Human 明确范围；不要求无关领域的全部基线先齐备。
 
-实施及 Review 以有效基线和当前 Change 为约束；批准基线也不自动授予实施权限。Review 按风险组合 Requirements Conformance、UX/Interaction、Technical Design、Behavioral、Delivery 检查，仍用同一个 Review Skill，不新建并行 Review 流程。
+实施及 Review 以有效基线和当前 Change 为约束；批准基线也不自动授予实施权限。Review 由同一个 Review Skill 按风险路由，相关基线与交付要求作为同一次审查输入；代码审查复用 Superpowers，修复/重验后再按人的理解成本选择可视化，不新建并行 Review 流程。
 
 变更传播表是影响分析清单，不是强制逐层文档审批流水线。仅更新实际受影响的文档，不为流程形式制造无意义 Diff；重大产品行为、架构、权限及安全契约变化才需同步受影响的全局 Decision / Baseline。Human 保留关键决策与最终风险接受权，不扩展为逐字段或逐任务审批。
 

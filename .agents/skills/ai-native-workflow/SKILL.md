@@ -2,7 +2,7 @@
 name: ai-native-workflow
 description: Use when starting or resuming work in agent-ready-store, including product requirements, UI/UX design, technical decisions, architecture design, feasibility experiments, incremental delivery, Project Showcase, maintenance, fixes, and review. 不用于无关项目或一般问答。
 metadata:
-  version: "0.5"
+  version: "0.6"
 ---
 
 # AI-Native Workflow
@@ -38,7 +38,7 @@ metadata:
 | Deliver | 已有可观察目标及实现授权的功能切片 | Delivery & Verification：Scope → Specify → Build → Verify；涉及正式业务行为、跨模块契约或重要变更使用 OpenSpec，复用当前 Change |
 | Direct | 局部、低风险、可逆、可充分验证，且不改变重要契约 | 直接修改与相关检查；不强制 Change、完整 Proposal/Design/Tasks、独立 Review 或额外人工确认 |
 | Fix | 有缺陷、测试失败或意外行为 | 先复现与定位根因，再作最小修复和回归验证；按风险选 systematic-debugging/TDD，契约变化转 Explore，正式行为修订用 Change |
-| Review | 请求独立审查或风险需要独立判断 | 按下方 Review Integration 加载 ai-native-review，选择审查模式与深度；默认只读，独立性不成立时明确标自查 |
+| Review | 请求独立审查或风险需要独立判断 | 按下方 Review Integration 加载 ai-native-review，路由一次适用审查及必要的人类可视化审阅；默认只读，独立性不成立时明确标自查 |
 
 两种循环不是强制阶段。不为简单问题机械走完四步；需求分析、可行性实验与架构讨论可以往返。大型需求先理解目标/能力、关键旅程、依赖、风险与未决项，解决影响全系统的阻塞，再选可独立验证的最小纵向切片。不提前铺开全部技术设计/Tasks，Roadmap 只在协调多个切片确有需要时维护。
 
@@ -55,7 +55,7 @@ metadata:
 | Architecture Design | 足够的 Accepted 技术决策、产品/体验约束、必要证据或风险 | Explore；系统边界、Agent 接入、状态所有权、模块与链路等充分后整合 `docs/engineering/TECHNICAL_DESIGN.md` Draft，Design/Human Review 后 Approved；仅定框架不足，缺口 Pending |
 | Specify | 相关 Approved Baselines、Accepted Decisions、正式 Spec 和实际接口 | Deliver；OpenSpec 当前 Change 的 Spec/Design/Tasks，引用适用版本/章节，不复制三个全文 |
 | Build | 已授权 Change、相关有效基线、源码与测试 | Deliver；Code/Tests。关键批准缺口或契约冲突暂停依赖部分；批准基线不等于授权实施 |
-| Review | 相应 Draft/Approved 目标、Diff、证据 | 加载 ai-native-review，选择符合性/UX/技术设计/行为/交付检查，只返回 Findings 与证据 |
+| Review | 相应 Draft/Approved 目标、Diff、证据 | 加载 ai-native-review，路由适用审查、反馈处理与交付展示，复用已有证据 |
 | Delivery / Project Showcase | 实际产品、文档、运行/真实 Agent/CI/Git/协作证据 | 依交付映射作 Delivery Review，完善 README，关键资产存在后生成轻量 `presentation/index.html`；逐项核对真实链接与状态，不将现有 Workflow 讲解页当产品交付 |
 
 三个全局 Baseline 分别回答 What / Experience / How，初始 Draft、Human 批准后 Approved；OpenSpec 继续是唯一正式的变更级 Spec/Design/Tasks 来源。只有足够稳定的结论才生成结果文档，不创建空基线或虚假 Approved。重要产品、架构、交互变化按契约中的传播表更新；普通实现调整留当前任务，不要求重批全局基线。
@@ -123,18 +123,13 @@ metadata:
 
 补档是非阻塞的提醒与建议，不增加审批 Gate、定时任务或全局提醒服务；已有授权工作照常继续。Codex 不声称能读取私有外部对话，不编造经过或凭最终产物倒推争论。Human 补交后原样归档、核对事实与路径并更新链接；仅酌情精选或替换 `AI_NOTES.md` 的 3–5 个案例，已有档案入口见 [外部协作记录](../../../docs/ai-collaboration/README.md)。摘要不替代正式决策与批准。
 
-## Review Integration（横向能力）
+## Review Integration（轻量路由）
 
-本 Skill 仍是统一任务入口，负责何时审查、范围和权限；选择审查时，明确读取并应用 [ai-native-review](../ai-native-review/SKILL.md)（或由宿主显式 `$ai-native-review` 加载）。Review Skill 负责方法、深度和证据标准，只返回结果，不反向调用本 Skill；没有自动委托机制时不能只写“已调用”而不加载/应用。
+本 Skill 是统一任务入口，确定任务范围与权限；正式审查、反馈交接或交付展示需要选择时，读取并应用 [ai-native-review](../ai-native-review/SKILL.md)。它负责审查路径、已有审查进度及可视化选择，不反向调用本 Skill。
 
-| 当前活动与触发 | 接入方式 |
-| --- | --- |
-| Explore / Experiment；OpenSpec Proposal / Spec / Design 出现关键方案、语义或高影响假设 | Design Review，用有界反例/替代/最小实验支持方案比较；仅需批准的事项交 Human，普通讨论不强制报告 |
-| Deliver / Fix 的实现或 Apply 后，有需核对的行为风险 | Behavioral Review，深度由 Review Skill 按状态/契约/异步/安全风险选择，不把 Diff 或绿测等同正确 |
-| 当前切片/Change/独立任务准备交付 | Delivery Review，复用仍匹配当前对象与环境的有效证据，只补缺口；不重复全部 Code Review |
-| Direct 或普通低风险维护 | 轻量自查即可；只有请求 Review 或出现实质风险时加载 Review Skill，不强制 Agent、全套层级或逐 Commit 审批 |
+普通低风险维护保留聚焦自查；代码审查复用 Superpowers 或可用 Codex Review，项目契约作为同一次审查输入，不额外追加一轮全量审查。需求/设计仍可作聚焦 Design Review；交付复用有效证据。默认先核实 Findings、修复、重验及必要的定向复核，再在 PR/交付时按人的理解成本决定短摘要、普通图示或 Visual Recap；风险高不自动意味着需要可视化，Diff 小也不自动意味着审查风险低。
 
-独立审阅按风险优先选择全新只读上下文或可用 Codex Review，不把 Implementer 总结当正确性依据；只有真实执行并取得反馈才记为独立 Review。收到 Findings 后先核实：实现缺陷回当前任务修复及相关重验；契约/设计缺口回 Discovery/Decision 并暂停依赖部分；一般未知不自动阻塞。可操作的高影响未决风险需补证或 Human 接受，不能由 Reviewer 自行批准。所有修订复用同一 OpenSpec 产物与 Tasks，不新增并行计划；沿既有 Git/Delivery 授权继续。
+状态与证据留当前对话、同一 OpenSpec Change 或已有 PR，不另建状态机、平行计划或逐轮报告。未决契约冲突与重大残余风险仍交 Human；自查不冒充独立审查，Recap 不替代代码/运行证据或 Human 验收。提交、安装、外部发布及后续业务工作沿原有授权。
 
 ## Knowledge Evolution
 
