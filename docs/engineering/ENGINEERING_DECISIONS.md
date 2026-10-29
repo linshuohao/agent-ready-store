@@ -291,6 +291,8 @@ Human 已通过整体架构，授权收敛 [Technical Design v0.2](TECHNICAL_DES
 
 ### T-05 演进 — 单 Cart Token 与分享式 Handoff（2026-10-29）
 
+**S2当前补充（Human Accepted，2026-10-29）：** Human“批准这些建议”解决下方历史L-01 Pending：未交接Cart创建起24h；有效期内首次分享后，所有同Token入口使用首次分享起完整24h，创建期限不截短已签发期限。取代先前“不设预交接超时”候选，产品依据见 [D-04](../../DECISIONS.md#d-04--交接链接有效期)。接受浏览器单Token创建证明、单密文恢复及每车Cookie的现有方案方向和材料/Cookie均丢失后无法自动恢复的限制；具体加密API、安全及运行验证仍须实施举证。接受S2 Web/HTTP、S4 MCP写工具/交接/指标分期；S3确认绑定及P-04长期数据/结果权限保持未决。以下段落保留原设计轮次状态，不作为L-01当前状态或运行通过证据；此次不授予业务实施或Git操作权限。
+
 - **Status：Accepted（方向）**；来源：Human「Technical Design v0.5 Final Alignment」明确决定。技术设计 v0.5 仍 Draft，不授权实现。
 - **Current Decision：** 每车一份受限 Cart Token，Agent 经工具参数、Human 经 HttpOnly Cookie 使用同一访问能力；Handoff 只分享同一 Cart，不复制车、不改变来源或库存，不是新业务实体/状态。MCP Service Token 仍只做连接认证和可信来源。
 - **Superseded：** v0.2～v0.4 的独立管理/Handoff 双 Token 草案与分别恢复/到期模型被本条替代；其原理由是分离用途，代价是重复状态与生命周期交叉。此前 Final Review 中“独立访问与 Handoff 权限”保留为历史批准范围，本次由 Human 明确替代该访问凭证分离部分；独立购买确认不受替代。

@@ -7,13 +7,15 @@
 - **最终批准记录：** Human，2026-10-29（Asia/Shanghai）；直接依据为本聊天「Design Phase Closure & Git History Consolidation」，明确要求将经过 Review 的 v0.5 标记 Approved 并归档。批准设计基线，不把 Proposed Implementation Details、L-01/P-04 等 Pending 或未验证能力自动转为 Approved/Passed。
 - **授权边界：** 本轮仅归档、文档级核对、分批 Git Commit、按流程 Merge 与必要远程同步；不启动 S1、不创建 OpenSpec Change、不写业务代码、不安装或部署。
 
+- **S2限定补充批准（2026-10-29）：** Human“批准这些建议”接受 [D-04补充](../../DECISIONS.md#d-04--交接链接有效期)及T-05 S2补充：L-01已解决为创建起24h、有效期内首次分享后完整24h；§9.3/9.4的现有恢复/每车Cookie方向及首次材料与Cookie均丢失的体验限制获接受；S2 Web/HTTP与S4 MCP写工具/交接/指标分期获接受。以下历史批准记录中的Pending/Proposed不覆盖该局部补充；具体实现与运行证据、P-04长期数据/结果权限和S3确认会话细化仍待完成。不授权业务实施或Git操作。
+
 | 状态 | 本文适用范围 |
 | --- | --- |
 | Approved Architecture / Design Direction | T-01～T-06 的已确认范围；pnpm Monorepo、Next.js App Router/React/TypeScript、NestJS 内置 Streamable HTTP MCP、Prisma/PostgreSQL、三表、唯一 Pricing、七工具、24h Handoff、Human Hosted Checkout、原子交易与同车唯一订单 |
 | Proposed / Implementation Detail | 下文前端组织、路由路径、TanStack Query、缓存与请求策略、统一访问期限建议、每车 Cookie、受保护凭证恢复方案及附录参数；保留为实施细化候选，不因基线批准视为已批准依赖 |
 | 本次完整交付范围 | 基础 MCP、WebMCP、MCP Apps 与 Hosted Checkout；分 Slice 实施、分别验收，均需纳入本次交付 |
 | Planned Enhancement | Agent 经有效 Human 授权代提交；不进入本次交付 |
-| Pending Product Decision | L-01 未交接/普通 Cart 访问期限、WebMCP 新车可信来源、P-04 过期后的长期结果读取、清理与保留政策 |
+| Pending Product Decision | WebMCP 新车可信来源、P-04 过期后的长期结果读取、清理与保留政策；L-01已由S2限定补充解决 |
 | Pending Runtime Verification | 所有真实商城、事务、UI 与 Host 兼容性；静态设计不证明实现成功 |
 
 ## 1. Goals & Design Principles
@@ -718,15 +720,15 @@ Human 本次明确确认单 Token：Agent 和 Human 共享同一 Cart 的读/编
 
 | 阶段 | 统一规则与状态 |
 | --- | --- |
-| 未首次交接的 Agent Cart | **Proposed / Pending Product Decision L-01：** 不另设预交接访问超时，以有效 Token 可访问至完成或首次交接；这是避免过早管理期限截短24h的最小候选，不是已批准永久访问承诺。可选创建起有限期限，但必须另外确认，且不能截短已成功签发的24h |
-| 首次 create_handoff | 在同车串行化下仅首次写 handoffIssuedAt；固定 expiresAt=issuedAt+24h。此后所有持有者、MCP 参数与浏览器 Cookie 共用此期限；不保留更长管理权限 |
+| 未首次交接的 Agent Cart | **Accepted / L-01 Resolved（S2补充）：** 服务端成功创建起固定24h；当前时间达到截止时刻即失效。原不设预交接超时候选被取代 |
+| 首次 create_handoff | 在同车串行化下确认未完成且创建起24h仍有效，仅首次写 handoffIssuedAt；固定 expiresAt=issuedAt+24h，保证完整24h，不被创建截止时间截短。此后所有持有者、MCP参数与浏览器Cookie共用此期限；不保留更长管理权限 |
 | 已交接且未到期 | 重复打开、编辑、失败、重试均不改变 issuedAt；共享同一有效能力，不能重新签发延长 |
 | 已到期 | 单 Token 在各入口统一拒绝读写/兑换/Review/新购买；Cookie 或秘密恢复不续期，旧 Cart 不能再次生成有效链接。到期后额外结果访问依 P-04，不从幂等推导权限 |
-| Human 直接 Cart，未交接 | **同属 L-01 Pending：** 建议使用同一预交接规则，不静默规定创建起24h；若未来允许分享，首次分享才启动统一24h。完成后只读原结果，不能编辑/再生成交接 |
+| Human 直接 Cart，未交接 | **Accepted / L-01 Resolved：** 同样创建起固定24h；若有效期内首次分享，改用首次分享起完整24h。完成后仅在有效权限内只读原结果，不能编辑/再分享 |
 
 Token 不内嵌会与首次交接冲突的第二套到期声明；Nest 从 Cart 的首次交接事实读取当前边界。交接前签发的 Cookie 即使浏览器未过期，服务端也按首次交接后的期限拒绝。客户端计时只为提示，实际时间/事务等待后重验由 Nest 裁决。数据保留另议，不因能力失效删除 Cart/Order。
 
-L-01 影响未交接匿名能力泄露窗口，需要 Human 接受或选择有界期限；阻塞相关 S2 生命周期定稿，不阻塞只读 S1。首次交接必须与提交/完成串行化，已完成不能首次分享；不把首次分享动作解释为续期。
+L-01已由S2限定补充批准解决，不再阻塞期限选择；实现仍须验证边界。首次交接必须与提交/完成串行化，等待锁后用服务端当前时间重验创建期准入，已完成或到期不能首次分享。有效期内第一次分享触发已批准的期限切换，重复分享不续期。数据保留和过期结果访问仍归P-04。
 
 ### 9.3 单凭证恢复：选择一个实现候选
 
@@ -740,7 +742,7 @@ L-01 影响未交接匿名能力泄露窗口，需要 Human 接受或选择有�
 
 浏览器只在此次请求/确认期间暂存 Token，不写磁盘、URL query、RSC 或 Query 缓存；成功后清内存，后续用 HttpOnly Cookie。请求断连且页面仍在时复用同 Token/同 requestId 重试，API 重启不影响服务端密文恢复。代价是 Token 在创建瞬间短暂可被页面脚本读取；Handoff 本身也要求 Client 处理 fragment，仍须同源/注入防护，不能声称 HttpOnly 能保护这个瞬间。Token 生成/格式、去重绑定与日志脱敏需 S2 验证，此为待 Review 的简化，不是新增 Accepted 安全承诺。
 
-若浏览器在首次响应/Cookie 确认前刷新、关闭或丢失内存，且 Cookie 未送达，就不能仅凭公共 ID 恢复该车；显示无法确认创建结果，不自动重复建车或无证明补发 Token。跨重启的“同请求材料重试”可恢复，不承诺跨浏览器材料丢失的自动恢复。该体验限制在 S2 Review 明确接受或调整，P-04 长期恢复仍 Pending，不为它预建身份/凭证管理系统。若 Cookie 已送达则查询原车。
+若浏览器在首次响应/Cookie 确认前刷新、关闭或丢失内存，且 Cookie 未送达，就不能仅凭公共 ID 恢复该车；显示无法确认创建结果，不自动重复建车或无证明补发 Token。跨重启的有效“同请求材料重试”可恢复，不承诺跨浏览器材料丢失的自动恢复。Human已在S2限定补充中接受该体验限制；P-04长期恢复仍Pending，不为它预建身份/凭证管理系统。若Cookie已送达且权限有效则查询原车。
 
 create_handoff 已携有效 Cart Token，首次记录 handoffIssuedAt 后用同 Token 构造链接；重试原时间/同链接，不需第二种恢复秘密。过期、错 Token/错 MCP principal 或密文校验失败均拒绝；密钥丢失时技术失败，不补发新 Token/Cart 或延长期限。密钥稳定配置与必要运维步骤由实施切片验证，不在此设计轮换服务。
 

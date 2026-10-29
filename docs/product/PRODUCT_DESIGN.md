@@ -157,6 +157,8 @@ flowchart TD
 
 ## 8. 限制、未决与下一步
 
+**S2限定补充批准（2026-10-29）：** Human“批准这些建议”接受[D-04补充](../../DECISIONS.md#d-04--交接链接有效期)。未交接Cart创建起24h，到期界面停止编辑/恢复并提示重新发起；有效期内首次分享后保证完整24h，访问/失败/重试均不续期。接受首次响应前内存创建材料与Cookie均丢失时“无法确认创建结果”的限制，不凭ID补权限、不自动重建。此局部体验补充不代表运行验收通过；长期保留/过期结果访问等P-04内容仍Pending，以下原设计阶段记录保持历史边界。
+
 当前产品授权以 [D-01 补充](../../DECISIONS.md#d01-authorization-20261029)为准；本轮 Human「Baseline Finalization」（记录日期 2026-10-29，Asia/Shanghai）确认 Review 建议，Requirements v0.2 已批准已确认范围，工程 C-01 产品语义冲突关闭并保留为 Planned Enhancement，C-02 已 Resolved / Accepted 为七工具。本文承接相同演进，具体增强授权交互与技术机制尚未设计/验证；现有五页与三稿继续有效。
 
 本次只修订文档，不开始或修改 Technical Design、OpenSpec、业务代码，不 Commit 或 Push。此前阶段“未开始技术讨论”等描述只作历史记录；当前已存在 T-01～T-06 和 Technical Design Draft，不表示其细则或实现已获批准。
