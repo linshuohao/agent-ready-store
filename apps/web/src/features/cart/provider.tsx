@@ -8,6 +8,8 @@ import {
   useCallback,
 } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { CartFeedback } from './feedback';
 import { cartIdInput, type CartItem } from '@store/contracts';
 import { Button } from '@/components/ui/button';
 import {
@@ -49,7 +51,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const [busy, setBusy] = useState(false);
   const [pendingEdit, setPendingEdit] = useState<EditIntent | null>(null);
   const [creationUnknown, setCreationUnknown] = useState(false);
-  const [message, setMessage] = useState('');
+  const pathname = usePathname();
+  const [feedback, setFeedback] = useState<{
+    text: string;
+    path: string;
+  } | null>(null);
+  const message = feedback?.text ?? '';
+  const setMessage = (text: string) =>
+    setFeedback(text ? { text, path: pathname } : null);
+  // Navigation ends this page's feedback; mutation recovery state stays in the provider.
+  if (feedback && feedback.path !== pathname) setFeedback(null);
   const [cartId, setCartId] = useState<string | null>(null);
   const [canRestart, setCanRestart] = useState(false);
   const select = useCallback((id: string | null) => {
@@ -227,8 +238,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           購物車
         </Link>
       </nav>
-      {(message || pendingEdit) && (
-        <aside className="cart-feedback" aria-label="購物車操作狀態">
+      {((message && !pathname.startsWith('/cart')) ||
+        creationUnknown ||
+        pendingEdit) && (
+        <CartFeedback
+          success={
+            message === '已加入購物車' && !creationUnknown && !pendingEdit
+          }
+          onDismiss={() => setFeedback(null)}
+        >
           {message && <p role="status">{message}</p>}
           {cartId && (
             <Link href={`/cart/${cartId}`} prefetch={false}>
@@ -259,7 +277,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
               重新發起購物
             </Button>
           )}
-        </aside>
+        </CartFeedback>
       )}
       {children}
     </CartContext.Provider>

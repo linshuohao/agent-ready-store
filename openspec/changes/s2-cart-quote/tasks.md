@@ -64,3 +64,9 @@
 - 实际检查桌面与390px移动截图、键盘焦点/输入关联/反馈及200%字体缩放；截图仅为本地检查产物。**没有真实VoiceOver或其他读屏实测，也未新增真实Codex Host操作证据**；MCP transport/输入/输出边界已重验，真实Host连接能力复用S1仍适用证据，不能当新Host验收。
 - 交付入口：本轮隔离Web `http://127.0.0.1:3005`、API `http://127.0.0.1:3004`，均连接专用store_test；原3000/3002演示容器和演示库存未重建/迁移。README给出正常本地环境的新增Cart迁移/稳定密钥要求。测试库为临时数据，后续测试可能重置，不能当正式订单/永久购物车存储。
 - 下一步建议：Human在上述预览验收加购、金额明细、改量/移除、刷新和异常提示；取得验收及归档授权后再同步/归档。本轮不启动S3、MCP写工具或任何公开部署。
+
+### Human验收反馈修复：加购提示（2026-10-29）
+
+- Human指出顶部成功提示在滚动后不可见，且进入Cart仍残留；按既有轻量反馈契约作局部修复。成功通知固定在视窗底部，220ms淡入上移动画，5秒后关闭，可手动关闭；悬停/键盘焦点暂停计时，支持prefers-reduced-motion。路由变化清除旧页面通知，返回亦不复现；结果未明的原请求恢复状态独立保留，不自动丢弃。
+- 参考：[Baymard加购确认案例](https://baymard.com/ecommerce-design-examples/added-to-cart-confirmation)、[Shopify Dawn通知源码](https://github.com/Shopify/dawn/blob/main/assets/cart-notification.js)。采用动画通知与明确关闭入口，具体位置/时长是本项目实现选择。
+- 验证：Docker Next生产构建、Web lint/typecheck通过；完整桌面/移动E2E 32 passed，追加减少动态效果/焦点暂停/手动关闭定向测试2 passed。实际检查1280px/390px截图，滚动到底仍可见，无横向溢出；自查非独立Review。首次宿主Chrome启动受sandbox限制，提升执行权限后取得上述浏览器证据。本次仅影响提示展示，复用此前后端权限、报价及并发验证，不重跑数据库测试。
