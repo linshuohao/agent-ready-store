@@ -30,7 +30,7 @@
 - [x] 4.1 将S3真实DB/API测试接入现有CI：补足显式API用例入口与专用测试配置，DB破坏性套件串行且与运行API场景隔离；验证未配置时skip不计通过，记录实际本地及GitHub Actions运行结果/限制，不自动Push触发远程。
 - [x] 4.2 按受影响范围运行contracts/Cart/Pricing/Catalog/HTTP/MCP回归及typecheck、lint、build、format检查；复用未改变环境的有效证据，新失败先定位修复重验，README启动/迁移/恢复命令与实际行为一致。
 - [x] 4.3 依ai-native-review路由对金额、事务、权限与Unknown竞态做一次独立只读代码审查；核实修复后定向重验/复核，记录准确范围及结果；如无法取得独立上下文，明确标记自查并保留独立审查待办。
-- [ ] 4.4 汇总真实运行证据、未解决限制、分支/提交/未提交范围及Human验收入口，完成适用Delivery Checkpoint/Guard；Human验收失败则定向修复再交付，不能自动开始S4或宣称完整Agent购买交付。
+- [x] 4.4 汇总真实运行证据、未解决限制、分支/提交/未提交范围及Human验收入口，完成适用Delivery Checkpoint/Guard；Human验收失败则定向修复再交付，不能自动开始S4或宣称完整Agent购买交付。
 
 ## Planning evidence
 
@@ -58,5 +58,9 @@
 - `TEST_DATABASE_URL=.../store_test pnpm test --no-file-parallelism`：57 passed，HTTP/MCP的7项在该阶段按配置skip；另阶段真实HTTP/MCP 8 passed（含后加的首次会话并发场景），不把skip当通过。未配置环境的本机套件33 passed，其余明确skip。
 - 浏览器桌面/移动共60项覆盖：最终全套56 passed，另4项旧夹具在开发Strict Mode重复GET时失败；修正初始拒绝应持续至创建开始的夹具后，4项定向重验全通过。前一轮旧CartView缺orderId和结算消耗低库存样品的问题已修正；S3购买使用P003隔离低库存S2编辑样品，没有放宽业务验证。复用其余56项有效证据，不伪造“最后单次命令60通过”。
 - S3真实DB12项覆盖多车争购/同车唯一、版本与完整语义变化、会话错误、受阻Review栅栏、订单写入故障回滚、多商品失败、Cart/Inventory锁等待到期、原提交在途时无订单查询及恢复串行化、准入后跨截止及原单快照重启读取。升级测试另验证既有行保留。
-- S3 Web 8项桌面/移动覆盖明确键盘购买、成交快照刷新、后续查询失效仍展示已收到成功、丢响应后刷新并显式恢复、改车后差异展示/新点击；结果页截图已实看桌面布局。真实读屏/真机/其他浏览器、远程CI仍未验证。
+- S3 Web 8项桌面/移动覆盖明确键盘购买、成交快照刷新、后续查询失效仍展示已收到成功、丢响应后刷新并显式恢复、改车后差异展示/新点击；结果页截图已实看桌面与移动布局。真实读屏/真机/其他浏览器、远程CI仍未验证。
 - 独立Reviewer对两项P2定向复核确认代码层关闭；最终真实HTTP与E2E包含对应失败→修复→通过的回归。Human产品验收及归档待进行，不提前同步正式Specs或开启S4。
+
+### Delivery checkpoint
+
+实施提交`3d8eed8`，Implementation Guard逐文件通过；规划提交`bd03b84`。测试临时API容器已停止/移除，避免与正常API网络别名冲突。正常本地store已执行向前迁移（保留Inventory，不seed/删卷），提供Web/API验收环境；仅对正常库做只读冒烟，不替Human执行购买。实施与规划均留在同一短期分支，不Push/Merge/归档。最终Delivery Guard与工作区状态在本轮交付对话报告。
