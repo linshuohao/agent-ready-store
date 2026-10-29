@@ -24,7 +24,7 @@
 | --- | --- |
 | 产品结果：`docs/product/` | [Requirements](docs/product/REQUIREMENTS.md) 定义业务行为；[Product Design](docs/product/PRODUCT_DESIGN.md) 定义体验、视觉与验收，[UX 决策与演进](docs/product/PRODUCT_DESIGN.md#ux-decisions)已并入正文 |
 | 工程方案：`docs/engineering/` | [工程与技术决策](docs/engineering/ENGINEERING_DECISIONS.md)保存理由和批准范围；[Technical Design](docs/engineering/TECHNICAL_DESIGN.md)是已批准的全局 How 基线；[Tooling](docs/engineering/TOOLING.md)保存工具入口与关键验证事实 |
-| 工作流标准：`docs/workflow/` | [产品、设计与交付契约](docs/workflow/PRODUCT_ENGINEERING.md)维护产物职责、验收及变更传播；实际任务路由归 Workflow Skill |
+| 工作流标准：`docs/workflow/` | [工作流使用指南](docs/workflow/WORKFLOW_GUIDE.md)介绍从需求到归档的实际操作；[Git Checkpoint Policy](docs/workflow/GIT_CHECKPOINT_POLICY.md)定义阶段提交与转换 Gate；[产品、设计与交付契约](docs/workflow/PRODUCT_ENGINEERING.md)维护产物职责、验收及变更传播；唯一任务入口是 [Workflow Skill](.agents/skills/ai-native-workflow/SKILL.md) |
 | 历史证据：`docs/ai-collaboration/` | [外部协作原件及来源核对](docs/ai-collaboration/README.md)；精选结果见 [AI_NOTES](AI_NOTES.md) |
 | 设计资产：`design/` | [统一预览](design/index.html)、[打开方式与来源](design/README.md)，包含五页线框、三个视觉稿和截图 |
 | 正式增量：`openspec/` | [OpenSpec 配置](openspec/config.yaml)，唯一变更级 Spec / Design / Tasks 来源；当前无业务 Change / Spec |

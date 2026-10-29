@@ -33,3 +33,5 @@ c0c09b271f528fab8925eab041982c056dd94f3e38183976102139050c020889  references/pro
 ```
 
 后续只有首次有效使用、行为性版本变更、重要失败/纠偏才补简短记录；普通验证放当前任务/PR，重大决策归 ENGINEERING_DECISIONS，关键人工协作归 AI_NOTES。
+
+2026-10-29：Codex CLI `0.165.0-alpha.1.2` 帮助可见 Hook trust 相关选项；仓库原先无 `.codex` Hook 配置。官方 Hooks 文档说明支持生命周期 Hook，但本轮未验证本机/仓库级 Hook 的实际信任加载、触发与阻断。新增的确定性 Git Checkpoint Guard 由 Workflow 在阶段转换时显式调用；Hook 不作为强制门禁。
