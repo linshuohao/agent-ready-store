@@ -17,16 +17,19 @@
     "db:seed": "node --env-file-if-exists=../../.env dist/infrastructure/database/seed.js"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.2",
     "@nestjs/common": "12.3.2",
     "@nestjs/core": "12.3.2",
     "@nestjs/platform-express": "12.3.2",
+    "@prisma/adapter-pg": "7.10.1",
+    "@prisma/client": "7.10.1",
+    "@store/contracts": "workspace:*",
+    "decimal.js": "10.6.0",
+    "express": "5.3.0",
+    "lossless-json": "4.3.3",
+    "pg": "^8.0.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "@store/contracts": "workspace:*",
-    "@prisma/client": "7.10.1",
-    "@prisma/adapter-pg": "7.10.1",
-    "pg": "^8.0.0",
-    "@modelcontextprotocol/sdk": "1.32.2",
     "zod": "^4.0.0"
   },
   "devDependencies": {
@@ -34,9 +37,9 @@
     "@nestjs/schematics": "^12.0.0",
     "@nestjs/testing": "12.3.2",
     "@types/express": "^5.0.0",
+    "@types/node": "^24.0.0",
     "@types/pg": "^8.0.0",
     "prisma": "7.10.1",
-    "typescript": "6.0.2",
-    "@types/node": "^24.0.0"
+    "typescript": "6.0.2"
   }
 }

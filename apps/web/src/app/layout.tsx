@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
 import './globals.css';
+import { CartProvider } from '@/features/cart/provider';
 
 export const metadata: Metadata = {
   title: 'Agent-Ready Store',
@@ -21,7 +22,7 @@ export default function RootLayout({
           <Link href="/">AGENT / STORE</Link>
           <span>為人與 AI 助理設計</span>
         </header>
-        {children}
+        <CartProvider>{children}</CartProvider>
         <footer>商品資訊為目前快照，實際庫存可能變動。</footer>
       </body>
     </html>

@@ -2,9 +2,11 @@
 
 面向人类与 AI Agent 的商店作业。目标与交付约束见只读的 [作业原件](references/home-quiz.md) 和 [商品原件](references/products.json)；PM 需求仍是草稿。
 
-本轮产品与技术设计阶段已由 Human 批准结束（2026-10-29，Asia/Shanghai）：Requirements v0.2、Product Design v0.2 与 [Technical Design v0.5](docs/engineering/TECHNICAL_DESIGN.md) 均为 Approved Baseline；产品/技术决策及演进保留。已批准五页结构、三份视觉方向和前端主导的 Next.js/NestJS/Agent 架构；Proposed Implementation Details、L-01/P-04、WebMCP 来源及运行验收缺口继续保留。基础 MCP、WebMCP、MCP Apps 均属本次完整交付目标，S1 商品发现已实现并记录 Human 验收，完整交易与其他 Agent 接入尚未实施。
+本轮产品与技术设计阶段已由 Human 批准结束（2026-10-29，Asia/Shanghai）：Requirements v0.2、Product Design v0.2 与 [Technical Design v0.5](docs/engineering/TECHNICAL_DESIGN.md) 均为 Approved Baseline；产品/技术决策及演进保留。已批准五页结构、三份视觉方向和前端主导的 Next.js/NestJS/Agent 架构；其余 Proposed Implementation Details、P-04、WebMCP 来源及运行验收缺口继续保留；L-01 已由 S2 限定补充批准解决，见下方当前规划。基础 MCP、WebMCP、MCP Apps 均属本次完整交付目标，S1 商品发现已实现并记录 Human 验收，完整交易与其他 Agent 接入尚未实施。
 
 阶段关闭记录见 [Technical Design §10.4](docs/engineering/TECHNICAL_DESIGN.md#104-设计阶段关闭与交接--2026-10-29)。Human 已批准 [S1 规划](openspec/changes/archive/2026-10-29-s1-product-discovery/proposal.md) 并授权实施；S1 已完成本轮 Review 并归档，运行证据与保留限制见 [归档 Tasks](openspec/changes/archive/2026-10-29-s1-product-discovery/tasks.md)；后续切片等待对应授权。精益执行原则见 [AGENTS](AGENTS.md#默认执行原则)。
+
+S2当前状态见 [Cart与报价Change](openspec/changes/s2-cart-quote/proposal.md)及[Tasks](openspec/changes/s2-cart-quote/tasks.md)。Web/HTTP购物车与报价已实现，完成自动验证、独立Review及定向修复复核，Human于2026-10-29明确验收通过；Spec同步及归档待对应授权。未交接创建起24h、现有恢复限制及S2 Web/HTTP—S4 MCP写工具分期的正式来源见[D-04补充](DECISIONS.md#d-04--交接链接有效期)。S3订单与S4交接均尚未实现，不能将当前Cart报价视为完成购买。
 
 ## S1 本地开发
 
@@ -12,7 +14,8 @@
 
 ```sh
 cp .env.example .env
-# 编辑 .env，设置独立本地 POSTGRES_PASSWORD 与随机 MCP_SERVICE_TOKEN
+# 编辑 .env，设置独立本地 POSTGRES_PASSWORD、随机 MCP_SERVICE_TOKEN，
+# 以及稳定的 CART_ENCRYPTION_KEY（32字节随机值的64位十六进制，不随重启重建）
 pnpm install --frozen-lockfile
 pnpm --filter @store/contracts build
 docker compose build api
@@ -30,6 +33,18 @@ Web 默认 http://localhost:3000，API 为 http://localhost:3002/api/v1；API_PU
 `pnpm dev:deps` 使用开发服务共用的依赖卷执行 frozen-lockfile 安装，首次运行及依赖变化后均可显式同步；重建镜像或宿主安装不会更新已有依赖卷。`pnpm dev` 先顺序完成该同步，再运行三服务开发配置，API 侧同时 watch contracts/TypeScript 和 Node 依赖；Web 使用 Next dev。先构建生产镜像 `docker compose -f compose.yaml -f compose.production.yaml build`，再 `pnpm start` 使用编译产物运行；构建不连接数据库、不迁移或 seed。停止使用 `docker compose down`，保留库存卷；不运行带 `-v` 的清理命令。
 
 基础检查：`pnpm typecheck`、`pnpm lint`、`pnpm format:check`、`pnpm build`。`pnpm format` 只处理工程文件，保留原件/设计/历史文档。`pnpm test` 运行 Catalog 契约；真实 DB/API 套件分别需 TEST_DATABASE_URL/API_BASE_URL，无配置时明确 skipped，不代表集成通过。Playwright 用例随页面建立，入口 `pnpm test:e2e`。
+
+## S2 购物车与报价
+
+商品列表/详情支持加购，导航进入独立 `/cart/{cartId}` 页面，可修改数量、移除并保存整车。报价由API唯一实现：满1000减100、可信Agent来源在满减后95折，优惠前小计满990免运；当前普通Web创建固定HUMAN，不提供AI来源开关。建车不预留库存，数量/商品异常会提示调整，空车不计算运费。当前不提供结账或订单提交。
+
+`POST /api/v1/carts`、`GET /api/v1/carts/:id`、`PUT /api/v1/carts/:id/items`提供创建/读取/整车替换。写请求必须为JSON且Origin精确匹配`WEB_ORIGIN`；本地打开Web时也须使用该配置中的同一origin。车ID只定位，访问通过每车HttpOnly Cookie；来源、价格不能由请求伪造。输入/DTO细则见Change与`packages/contracts`。
+
+未交接Cart创建起固定24小时，到期不续期。服务端重验权限和版本；保存冲突展示完整可编辑草稿与最新已保存内容，可明确以草稿保存或放弃草稿载入最新。结果未明时显式重试原版本/原完整条目，避免覆盖其他编辑。创建响应丢失时复用原材料恢复；刷新丢失内存材料后，标签页仅保留非敏感待确认标记，提示结果无法确认，须明确重新发起才允许新建。内存材料与Cookie均丢失时无法自动恢复，不凭ID补发；重新发起可能留下无法访问的旧车。首次分享后完整24小时由S4实现，当前没有分享工具。
+
+现有数据库升级仅新增Cart表，执行`docker compose run --rm api pnpm db:migrate`，保留Inventory，不重新seed或删卷。`CART_ENCRYPTION_KEY`仅存本机安全环境，备份并跨重启保留；丢失或替换会使既有Cart凭证无法恢复。`.env.example`只含空占位。`CART_COOKIE_SECURE=false`只允许显式的本机HTTP例外，HTTPS使用true。加密实现与精确计价依赖均已锁定，运行证据以Tasks为准。
+
+Cart DB测试必须指向专用`store_test`并与Inventory DB测试串行，不能指向演示库。复用上方DB命令，测试文件改为`apps/api/test/cart/cart.test.ts`，加`--no-file-parallelism`。HTTP测试使用`S2_API_BASE_URL=http://localhost:3002/api/v1`且`WEB_ORIGIN`须与服务一致；`pnpm test:e2e`包含桌面/移动购物车旅程。无DB/API变量时对应套件会明确跳过，不能算集成通过。
 
 ## 日常协作
 

@@ -8,6 +8,8 @@ import {
   illustration,
 } from '@/features/product-discovery/components/product-card';
 import { Reviews } from '@/features/product-discovery/components/reviews';
+import { AddButton } from '@/features/cart/add-button';
+import { formatMoney } from '@/lib/money';
 export const dynamic = 'force-dynamic';
 export default async function Product({
   params,
@@ -51,13 +53,12 @@ export default async function Product({
             {p.brand} · {p.id}
           </p>
           <h1>{p.name}</h1>
-          <p className="price">
-            NT${' '}
-            {Number(p.price).toLocaleString('zh-TW', {
-              minimumFractionDigits: 2,
-            })}
-          </p>
+          <p className="price">{formatMoney(p.price)}</p>
           <Availability product={p} />
+          <AddButton
+            productId={p.id}
+            canPurchase={p.availability.canPurchase}
+          />
           <p>{p.description}</p>
           <p className="hint">此為當次查詢狀態，瀏覽不保留庫存。</p>
           <a href="#reviews-heading">閱讀 {p.reviewOverview.count} 則評論</a>
