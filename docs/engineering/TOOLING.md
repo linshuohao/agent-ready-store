@@ -42,7 +42,7 @@ c0c09b271f528fab8925eab041982c056dd94f3e38183976102139050c020889  references/pro
 
 ## 订单生命周期受控切换入口
 
-[`scripts/checkout-cutover.mjs`](../../scripts/checkout-cutover.mjs) 仅供当前 Change 8.1 的隔离演练准备；不是启动、取消/超时恢复或日常 seed 命令。实际环境切换须另行确定目标、备份/恢复方案并取得该环境的执行授权；脚本当前只允许 loopback `store_test`，不能通过参数解锁业务库。
+[`scripts/checkout-cutover.mjs`](../../scripts/checkout-cutover.mjs) 不是启动、取消/超时恢复或日常 seed 命令。默认只允许 loopback `store_test`。2026-10-31 Human已单独授权并完成本机实际切换，显式`--authorized-local-store`仅放行`127.0.0.1:5432/store`，仍须`--database store`及执行确认`--confirm-target store --writers-stopped-and-drained`。该入口不代表其他环境获批；新结构永不重清。停写须检查本项目端口、watcher和数据库连接，不能只检查零DB会话。
 
 先完成 API 构建以复用既有 Catalog 的受控库存种子。通过安全环境方式单独提供 `CUTOVER_DATABASE_URL`（不自动加载 `.env`，也不读取默认 `DATABASE_URL`），明确指定数据库：
 

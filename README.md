@@ -2,6 +2,8 @@
 
 **接入术语说明：** MCP 与 WebMCP 是两类 Agent 接入；MCP Apps 是 MCP 的 UI 增强，不兼容时降级为无 Apps UI 的 MCP。协议、连接和构建关系见 [Technical Design §1.1](docs/engineering/TECHNICAL_DESIGN.md#11-系统全景与请求路径)。本次统一术语不改变历史批准、业务行为与尚未完成的验证事实。
 
+本机`store`已于2026-10-31按Human明确授权完成清理和新流程迁移，新实施版本运行于`http://localhost:3000`。当前分支尚未合并，请勿用main旧服务写入新库。清理脚本默认测试库限制以外的本机显式准入及执行记录见[TOOLING](docs/engineering/TOOLING.md)和当前Tasks。
+
 面向人类与 AI Agent 的商店：普通 Web、基础 MCP、WebMCP 和 MCP Apps 共用商品、持久购物车与独立订单能力。
 
 当前增量为 [checkout-lifecycle-redesign](openspec/changes/checkout-lifecycle-redesign/proposal.md)。实现、验证、审批及剩余任务以 [Tasks](openspec/changes/checkout-lifecycle-redesign/tasks.md) 为准，交付差距见 [DELIVERY_STATUS](docs/engineering/DELIVERY_STATUS.md)。旧 Review / Token / 原生批准购买流程已退出，新工具需要重新发现；历史成果保留在 [OpenSpec 归档](openspec/changes/archive/)，不作为当前使用说明。
