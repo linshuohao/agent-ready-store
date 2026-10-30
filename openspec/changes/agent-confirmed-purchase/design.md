@@ -2,6 +2,8 @@
 
 状态：Human Approved Planning / 已授权提交并按当前规划验证、实施（2026-10-30）。Human本轮明确“提交代码，并根据当前的规划实施”，随后明确接受Design §4.3的可信Host/浏览器UI隔离边界及§6的短期可转交只读订单权限。此授权替代此前仅修订Spec/暂不实施的执行限制；不代表真实Host证据、购买验收或全部任务已完成，不包含Push/Merge、配置切换或发布。基础MCP真实Host确认及各入口实施前验证条件仍适用。
 
+**分入口实施授权（2026-10-30）：** Human明确“授权这个实施顺序”：先实施Apps/WebMCP及共享交易核心，基础MCP保留真实Host阻塞，未验证路径拒绝购买；不以此缩减三入口最终交付，不修改MCP配置或自动Push/Merge。该授权替代此前分入口需另行批准的待决状态。UI材料真实Host模型隔离、组件接收与Bridge回传已有本Change Tasks证据；正式权限负例、事务及并发随实现验证。
+
 ## Context
 
 依据[最新D-01](../../../DECISIONS.md#d01-direct-payment-20261030)及Proposal。既有CartService.review/submit已提供浏览器绑定确认、checkoutEpoch、报价重验与订单/库存事务；复用其能力，不复制业务核心。Apps卡片展示/直接切页/Bridge只读调用和准备消息接续已有部分Host证据；真实购买尚无实现。基础MCP form能力声明与后续工具会话关联尚未接通，相关实验保留于§4.1/§4.2。
