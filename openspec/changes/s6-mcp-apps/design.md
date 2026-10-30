@@ -1,5 +1,8 @@
 # Design
 
+**2026-10-30当前需求增量：** [D-01最新决定](../../../DECISIONS.md#d01-direct-payment-20261030)规定Apps/WebMCP由Human支付点击后的受保护UI直接下单并原地展示结果，不依赖Agent接续；基础MCP保留原生确认后Agent提交及Host限制。具体增量统一由[agent-confirmed-purchase](../agent-confirmed-purchase/proposal.md)承接，本轮只修订Spec、不实施代码。下文历史切片批准/实施及外链失败证据保留，不据此抵扣新购买验收。
+
+
 状态：Approved Planning / S6 实施已授权（2026-10-30）。Human 在最终独立复审无新增 Finding 后要求提交当前规划后开始实施；批准范围与 Git 边界见 [Proposal](proposal.md)。
 
 ## Context

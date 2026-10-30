@@ -1,5 +1,13 @@
 # Agent-Ready Store — Product Design
 
+**2026-10-30最新Human确认：** [D-01直接支付决定](../../DECISIONS.md#d01-direct-payment-20261030)将MCP Apps/WebMCP改为Human支付点击后经受保护UI直接下单并原地显示结果，不依赖Agent接续；基础MCP保留Host原生确认后Agent提交及当前兼容限制。下方较早的三入口统一Agent提交描述保留当时范围；最新机制见当前Change，本轮只修订Spec、不实施代码。
+
+
+**2026-10-30 Human三入口与便利购物澄清：** [D-01当前边界](../../DECISIONS.md#d01-agent-convenience-20261030)保持MCP会话内、WebMCP全步骤工具及Apps内完成购买；Apps允许直接跳页和Agent跨步准备，不强制每页提示/点击，三入口均以减少操作为目标。最终须Human在结算界面亲自点击“支付/确认购买”，Agent不得代点；沿现有模拟结账，成功后才可提供外部订单详情链接。此补充替代增量规划中每步提示唤起/禁止直接跳页的限制；历史基线批准/验收保留，具体确认/权限及Host接续见[当前Change](../../openspec/changes/agent-confirmed-purchase/design.md)，尚未获技术方案或实施批准。
+
+**2026-10-30 Human 需求变更（当前方向）:** [D-01 两步 Agent 购买确认](../../DECISIONS.md#d01-agent-two-step-20261030) 已将基础MCP/WebMCP/MCP Apps两步确认后的Agent代提交纳入当前需求，替代旧的C-01 Planned Enhancement范围判断。人先请求准备，审阅最终摘要后再明确确认，Agent才可执行已授权提交；普通Web人工路径与交易不变量保持。本文既有“七工具无提交/仅浏览器人工提交/代提交后置”描述保留为已批准旧设计及现有实现的范围，不作为新需求排除依据；新确认入口、可验证授权、提交通道和异常恢复须另行完成统一设计与OpenSpec规划，尚未获技术设计或实施批准。历史批准与验收不追溯改写。
+
+
 
 **2026-10-30 Human 逐项操作修订：** [D-24](../../DECISIONS.md#d-24--电商逐项操作与购物快照新鲜度) 与 [S5 Design §4](../../openspec/changes/s5-webmcp/design.md) 已获批准，限定替代 Web 整车保存和干净页面仅手动刷新细节：Web/WebMCP 逐项操作、同车短暂互斥、进入/返回校准；旧 HTTP/基础 MCP 兼容，目标行严格校验、旧问题行可逐条修复且未修完不可结算。D-23 的版本权威、禁止重放及交易边界继续有效；实施状态以 Tasks §6 为准。
 **2026-10-30 Human 限定修订：** [D-23](../../DECISIONS.md#d-23--服务端权威与购物车客户端简化) 批准 Web/WebMCP 购物车以服务端为准；编辑冲突或响应未知提示显式重新加载，刷新会放弃全部未保存修改，不逐项比较、合并、重放编辑或长期全局锁定。创建幂等、购买确认/未知结果恢复和服务端交易保障保持。此补充取代下文历史客户端冲突比较/编辑恢复细节，实施与验收见 [S5 Change](../../openspec/changes/s5-webmcp/design.md)。

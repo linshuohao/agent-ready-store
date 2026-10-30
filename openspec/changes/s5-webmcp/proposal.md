@@ -1,5 +1,12 @@
 # Proposal
 
+**规划Review修订 — 2026-10-30：** 尚未进入正式specs的webmcp-shopping/mcp-app-shopping已由[当前购买Change](../agent-confirmed-purchase/proposal.md)承接完整目标规格；旧Spec保留历史批准/实施依据，不能再次同步覆盖新购买契约。[同步与收尾顺序](../agent-confirmed-purchase/design.md#规格同步与旧change收尾)规定S5 shopping-cart单独保留、重叠能力只由新Change同步，旧未通过验收不改记成功，归档仍需Human验收/处置与授权。
+
+**2026-10-30当前需求补充：** 三入口便利购物、Apps允许直接导航/Agent跨步准备及Human最终点击支付的边界以[D-01](../../../DECISIONS.md#d01-agent-convenience-20261030)及[agent-confirmed-purchase](../agent-confirmed-purchase/proposal.md)为准；本Change旧查询/编辑/外链实现和验收记录保留，不代表新增便利购物/最终Human支付要求已完成。新增批准通道与资源接续尚待设计/实施批准。
+
+**2026-10-30当前需求增量：** [D-01最新决定](../../../DECISIONS.md#d01-direct-payment-20261030)规定Apps/WebMCP由Human支付点击后的受保护UI直接下单并原地展示结果，不依赖Agent接续；基础MCP保留原生确认后Agent提交及Host限制。具体增量统一由[agent-confirmed-purchase](../agent-confirmed-purchase/proposal.md)承接，本轮只修订Spec、不实施代码。下文历史切片批准/实施及外链失败证据保留，不据此抵扣新购买验收。
+
+
 **本次修订状态：Approved Planning — 电商逐项操作与按场景刷新（2026-10-30）。** 聚焦独立规格审查无重要 Finding 后，Human 明确“批准当前修订版，提交之后开始实施”，批准本次 Proposal、Design、两份 Spec 和 Tasks §6 并授权提交规划后实施；不包含 Push、Merge、发布或最终验收。原 S5 批准历史继续保留，§6 新行为以本次修订为准。
 
 ## Why
