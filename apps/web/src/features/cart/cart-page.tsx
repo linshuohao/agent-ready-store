@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MoneyBreakdown } from './money-breakdown';
 import { formatMoney } from '@/lib/money';
-import { CartOrders } from './cart-orders';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useCartPage } from './use-cart-page';
 export function CartPage({ id }: { id?: string }) {
   const page = useCartPage(id);
@@ -82,17 +82,17 @@ export function CartPage({ id }: { id?: string }) {
             <section className="purchase-products" aria-label="編輯購物車">
               <h2>商品明細</h2>
               {!!view.items.length && (
-                <label>
-                  <input
-                    type="checkbox"
+                <label className="cart-selection cart-select-all">
+                  <Checkbox
+                    indeterminate={
+                      selected.length > 0 && selected.length < view.items.length
+                    }
                     aria-label="全選商品"
                     checked={selected.length === view.items.length}
                     disabled={busy || dirty || reload || conflict}
-                    onChange={(e) =>
+                    onCheckedChange={(checked) =>
                       setSelected(
-                        e.target.checked
-                          ? view.items.map((i) => i.productId)
-                          : [],
+                        checked ? view.items.map((i) => i.productId) : [],
                       )
                     }
                   />{' '}
@@ -105,22 +105,23 @@ export function CartPage({ id }: { id?: string }) {
                   className="purchase-product cart-line"
                 >
                   <h3>
-                    <label>
-                      <input
-                        type="checkbox"
+                    <label className="cart-selection">
+                      <Checkbox
                         aria-label={`選取 ${item.productId}`}
                         checked={selected.includes(item.productId)}
                         disabled={busy || dirty || reload || conflict}
-                        onChange={(e) =>
+                        onCheckedChange={(checked) =>
                           setSelected(
-                            e.target.checked
+                            checked
                               ? [...selected, item.productId]
                               : selected.filter((id) => id !== item.productId),
                           )
                         }
                       />
-                      {item.name ?? '商品已失效'}{' '}
-                      <span className="hint">{item.productId}</span>
+                      <span>
+                        {item.name ?? '商品已失效'}{' '}
+                        <span className="hint">{item.productId}</span>
+                      </span>
                     </label>
                   </h3>
                   <p>
@@ -234,59 +235,42 @@ export function CartPage({ id }: { id?: string }) {
                     : '請勾選要購買的整行商品。'}
                 </p>
               )}
-              <Button
-                disabled={
-                  busy ||
-                  dirty ||
-                  reload ||
-                  conflict ||
-                  !selected.length ||
-                  unknownOrder
-                }
-                onClick={() => void create()}
-              >
-                建立待支付訂單
-              </Button>
-              {unknownOrder && (
-                <div role="status">
-                  <p>原建立結果尚待確認。</p>
-                  <Button
-                    disabled={busy || conflict}
-                    onClick={() => void create(true)}
-                  >
-                    恢復原建立訂單請求
-                  </Button>
-                </div>
-              )}
-              {createdId && (
-                <p role="status">
-                  訂單已建立，尚未支付。
-                  <Link href={`/orders/${createdId}`} prefetch={false}>
-                    查看新訂單
-                  </Link>
-                </p>
-              )}
+              <div className="commerce-actions">
+                <Button
+                  disabled={
+                    busy ||
+                    dirty ||
+                    reload ||
+                    conflict ||
+                    !selected.length ||
+                    unknownOrder
+                  }
+                  onClick={() => void create()}
+                >
+                  {working ? '正在建立…' : '建立待支付訂單'}
+                </Button>
+                {unknownOrder && (
+                  <div role="status">
+                    <p>原建立結果尚待確認。</p>
+                    <Button
+                      disabled={busy || conflict}
+                      onClick={() => void create(true)}
+                    >
+                      恢復原建立訂單請求
+                    </Button>
+                  </div>
+                )}
+                {createdId && (
+                  <p role="status">
+                    訂單已建立，尚未支付。
+                    <Link href={`/orders/${createdId}`} prefetch={false}>
+                      查看新訂單
+                    </Link>
+                  </p>
+                )}
+              </div>
             </aside>
           </div>
-          <section aria-label="待支付訂單">
-            <h2>待支付訂單</h2>
-            {view.pendingOrders.length ? (
-              view.pendingOrders.map((order) => (
-                <p key={order.orderId}>
-                  <Link href={`/orders/${order.orderId}`} prefetch={false}>
-                    訂單 {order.orderId}
-                  </Link>{' '}
-                  · {formatMoney(order.summary.total)} · 預留至{' '}
-                  {new Date(order.reservationExpiresAt).toLocaleTimeString(
-                    'zh-TW',
-                  )}
-                </p>
-              ))
-            ) : (
-              <p>目前沒有有效待支付訂單。</p>
-            )}
-          </section>
-          <CartOrders id={id} revision={view.cartVersion} />
           <p>購物車與訂單會保留；取消或到期不會自動把商品放回車中。</p>
         </>
       )}

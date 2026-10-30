@@ -6,6 +6,7 @@ import type {
   OrderSummary,
 } from '@store/contracts';
 import { useCartOperations } from './provider';
+import { useRouter, usePathname } from 'next/navigation';
 import {
   readCart,
   quoteCart,
@@ -16,6 +17,12 @@ import {
 } from './lifecycle-commands';
 export function useCartPage(id?: string) {
   const operations = useCartOperations();
+  const router = useRouter();
+  const pathname = usePathname();
+  const location = useRef(pathname);
+  useEffect(() => {
+    location.current = pathname;
+  }, [pathname]);
   const { install: installShared, selectCart, setDraftGuard } = operations;
   const [view, setView] = useState<ShoppingCartView | null>(null),
     [draft, setDraft] = useState<Record<string, string>>({}),
@@ -301,6 +308,7 @@ export function useCartPage(id?: string) {
       (dirtyRef.current || reload || !selection.length || unknownOrder)
     )
       return;
+    const originPath = location.current;
     workingRef.current = true;
     setWorking(true);
     sequence.current++;
@@ -329,6 +337,13 @@ export function useCartPage(id?: string) {
         }
         setSelected([]);
         setCreatedId(result.data.order.orderId);
+        if (
+          location.current === originPath &&
+          operations.isCurrentCart(id) &&
+          !dirtyRef.current &&
+          !reloadRef.current
+        )
+          router.push(`/orders/${result.data.order.orderId}?created=1`);
       } else
         setError(
           result.kind === 'failure'

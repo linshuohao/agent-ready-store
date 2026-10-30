@@ -60,13 +60,28 @@ export function CartOrders({ id, revision }: { id: string; revision: number }) {
         <p role="status">正在讀取訂單…</p>
       ) : page.items.length ? (
         page.items.map((order) => (
-          <p key={order.orderId}>
+          <article key={order.orderId} className="order-list-item">
             <Link href={`/orders/${order.orderId}`} prefetch={false}>
               訂單 {order.orderId}
             </Link>{' '}
-            · {status[order.effectiveStatus]} ·{' '}
-            {formatMoney(order.summary.total)}
-          </p>
+            <span className="order-list-status">
+              {status[order.effectiveStatus]}
+            </span>
+            <p>
+              {order.summary.items
+                .map((item) => `${item.name} × ${item.quantity}`)
+                .join('、')}
+            </p>
+            <div className="order-list-meta">
+              <strong>{formatMoney(order.summary.total)}</strong>
+              {order.effectiveStatus === 'CHECKOUT' && (
+                <span>
+                  預留至{' '}
+                  {new Date(order.reservationExpiresAt).toLocaleString('zh-TW')}
+                </span>
+              )}
+            </div>
+          </article>
         ))
       ) : (
         <p>尚無訂單。</p>

@@ -22,6 +22,12 @@ export function SiteHeader() {
         {!['order-details', 'orders', 'checkout'].includes(path[1]) && (
           <nav aria-label="購物導覽">
             <Link
+              href={cartId ? `/orders?cartId=${cartId}` : '/orders'}
+              prefetch={false}
+            >
+              訂單列表
+            </Link>
+            <Link
               className="site-cart-link"
               href={cartId ? `/cart/${cartId}` : '/cart'}
               prefetch={false}

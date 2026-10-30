@@ -43,7 +43,7 @@
 ## 5. 普通Web最小完整闭环
 
 - [x] 5.1 替换HTTP和Next代理中的旧车Token/Review/提交路径，提供新购物/订单接口及UI专用支付调用，保留适用同源和MCP服务入口保护。验证：真实HTTP在隔离测试API上覆盖新输入、ID关联、错误映射和重复请求；旧写入口不能购买，不将UI专用宣称为身份证明。
-- [x] 5.2 更新features/cart的Provider/Commands/Hook和车页：持久currentCartId、逐项操作、默认全不选/全选、页面内有效选择、新商品不自动选、未保存数量不得生单、所选预估及待支付列表。验证：Commands测试与cart相关E2E覆盖初始化并发、草稿保护、前台刷新、版本乱序、同SKU重加和未知原键恢复；空车仍可找到原订单。
+- [x] 5.2 更新features/cart的Provider/Commands/Hook和车页：持久currentCartId、逐项操作、默认全不选/全选、页面内有效选择、新商品不自动选、未保存数量不得生单、所选预估及独立订单列表入口。验证：Commands测试与cart相关E2E覆盖初始化并发、草稿保护、前台刷新、版本乱序、同SKU重加和未知原键恢复；空车仍可找到原订单。
 - [x] 5.3 将features/checkout和路由改为/orders/{orderId}统一页，直接UI支付、取消、固定摘要、已支付/关闭反馈和多单导航，旧地址仅提示新流程。验证：checkout相关桌面/移动E2E完成真实测试API生单→支付/取消→继续购物；成功是同orderId，旧cartId路由不能误查或写单。
 - [x] 5.4 实现创建/支付/取消未知材料在请求前保存，Order按ID/查询顺序/已提交终态协调；区分本地到期、派生到期与物化关闭。验证：Commands与E2E注入丢响应、刷新、A/B切页、迟到创建/支付成功、旧查询及矛盾终态，不抢导航、不覆盖新车、不自动重付/重建。
 - [x] 5.5 实现本人接续与分享入口：无当前车/同车接续，跨车先看单再确认继续购物；分享不改变指针、不提供车/其他单/取消入口，有效待支付可模拟支付。验证：有无指针、A/B冲突、分享刷新、支付未知和关闭单；同步页面提示、键盘/辅助状态及Demo边界说明。
@@ -211,3 +211,11 @@ Human明确：“授权之后往下推进，如果没有什么需要我审批的
 - 全仓typecheck/lint/format、pnpm build及OpenSpec strict validate/diff检查通过。Docker离线首次缺缓存未通过；按现有Dockerfile恢复既定依赖后发现Web未声明其直接使用的Zod，本机旧依赖掩盖。补与现有共享契约一致的zod4.6.7直接声明及lock importer，无新库/版本；最终Docker生产镜像agent-ready-store-production:checkout-lifecycle构建成功，离线容器检查确认无原件/.env/API源码、具API/Web产物及11资源，未部署或推送。
 - Compose去旧Cart密钥/Cookie设置、传入待支付上限；README精简为新流程与运行导航，DELIVERY_STATUS如实区分实现/隔离演练/实际切换/真实Host及Human。独立最终Review发现CI引用已删旧测试与8资源断言，已更新3003/Origin/生命周期环境变量、串行新套件、切换测试及11资源；定向复核通过。仓库CI配置未在远程运行，不宣称平台保护或远程CI通过。
 - 精确范围提交与Guard后交付；没有Push/Merge/发布、实际库清理或正式Spec同步。Human要求后续不查看图片、构建级验证集中在最终交付；本轮已有证据复用，不再扩展重复验证。
+
+### Human验收界面修复（2026-10-31）
+
+- Human要求车页/详情移除内嵌待支付与全部订单列表、独立列表、统一勾选与按钮样式、正常生单直达原单、「確認支付」文案及明显操作反馈。复用现有组件和查询契约，新增/orders?cartId=…；同步Design、hosted-checkout delta及产品/技术页面职责。未知、草稿保护、迟到不抢导航、分享单订单范围与Demo不扣款说明保持。
+- 原工作区main为旧实现，实际验收服务来自本worktree；在干净codex/checkout-lifecycle-implementation上修复。未改API/交易/库存/幂等，不迁移、不seed、不清理业务数据。采用已有连续提交授权，本轮不Push/Merge/归档，最终Human验收仍待确认。
+- 浏览器替身测试先在旧构建复现列表混杂与无反馈；Chrome首次沙箱启动失败后使用本地执行权限。3004开发服务通过12项，最终3000生产构建桌面/移动12/12通过，含几何对齐/间隔/黑色按钮/无溢出、自动直达、焦点与滚至顶部、动画/减弱动画、5秒消失、连续结果重置计时、迟到不抢页、未知不报成功和分享边界。交易API均被拦截，无真实支付/取消，不冒称真实交易或Human验收；旧真实集成测试按新导航/文案同步，本轮未重跑数据库集成。
+- 默认单测74通过、53环境skip（不算通过）；Web typecheck/lint、生产build、OpenSpec strict validate、格式与diff检查通过。构建先因沙箱端口权限失败，提权后仍命中Turbopack错误缓存，移出可再生cache/turbopack后重新构建通过。按原配置重启本地API/Web，3000健康接口ok；3004临时服务已停止。
+- 独立只读acceptance_review发现提示计时受每秒重渲染重置、连续生单→支付未重播/重计时及旧兄弟订单测试导航断言；稳定dismiss回调、按反馈结果重挂载并补计时回归，旧断言经独立列表导航。最终定向复核通过，无新增可行动发现；审阅者未运行测试。React best practices聚焦核对hooks/派生状态/可访问性，verification-before-completion核对实际结果；不另建报告或可视化。

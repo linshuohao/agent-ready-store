@@ -255,6 +255,7 @@ Agent接入分为 MCP 与 WebMCP。MCP Apps 是 MCP 的交互式 UI 增强，复
 完整页面、选择、报价、请求与组件设计见[Technical Design §3～§5](../../../docs/engineering/TECHNICAL_DESIGN.md#frontend-architecture)。本Change保留以下实施约束，作为后续Specs/Tasks输入：
 
 - 创建响应同时返回OrderView与剩余CartView；客户端不猜减行/递增版本，按§6.1的cartId/version安装。订单与动作结果按orderId及已提交终态隔离，较早查询不得覆盖新查询，不能仅因请求序号丢弃迟到支付成功。
+- 2026-10-31 Human验收修订：普通Web新增独立`/orders?cartId=…`订单列表页，集中展示待支付及历史订单；购物车与订单详情不嵌入列表，只保留导航。生单成功在原页面仍有效且无待保护草稿时直接进入原订单，并显示动画提示；迟到结果不抢导航。支付按钮文案为「確認支付」，支付/取消确认终态后显示提示并将焦点和滚动移至页首；保留底部Demo不扣款说明及减弱动画支持。复用现有Checkbox、Button、commerce-actions与反馈组件。
 - 统一路由`/orders/{orderId}`；旧`/checkout/{cartId}`和`/orders/{cartId}`不做数据映射，提示重新进入新会话。分享入口遵循单订单视图，不能沿用旧order-read只读凭证流程。
 - 生单与支付/取消未知分别保存目标及恢复标记，页面重挂载读原单；导航失败保留原orderId，不能生成新创建请求。选择不是持久服务端事实，不用页面默认勾选替代Agent本次明确目标。
 - 选中报价使用§8.2只读用例；版本、选择或数量变化使旧预估不再代表当前目标。生单后展示Order固定快照，后续价格变动不再触发原单重报价。

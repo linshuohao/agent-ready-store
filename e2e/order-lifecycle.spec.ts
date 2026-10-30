@@ -58,7 +58,7 @@ test('fixed order summary pays the original order and continues shopping in the 
     path: `/private/tmp/order-page-${testInfo.project.name}.png`,
     fullPage: true,
   });
-  await page.getByRole('button', { name: '確認模擬支付', exact: true }).click();
+  await page.getByRole('button', { name: '確認支付', exact: true }).click();
   await expect(
     page.getByRole('heading', { name: '支付成功', exact: true }),
   ).toBeVisible();
@@ -95,8 +95,9 @@ test('cancellation closes only the chosen order and keeps sibling navigation', a
     page.getByRole('heading', { name: '訂單已取消', exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole('button', { name: '確認模擬支付', exact: true }),
+    page.getByRole('button', { name: '確認支付', exact: true }),
   ).toHaveCount(0);
+  await page.getByRole('link', { name: '查看所有訂單', exact: true }).click();
   await page
     .getByRole('link', { name: `訂單 ${second.order.orderId}`, exact: true })
     .click();
@@ -129,7 +130,7 @@ test('legacy routes never resolve cart IDs into orders or use old write endpoint
     await page.goto(path);
     await expect(page.getByText(/請從購物車進入新的訂單流程/)).toBeVisible();
     await expect(
-      page.getByRole('button', { name: '確認模擬支付', exact: true }),
+      page.getByRole('button', { name: '確認支付', exact: true }),
     ).toHaveCount(0);
   }
   expect(writes).toEqual([]);
@@ -155,7 +156,7 @@ test('lost payment response is recovered by reading the same paid order after re
     await route.abort('failed');
   });
   await page.goto(`/orders/${order.orderId}`);
-  await page.getByRole('button', { name: '確認模擬支付', exact: true }).click();
+  await page.getByRole('button', { name: '確認支付', exact: true }).click();
   await expect(
     page.getByRole('heading', { name: '支付成功', exact: true }),
   ).toBeVisible();
@@ -192,7 +193,7 @@ test('unavailable reads remain retryable and storage failure prevents writes', a
   page.on('request', (r) => {
     if (r.url().endsWith('/pay')) payments++;
   });
-  await page.getByRole('button', { name: '確認模擬支付', exact: true }).click();
+  await page.getByRole('button', { name: '確認支付', exact: true }).click();
   await expect(page.getByRole('main').getByRole('alert')).toContainText(
     '本次未送出',
   );
@@ -213,7 +214,7 @@ test('local deadline disables new payment without inventing committed closure', 
     page.getByRole('heading', { name: '支付期限已到', exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole('button', { name: '確認模擬支付', exact: true }),
+    page.getByRole('button', { name: '確認支付', exact: true }),
   ).toBeDisabled();
   await expect(page.getByText(/期限已到不代表關閉已提交/)).toBeVisible();
   await post(page, `/orders/${order.orderId}/cancel`, {});
@@ -249,7 +250,7 @@ test('a later not-found read cannot hide a confirmed paid snapshot', async ({
 }) => {
   const { order } = await create(page);
   await page.goto(`/orders/${order.orderId}`);
-  await page.getByRole('button', { name: '確認模擬支付', exact: true }).click();
+  await page.getByRole('button', { name: '確認支付', exact: true }).click();
   await expect(
     page.getByRole('heading', { name: '支付成功', exact: true }),
   ).toBeVisible();
@@ -331,7 +332,7 @@ test('shared order allows payment but never exposes cart, sibling or cancel cont
     page.getByRole('link', { name: /購物車|繼續購物|訂單 / }),
   ).toHaveCount(0);
   await expect(page.getByRole('button', { name: /取消|接續/ })).toHaveCount(0);
-  await page.getByRole('button', { name: '確認模擬支付', exact: true }).click();
+  await page.getByRole('button', { name: '確認支付', exact: true }).click();
   await page.reload();
   await expect(
     page.getByRole('heading', { name: '支付成功', exact: true }),
@@ -369,13 +370,15 @@ test('late payment for A survives navigation to B and an older query cannot repl
     await route.fulfill({ response });
   });
   await page.goto(`/orders/${order.orderId}`);
-  await page.getByRole('button', { name: '確認模擬支付', exact: true }).click();
+  await page.getByRole('button', { name: '確認支付', exact: true }).click();
   await started;
+  await page.getByRole('link', { name: '查看所有訂單', exact: true }).click();
   await page
     .getByRole('link', { name: `訂單 ${b.order.orderId}`, exact: true })
     .click();
   await expect(page.getByTestId('order-id')).toHaveText(b.order.orderId);
   release();
+  await page.getByRole('link', { name: '查看所有訂單', exact: true }).click();
   await page
     .getByRole('link', { name: `訂單 ${order.orderId}`, exact: true })
     .click();
@@ -462,7 +465,7 @@ test('deadline and a later pending read do not erase delayed successful payment'
     await route.fulfill({ response });
   });
   await page.goto(`/orders/${order.orderId}`);
-  await page.getByRole('button', { name: '確認模擬支付', exact: true }).click();
+  await page.getByRole('button', { name: '確認支付', exact: true }).click();
   await started;
   await page.route(`**/shopping/orders/${order.orderId}`, (route) =>
     route.fulfill({
@@ -491,7 +494,7 @@ test('contradictory terminal response preserves confirmed payment and rereads au
 }) => {
   const { order } = await create(page);
   await page.goto(`/orders/${order.orderId}`);
-  await page.getByRole('button', { name: '確認模擬支付', exact: true }).click();
+  await page.getByRole('button', { name: '確認支付', exact: true }).click();
   await expect(
     page.getByRole('heading', { name: '支付成功', exact: true }),
   ).toBeVisible();
@@ -520,7 +523,7 @@ test('contradictory terminal response preserves confirmed payment and rereads au
     page.getByRole('heading', { name: '支付成功', exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole('button', { name: /確認模擬支付|取消這筆/ }),
+    page.getByRole('button', { name: /確認支付|取消這筆/ }),
   ).toHaveCount(0);
 });
 

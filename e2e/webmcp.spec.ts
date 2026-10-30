@@ -77,7 +77,7 @@ test('registration and queries do not write; explicit preparation creates an AI 
   );
   const tools = await page.evaluate(() => [...(window as any).s5Tools.keys()]);
   expect(tools.some((n) => /pay|submit|prepare_checkout/.test(n))).toBe(false);
-  await page.getByRole('button', { name: '確認模擬支付', exact: true }).click();
+  await page.getByRole('button', { name: '確認支付', exact: true }).click();
   await expect(
     page.getByRole('heading', { name: '支付成功', exact: true }),
   ).toBeVisible();
@@ -170,7 +170,7 @@ test('ordinary Web order on a WebMCP-created cart does not inherit AI eligibilit
   await page
     .getByRole('button', { name: '建立待支付訂單', exact: true })
     .click();
-  await page.getByRole('link', { name: '查看新訂單', exact: true }).click();
+  await expect(page).toHaveURL(/\/orders\//);
   await expect(
     page.getByRole('heading', { name: '待支付訂單', exact: true }),
   ).toBeVisible();

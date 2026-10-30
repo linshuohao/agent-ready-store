@@ -1,24 +1,56 @@
 'use client';
 import Link from 'next/link';
 import { PageTools } from '@/features/webmcp/page-tools';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { MoneyBreakdown } from '@/features/cart/money-breakdown';
-import { CartOrders } from '@/features/cart/cart-orders';
+import { CartFeedback } from '@/features/cart/feedback';
 import { useCartOperations } from '@/features/cart/provider';
 import { useOrderPage } from './use-order-page';
 export function OrderPage({
   id,
   share = false,
+  created = false,
 }: {
   id: string;
   share?: boolean;
+  created?: boolean;
 }) {
   const page = useOrderPage(id),
     cart = useCartOperations();
   const { order } = page;
   const router = useRouter();
+  const heading = useRef<HTMLHeadingElement>(null);
+  const previous = useRef<string | null>(null);
+  const [feedback, setFeedback] = useState('');
+  const dismissFeedback = useCallback(() => setFeedback(''), []);
+  const result =
+    order?.status === 'PAID'
+      ? '支付成功'
+      : order?.closedAt
+        ? order.closeReason === 'CANCELLED'
+          ? '訂單已取消'
+          : '訂單已超時'
+        : null;
+  useEffect(() => {
+    if (!order) return;
+    const state = result ?? 'CHECKOUT';
+    const changed = previous.current !== null && previous.current !== state;
+    const justCreated =
+      previous.current === null && created && state === 'CHECKOUT';
+    previous.current = state;
+    if (!changed && !justCreated) return;
+    heading.current?.focus({ preventScroll: true });
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    queueMicrotask(() =>
+      setFeedback(result ?? '訂單已建立，請核對後確認支付。'),
+    );
+    if (created)
+      router.replace(`/orders/${id}${share ? '?view=share' : ''}`, {
+        scroll: false,
+      });
+  }, [order, result, created, router, id, share]);
   const [confirmation, setConfirmation] = useState<{
     currentId: string | null;
   } | null>(null);
@@ -70,9 +102,22 @@ export function OrderPage({
   return (
     <main id="main" tabIndex={-1} className="commerce-page order-page">
       {!share && <PageTools orderId={id} />}
+      {feedback && (
+        <CartFeedback
+          key={feedback}
+          label="訂單操作狀態"
+          dismissLabel="關閉訂單提示"
+          success
+          onDismiss={dismissFeedback}
+        >
+          <p role="status">{feedback}</p>
+        </CartFeedback>
+      )}
       <div className="commerce-page-heading">
         <p className="eyebrow">{share ? 'SHARED ORDER' : 'ORDER'}</p>
-        <h1 aria-live="polite">{title}</h1>
+        <h1 ref={heading} tabIndex={-1} aria-live="polite">
+          {title}
+        </h1>
         <p className="order-reference">
           訂單編號：<span data-testid="order-id">{order.orderId}</span>
         </p>
@@ -90,7 +135,7 @@ export function OrderPage({
           </time>
         </p>
         {paid ? (
-          <p>這筆訂單已完成模擬支付，以下為固定成交內容。</p>
+          <p>這筆訂單已完成支付，以下為固定成交內容。</p>
         ) : closed ? (
           <p>
             此單已關閉，無法支付；商品不會自動放回購物車。需要時請重新選購。
@@ -98,7 +143,7 @@ export function OrderPage({
         ) : (
           <>
             <p>
-              商品與金額已固定，請核對後親自確認模擬支付。離開頁面不會取消訂單。
+              商品與金額已固定，請核對後親自確認支付。離開頁面不會取消訂單。
             </p>
             {page.expired || order.effectiveStatus === 'EXPIRED' ? (
               <p role="status">
@@ -161,8 +206,8 @@ export function OrderPage({
                   {page.busy
                     ? '正在處理…'
                     : page.unknown
-                      ? '重試原單模擬支付'
-                      : '確認模擬支付'}
+                      ? '重試原單支付'
+                      : '確認支付'}
                 </Button>
               )}
             {!share &&
@@ -248,12 +293,12 @@ export function OrderPage({
           {resumeError && <p role="alert">{resumeError}</p>}
         </section>
       )}
-      {!share && sameCart && (
-        <CartOrders
-          key={order.cartId}
-          id={order.cartId}
-          revision={paid || closed ? 1 : 0}
-        />
+      {!share && (
+        <p>
+          <Link href={`/orders?cartId=${order.cartId}`} prefetch={false}>
+            查看所有訂單
+          </Link>
+        </p>
       )}
       <p className="hint">
         Demo 僅模擬支付，不會產生真實扣款。訂單 ID

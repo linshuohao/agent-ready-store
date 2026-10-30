@@ -58,7 +58,8 @@ test('defaults to no selection, protects drafts on focus, saves quantities and c
     page.getByRole('complementary', { name: '所選商品預估' }).getByText(/2 件/),
   ).toBeVisible();
   await create.click();
-  await expect(page.getByRole('link', { name: '查看新訂單' })).toBeVisible();
+  await expect(page).toHaveURL(/\/orders\//);
+  await page.getByRole('link', { name: '繼續購物', exact: true }).click();
   await expect(page.getByLabel('數量 P001', { exact: true })).toHaveCount(0);
   await expect(page.getByLabel('選取 P003', { exact: true })).not.toBeChecked();
   const orders = await (
@@ -69,9 +70,9 @@ test('defaults to no selection, protects drafts on focus, saves quantities and c
     status: 'CHECKOUT',
     summary: { items: [{ productId: 'P001', quantity: 2 }] },
   });
-  await page.reload();
+  await page.goto(`/orders?cartId=${cart.cartId}`);
   await expect(
-    page.getByRole('region', { name: '待支付訂單' }).getByRole('link'),
+    page.getByRole('region', { name: '所有訂單' }).getByRole('link'),
   ).toHaveCount(1);
 });
 test('initialization lost response survives reload and double clicks cannot create a replacement cart', async ({
@@ -119,12 +120,11 @@ test('unknown add operation recovers its original key after reload and same SKU 
   await page
     .getByRole('button', { name: '建立待支付訂單', exact: true })
     .click();
+  await expect(page).toHaveURL(/\/orders\//);
+  await page.getByRole('link', { name: '繼續購物', exact: true }).click();
   await expect(
     page.getByText('購物車目前沒有商品', { exact: true }),
   ).toBeVisible();
-  await expect(
-    page.getByRole('region', { name: '待支付訂單' }).getByRole('link'),
-  ).toHaveCount(1);
   let original: any;
   await page.route('**/api/v1/shopping/carts/*/operations', async (route) => {
     const body = route.request().postDataJSON();
@@ -202,7 +202,7 @@ test('an empty cart still lists paid orders and opening a different cart cannot 
     constraints: { currency: 'TWD' },
   });
   await post(page, `/orders/${created.order.orderId}/pay`, {});
-  await page.reload();
+  await page.goto(`/orders?cartId=${first.cartId}`);
   await expect(
     page
       .getByRole('region', { name: '所有訂單' })

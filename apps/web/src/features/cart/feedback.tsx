@@ -5,9 +5,13 @@ export function CartFeedback({
   children,
   success,
   onDismiss,
+  label = '購物車操作狀態',
+  dismissLabel = '關閉加入購物車提示',
 }: {
   children: React.ReactNode;
   success: boolean;
+  label?: string;
+  dismissLabel?: string;
   onDismiss: () => void;
 }) {
   const [hovered, setHovered] = useState(false);
@@ -20,7 +24,7 @@ export function CartFeedback({
   return (
     <aside
       className="cart-feedback"
-      aria-label="購物車操作狀態"
+      aria-label={label}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       onFocus={() => setFocused(true)}
@@ -39,7 +43,7 @@ export function CartFeedback({
         <button
           className="cart-feedback-close"
           type="button"
-          aria-label="關閉加入購物車提示"
+          aria-label={dismissLabel}
           onClick={onDismiss}
         >
           ×
