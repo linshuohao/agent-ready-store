@@ -28,7 +28,7 @@
 
 ## 尚待实现或验证
 
-产品/UX 摘要本身不证明技术选型获批；后续 Human 明确确认的 T-01～T-06 已归档于 [技术决策](../engineering/ENGINEERING_DECISIONS.md#技术决策归档--2026-10-29)，具体状态以该记录为准。Technical Design、真实商城业务、共享计价实现、权限/库存/订单/幂等验证、GitHub Actions 和真实 Agent 购物 Demo 仍未由这些附件证明完成。现有 `openspec/` 只有配置与空目录占位，没有业务 Change 或正式业务 Spec，当时也没有 Technical Design；当前已形成 [Draft](../engineering/TECHNICAL_DESIGN.md)，尚待 Human Review。设计的真机、多浏览器、完整键盘/缩放及屏幕阅读器检查，以及来源未定位的浏览器日志异常，仍按 [Product Design §7–8](../product/PRODUCT_DESIGN.md#7-design-review验收与实际证据) 保留。
+产品/UX 摘要本身不证明技术选型获批；后续 Human 明确确认的 T-01～T-06 已归档于 [技术决策](../engineering/ENGINEERING_DECISIONS.md#技术决策归档--2026-10-29)，具体状态以该记录为准。Technical Design、真实商城业务、共享计价实现、权限/库存/订单/幂等验证、GitHub Actions 和真实 Agent 购物 Demo 仍未由这些附件证明完成。现有 `openspec/` 只有配置与空目录占位，没有业务 Change 或正式业务 Spec，当时也没有 Technical Design；当前已形成 [Draft](../engineering/TECHNICAL_DESIGN_HISTORY.md)，尚待 Human Review。设计的真机、多浏览器、完整键盘/缩放及屏幕阅读器检查，以及来源未定位的浏览器日志异常，仍按 [Product Design §7–8](../product/PRODUCT_DESIGN.md#7-design-review验收与实际证据) 保留。
 
 本次只接收、核对及精选案例，不将摘要转成新的批准，不改产品/UX 结论，也不补写 Skill 版本、历史测试、Commit 或 Agent Demo。后续补件继续保留原件与来源，先对照现有记录去重；阶段提醒规则只维护于现有 Workflow，本站点索引不另设流程。
 
@@ -60,5 +60,5 @@
 | --- | --- |
 | `docs/UX_DECISIONS.md` | [Product Design §10：UX 决策与演进](../product/PRODUCT_DESIGN.md#ux-decisions) |
 | `docs/REQUIREMENTS.md` / `docs/PRODUCT_DESIGN.md` | `docs/product/` 下同名文档 |
-| `docs/ENGINEERING_DECISIONS.md` / `docs/TECHNICAL_DESIGN.md` / `docs/TOOLING.md` | `docs/engineering/` 下同名文档 |
+| `docs/ENGINEERING_DECISIONS.md` / `docs/TECHNICAL_DESIGN_HISTORY.md` / `docs/TOOLING.md` | `docs/engineering/` 下同名文档 |
 | `docs/PRODUCT_ENGINEERING.md` | [工作流产物标准](../workflow/PRODUCT_ENGINEERING.md) |

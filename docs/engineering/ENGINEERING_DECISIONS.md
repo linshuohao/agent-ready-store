@@ -1,5 +1,7 @@
 # 工程与技术决策
 
+**下一里程碑阅读入口：** [T-08～T-11：订单生命周期、demo接续、事务与跨端分层](#order-lifecycle-decisions)。仅记录已采用设计选择，不授权实施；限定替代关系见该节。
+
 **最新实施授权（2026-10-30）：** Human已明确接受当前购买Change §4.3可信Host/浏览器UI隔离与§6短期可转交订单只读权限，并授权提交、验证与实施。以下“仅修订/尚未批准”保留历史语境；真实Host证据与验收条件不变，见[权限补充](../../DECISIONS.md)及[当前Design](../../openspec/changes/archive/2026-10-30-agent-confirmed-purchase/design.md)。
 
 **2026-10-30最新Human确认：** [D-01直接支付决定](../../DECISIONS.md#d01-direct-payment-20261030)将MCP Apps/WebMCP改为Human支付点击后经受保护UI直接下单并原地显示结果，不依赖Agent接续；基础MCP保留Host原生确认后Agent提交及当前兼容限制。下方较早的三入口统一Agent提交描述保留当时范围；最新机制见当前Change，本轮只修订Spec、不实施代码。
@@ -335,3 +337,59 @@ Human 已通过整体架构，授权收敛 [Technical Design v0.2](TECHNICAL_DES
 本次 Focused Architecture Refinement 保留 Next.js、单 Cart Token、24h Handoff、独立确认、七工具与三种 Agent 接入的完整交付范围；未重开 Accepted 决策。Technical Design §5.2 明确 Commands 为不依赖 React/Query 的普通 TypeScript 操作，Hooks/Adapter 协调 UI 和缓存；§4.3 明确 Unknown 不能从一次无 Order 查询推导提交失败，S3 验证原提交与恢复的协调。
 
 替代的仅是此前 v0.5 中尚未批准的实现候选：去除普通 Web 建车前的创建身份 Cookie/引导与跨标签初始化协调，推荐使用浏览器此次生成的同一 Cart Token 证明建车重试；每车 Cookie 保留，确认会话绑定不预设第二个每页身份。服务器单密文恢复方案不变。该候选需 S2 安全/恢复验证；首次响应前浏览器丢失 Token 且 Cookie 未到达时不能自动恢复或重复建车，其体验限制需在 S2 Review 接受或调整。旧候选保留为演进历史，不作为当前实施默认。L-01、P-04 与浏览器会话绑定细化继续 Pending，不新增业务表/身份服务/全局 Store。本轮仅文档自查，无实现或运行证据，Technical Design 仍 Draft。
+
+<a id="order-lifecycle-decisions"></a>
+## 订单生命周期重构：下一里程碑技术决策 — 2026-10-30
+
+**来源与范围：** 本聊天Human明确选择单一Order、单车多订单、固定15分钟库存/金额、长期上下文、demo权限简化，并多轮明确要求“按建议统一更新、不进入开发”；本轮要求记录技术决策及更新技术方案。以下Accepted仅指这些已采用设计选择，不代表新增架构整合稿整体Approved、独立Review通过或实施授权。证据为实际对话与[OpenSpec Design](../../openspec/changes/checkout-lifecycle-redesign/design.md)，无本轮运行实验。架构说明见[Technical Design架构总览](TECHNICAL_DESIGN.md#order-lifecycle-architecture)。
+
+| 新决策 | 限定替代的旧结论 | 保留部分 |
+| --- | --- | --- |
+| T-08 | T-03/T-05中Order仅成交后存在、一车一单、无预留的模型与交易绑定 | PostgreSQL与原子一致性，既有金额算法 |
+| T-09 | T-02/T-05及其Token演进、T-07中本轮demo的凭证/Review/原生Host批准依赖 | 多入口、Human点击最终模拟支付、协议适配职责 |
+| T-10 | T-05按整车确认与支付幂等的具体载体 | 后端权威、短事务、幂等、并发校验 |
+| T-11 | 无部署选型替换；收敛各端复用范围 | T-01薄模块化单体、T-04 Monorepo/contracts、T-06最小闭环 |
+
+旧条目不整体标Superseded，因为其余范围仍有效。产品规则D-01/D-04～07/D-21～24的未来限定传播由当前Change追踪，不能用本技术记录静默覆盖原批准历史。
+
+### T-08 — Cart持续选购，Order承载独立交易生命周期
+
+- **Status：Accepted（下一里程碑设计选择；未实施）。** Human确认，2026-10-30。
+- **Problem：** 整车准备、整车版本和每车唯一订单把继续购物与付款绑定，产生跨入口阻塞和多次确认。
+- **Context & Constraints：** 同车整行勾选；默认最多10笔待支付；Agent生单后由人模拟支付；固定15分钟锁价和预留，不续期；本轮不开发。
+- **Decision：** Cart可编辑且持续存在；Order创建即CHECKOUT，支付更新同ID为PAID；关闭用closedAt/closeReason记录。OrderLine与Order金额组成唯一不可变快照。Order.cartId必填非唯一。Inventory采用quantity/reservedQuantity，订单明细与状态作为最小预留归属账本。
+- **Alternatives：** 每次购买换车不能解决单车多单；独立Checkout再转Order增加实体和转换；建单直接扣实际库存混淆预留和成交；实时聚合全部待支付单增加可售查询/协调成本。本轮均不采用。
+- **Trade-offs：** 支付不再依赖车与当前价格，交互自然；代价是预留计数、关闭任务及所有“订单存在即成交”的消费者必须调整。
+- **Evidence：** Human多次明确模型与期限；现有schema/CartService的限制已静态梳理于Change §1。库存并发与释放时延未实测。
+- **Consequences：** 取消旧Order.cartId唯一约束；旧流程数据切换时清理，不做旧单回填。真实支付/退款出现时重新评审生命周期，不预建状态。
+
+### T-09 — Demo以持久Cart ID接续，权限与确认基础设施后置
+
+- **Status：Accepted（限定demo；未实施）。** Human确认，2026-10-30。
+- **Problem：** 独立Session、凭证交换、Review和期限交叉把演示购物流程变成授权编排。
+- **Context & Constraints：** 无真实支付；优先体验；车和订单长期保留；不主动新建车；Human最终点击模拟支付。
+- **Decision：** Cart即持久上下文，按cartId/orderId恢复，不新增Session表、业务TTL、凭证/签名/Review。本人接续原车，目标不同车时先只看订单，继续购物才确认切换指针；分享仅单订单视图且有效待支付可模拟支付。基础MCP返回网页订单入口，WebMCP导航，Apps内嵌。Agent不提供模拟支付工具。
+- **Alternatives：** 账户系统、长期token加短期交换、Host原生确认分别增加身份/协议依赖；24小时有效期会打断长驻购物。当前均不采用。
+- **Trade-offs：** 减少往返和恢复分支；ID可定位数据、分享只限制展示，不具备服务端访问隔离，也不证明点击者身份。这是明确接受的demo边界，不泛化到生产环境。
+- **Evidence：** Human明确要求暂不考虑权限凭证、按ID接续及长期查看；已授权分享与冲突行为。未宣称Host兼容或安全验证通过。
+- **Consequences：** 后续真实支付/多用户隐私要求是重新设计触发条件；不在本轮预建授权扩展框架。历史T-05/T-07仍保留作为旧实现依据。
+
+### T-10 — 同库短事务与操作幂等，取代整车结算锁
+
+- **Status：Accepted（设计选择；未实施）。** Human确认，2026-10-30。
+- **Problem：** 去掉车级业务锁后，仍须防止重试重复加购、生单，以及支付/取消/到期重复处理库存。
+- **Decision：** 用现有PostgreSQL短事务实现车操作幂等、生单转行+预留、订单支付/关闭。幂等记录和变更一起提交；同键先恢复再校验旧版本。后台在API内扫描与补扫，按目标订单及有序库存锁关闭。不使用Redis锁、长事务、队列或浏览器独占计时器。保留Cart整车version，生单用一份selectedItems及expectedQuantity断言完整数量。
+- **Alternatives：** 只靠禁用按钮无法覆盖重试/多端；持有15分钟锁不可接受；分布式锁与队列没有当前多服务需求；逐行版本增加模型复杂度而尚无瓶颈证据。
+- **Trade-offs：** 数据库集中保障更易验证，但不同车行编辑仍可能产生整车版本冲突；后台释放存在短暂调度延迟。到点始终拒绝新支付，不能以延迟释放续期。
+- **Evidence：** Human要求精简锁且多轮采纳幂等/状态裁决细化；当前逻辑和目标不变量静态可对照，真实竞态尚未验证。
+- **Consequences：** 5秒释放目标是待验收性能目标，不是运行承诺；必要验证使用真实PostgreSQL/确定性并发。只有实际冲突率或吞吐证据才重访逐行模型/独立调度设施。
+
+### T-11 — 共享业务用例与契约，各端独立呈现和导航
+
+- **Status：Accepted（复用既有T-01/T-04并采用本轮边界）；新增架构表达为Draft整合。** 2026-10-30。
+- **Problem：** 各端各自实现购买规则会分歧；强行共享页面又会耦合Next Router、React生命周期和Host SDK。
+- **Decision：** Nest用例唯一维护计价、库存、状态、幂等；HTTP/MCP适配器翻译协议。Web与WebMCP复用无React依赖Commands，Hook负责页面协调；Apps通过Host适配，不依赖Next环境。共享contracts和纯展示模型，有真实复用再抽组件。订单统一入口按状态显示不同内容，不用路由表示交易状态。
+- **Alternatives：** 每端独立业务链重复维护；万能购物Store/跨端大组件耦合Host与业务；为每层创建服务/包/接口类形成无消费者抽象。本轮不采用。
+- **Trade-offs：** 部分UI适配代码保留在各端，换取明确依赖与可测试性。前端保存的是查询副本和局部意图，数据库才是交易权威。
+- **Evidence：** 现有Technical Design §5.2已有Commands/Hooks/Adapters边界，本轮继续复用并按Order生命周期调整；Human要求跨端流程、前端分层与维护性设计。没有新依赖选型或运行基准。
+- **Consequences：** 服务端用例、无React Commands、纯组件和真实Host分别验证；扩展入口不复制库存/金额规则。具体文件拆分在实施时按消费者决定，不预建通用编排框架。

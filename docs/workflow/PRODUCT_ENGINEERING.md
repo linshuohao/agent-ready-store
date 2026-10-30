@@ -144,7 +144,7 @@ Technical Design 整合足够的 Accepted Tech Decisions 和适用产品/体验�
 | Requirements | Approved Product Requirements Baseline；[v0.2](../product/REQUIREMENTS.md)，本轮 Human Baseline Finalization 确认已确认范围 | 按领域整合，来源/验收/Pending 明确，Human Review 后 Approved |
 | Product Design、Wireframes、Visual Guidelines | Approved Baseline / Direction；[设计结构与方向已批准、验证未完成](../product/PRODUCT_DESIGN.md)，完整验收未完成 | 可打开设计资产、覆盖关键状态和响应式，Design/Human Review |
 | Tech Decisions | Partial；[T-01～T-06](../engineering/ENGINEERING_DECISIONS.md#决策索引)主要方向 Accepted，C-02 已解决，具体技术细节待审 | 重要选择有比较、证据与确认来源；不把治理选择当技术栈 |
-| Technical Design | Approved；[v0.5](../engineering/TECHNICAL_DESIGN.md) 已获 Human Design Phase Closure 最终批准；Proposed/Pending/运行验证保留，未启动实施 | 满足产品/体验约束，架构/状态/信任边界与验证策略清楚，Design/Human Review |
+| Technical Design | Approved；[v0.5](../engineering/TECHNICAL_DESIGN_HISTORY.md) 已获 Human Design Phase Closure 最终批准；Proposed/Pending/运行验证保留，未启动实施 | 满足产品/体验约束，架构/状态/信任边界与验证策略清楚，Design/Human Review |
 | 产物职责与交付治理契约 | Approved v1.0；本文及 ENG-012 的批准限产物职责与交付契约，ENG-008/009 仍 Proposed | 与项目 Baseline 状态分开核对，不将本次批准扩展为 Skill 或实现批准 |
 | Project Showcase HTML | Pending；本文件已规划入口和更新规则 | 页面可打开、链接真实、能找到全部要求的交付材料，状态/限制准确 |
 
