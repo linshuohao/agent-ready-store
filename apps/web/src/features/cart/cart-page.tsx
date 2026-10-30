@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import { PageTools } from '@/features/webmcp/page-tools';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { MoneyBreakdown } from './money-breakdown';
@@ -35,6 +36,7 @@ export function CartPage({ id }: { id?: string }) {
   if (!id)
     return (
       <main id="main" tabIndex={-1} className="commerce-page">
+        <PageTools cartId={id} />
         <h1>購物車</h1>
         {operations.currentCartId ? (
           <Link href={`/cart/${operations.currentCartId}`} prefetch={false}>
@@ -54,6 +56,7 @@ export function CartPage({ id }: { id?: string }) {
     <main id="main" tabIndex={-1} className="commerce-page cart-page">
       <div className="commerce-page-heading">
         <p className="eyebrow">CART</p>
+        <PageTools cartId={id} />
         <h1>購物車</h1>
         <p>
           勾選整行商品，先儲存數量，再建立待支付訂單。生單後保留庫存15分鐘，尚未支付。

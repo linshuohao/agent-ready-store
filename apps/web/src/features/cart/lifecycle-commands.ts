@@ -78,9 +78,14 @@ export const quoteCart = (
     orderSummaryOutput,
     { selectedItems, constraints: { currency: 'TWD' } },
   );
-export const readOrders = (id: string, offset = 0) =>
+export const readOrders = (
+  id: string,
+  offset = 0,
+  limit = 20,
+  pendingOnly = false,
+) =>
   shoppingRequest(
-    `/carts/${encodeURIComponent(id)}/orders?offset=${offset}`,
+    `/carts/${encodeURIComponent(id)}/orders?offset=${offset}&limit=${limit}&pendingOnly=${pendingOnly}`,
     z.object({
       items: z.array(orderViewOutput.refine((o) => o.cartId === id)),
       nextOffset: z.number().int().nonnegative().nullable(),
@@ -100,7 +105,13 @@ export function acceptCart(
 }
 const initialization = getOrCreateCartInput.options[1];
 const pending = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('initialize'), input: initialization }).strict(),
+  z
+    .object({
+      kind: z.literal('initialize'),
+      input: initialization,
+      entrance: z.literal('webmcp').optional(),
+    })
+    .strict(),
   z
     .object({
       kind: z.literal('operate'),
@@ -116,8 +127,12 @@ export class CartCommands {
   hasPending(id?: string) {
     return this.storage.getItem(pendingCartKey(id)) !== null;
   }
-  async initialize(input: z.infer<typeof initialization>) {
-    return this.start({ kind: 'initialize', input });
+  async initialize(input: z.infer<typeof initialization>, entrance?: 'webmcp') {
+    return this.start({
+      kind: 'initialize',
+      input,
+      ...(entrance ? { entrance } : {}),
+    });
   }
   async operate(
     cartId: string,
@@ -130,7 +145,11 @@ export class CartCommands {
   ): Promise<Call<ShoppingCartView>> {
     const id = request.kind === 'operate' ? request.cartId : undefined;
     try {
-      if (this.hasPending(id)) return fail('CART_RECOVERY_REQUIRED');
+      const existing = this.storage.getItem(pendingCartKey(id));
+      if (existing)
+        return existing === JSON.stringify(request)
+          ? this.retry(id)
+          : fail('CART_RECOVERY_REQUIRED');
       this.storage.setItem(pendingCartKey(id), JSON.stringify(request));
     } catch {
       return fail('LOCAL_STORAGE_UNAVAILABLE');
@@ -160,7 +179,9 @@ export class CartCommands {
     try {
       const response = await shoppingRequest(
         request.kind === 'initialize'
-          ? '/carts'
+          ? request.entrance === 'webmcp'
+            ? '/webmcp/carts'
+            : '/carts'
           : `/carts/${encodeURIComponent(request.cartId)}/operations`,
         shoppingCartViewOutput.refine(
           (c) => request.kind === 'initialize' || c.cartId === request.cartId,
@@ -193,23 +214,47 @@ export async function createCartOrder(
   storage: Storage,
   id: string,
   input?: z.infer<typeof createOrderInput>,
+  entrance?: 'webmcp',
 ) {
   const key = pendingOrderKey(id);
   let body: z.infer<typeof createOrderInput>;
   try {
     const stored = storage.getItem(key);
-    if (input && stored) return fail('ORDER_RECOVERY_REQUIRED');
-    const parsed = createOrderInput.safeParse(
-      input ?? (stored ? JSON.parse(stored) : null),
-    );
+    const saved = stored ? JSON.parse(stored) : null;
+    if (
+      saved?.input &&
+      !z
+        .object({
+          input: createOrderInput,
+          entrance: z.literal('webmcp').optional(),
+        })
+        .strict()
+        .safeParse(saved).success
+    )
+      return fail('LOCAL_RECOVERY_INVALID');
+    const original = saved?.input ?? saved;
+    const originalEntrance = saved?.input ? saved.entrance : undefined;
+    if (
+      input &&
+      stored &&
+      (JSON.stringify(input) !== JSON.stringify(original) ||
+        entrance !== originalEntrance)
+    )
+      return fail('ORDER_RECOVERY_REQUIRED');
+    const parsed = createOrderInput.safeParse(input ?? original);
+    if (stored) entrance = originalEntrance;
     if (!parsed.success) return fail('LOCAL_RECOVERY_INVALID');
     body = parsed.data;
-    if (input) storage.setItem(key, JSON.stringify(body));
+    if (input && !stored)
+      storage.setItem(
+        key,
+        JSON.stringify({ input: body, ...(entrance ? { entrance } : {}) }),
+      );
   } catch {
     return fail('LOCAL_STORAGE_UNAVAILABLE');
   }
   const response = await shoppingRequest(
-    `/carts/${encodeURIComponent(id)}/orders`,
+    `${entrance === 'webmcp' ? '/webmcp' : ''}/carts/${encodeURIComponent(id)}/orders`,
     z.object({
       order: orderViewOutput.refine((o) => o.cartId === id),
       cart: shoppingCartViewOutput.refine((c) => c.cartId === id),

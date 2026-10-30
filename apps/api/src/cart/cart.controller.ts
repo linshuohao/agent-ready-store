@@ -80,6 +80,26 @@ export class CartController {
     });
   }
 
+  @Post('shopping/webmcp/carts')
+  async initializeWebMcp(@Req() req: Request, @Res() res: Response) {
+    await this.send(res, async () => {
+      this.checkRequest(req, true);
+      return this.carts.getOrCreate(req.body, 'WEBMCP');
+    });
+  }
+
+  @Post('shopping/webmcp/carts/:id/orders')
+  async createWebMcpOrder(
+    @Param('id') id: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    await this.send(res, async () => {
+      this.checkRequest(req, true);
+      return this.carts.createOrder(id, req.body, 'WEBMCP');
+    });
+  }
+
   @Get('shopping/carts/:id')
   async get(
     @Param('id') id: string,

@@ -1,5 +1,6 @@
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { attachMcp } from './mcp/mcp.adapter.js';
+import { CartService } from './cart/cart.service.js';
 import { CatalogService } from './catalog/catalog.service.js';
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
@@ -36,7 +37,11 @@ app.use(
     });
   },
 );
-attachMcp(app.getHttpAdapter().getInstance(), app.get(CatalogService));
+attachMcp(
+  app.getHttpAdapter().getInstance(),
+  app.get(CatalogService),
+  app.get(CartService),
+);
 await app.listen(
   Number(process.env.PORT ?? 3001),
   process.env.HOST ?? '127.0.0.1',

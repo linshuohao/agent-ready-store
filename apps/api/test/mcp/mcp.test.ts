@@ -7,7 +7,7 @@ const token = process.env.MCP_SERVICE_TOKEN;
 (base && token ? describe : describe.skip)(
   'real Streamable HTTP adapter',
   () => {
-    it('preserves seven tools and discovers bounded purchase tools and preserves the three read-only queries and matches HTTP data and errors', async () => {
+    it('discovers lifecycle tools without payment or obsolete purchase tools and matches catalog HTTP data and errors', async () => {
       const client = new Client({ name: 's1-contract-test', version: '1.0.0' });
       await client.connect(
         new StreamableHTTPClientTransport(new URL(`${base}/mcp`), {
@@ -17,22 +17,53 @@ const token = process.env.MCP_SERVICE_TOKEN;
       try {
         const tools = await client.listTools();
         expect(tools.tools.map((t) => t.name).sort()).toEqual([
-          'cancel_app_purchase',
-          'cancel_purchase',
-          'create_cart',
-          'create_handoff',
+          'add_cart_item',
+          'cancel_order',
+          'create_order',
           'get_cart',
-          'get_order_link',
+          'get_or_create_cart',
+          'get_order',
           'get_product',
-          'get_purchase_status',
+          'list_orders',
           'list_product_reviews',
-          'pay_purchase',
-          'prepare_checkout',
-          'request_purchase_confirmation',
+          'quote_selection',
+          'remove_cart_item',
           'search_products',
-          'submit_order',
-          'update_cart',
+          'update_cart_item',
         ]);
+        const schemas = new Map(
+          tools.tools.map((tool) => [tool.name, tool.inputSchema]),
+        );
+        expect(schemas.get('get_or_create_cart')).toMatchObject({
+          type: 'object',
+          anyOf: expect.arrayContaining([
+            expect.objectContaining({
+              properties: expect.objectContaining({
+                initialItems: expect.objectContaining({ minItems: 1 }),
+              }),
+            }),
+          ]),
+        });
+        expect(schemas.get('create_order')).toMatchObject({
+          type: 'object',
+          additionalProperties: false,
+          required: expect.arrayContaining([
+            'cartId',
+            'requestId',
+            'expectedCartVersion',
+            'selectedItems',
+            'constraints',
+          ]),
+        });
+        expect(schemas.get('cancel_order')).toMatchObject({
+          required: ['orderId'],
+          additionalProperties: false,
+        });
+        expect(
+          tools.tools.find((tool) => tool.name === 'create_order')?.annotations
+            ?.readOnlyHint,
+        ).toBe(false);
+        expect(tools.tools.every((tool) => !tool._meta)).toBe(true);
         expect(
           tools.tools
             .filter((t) =>

@@ -70,6 +70,62 @@ const url = process.env.TEST_DATABASE_URL;
       expect(created).toMatchObject({ status: 200, payload: { ok: true } });
       return { cart, input, order: created.payload.data.order };
     }
+    it('uses protected WebMCP initialization and order creation with server-derived attribution', async () => {
+      const init = initialization();
+      expect(
+        await call('/webmcp/carts', { ...init, initialItems: [] }),
+      ).toMatchObject({ status: 400 });
+      const unsafeHeaders: Record<string, string>[] = [
+        { origin: 'https://other.example' },
+        { 'content-type': 'text/plain' },
+      ];
+      for (const headers of unsafeHeaders)
+        expect(await call('/webmcp/carts', init, headers)).toMatchObject({
+          status: 403,
+        });
+      expect(
+        await call('/webmcp/carts', { ...init, createdByChannel: 'WEB' }),
+      ).toMatchObject({ status: 400 });
+      const initialized = await call('/webmcp/carts', init);
+      expect(initialized).toMatchObject({
+        status: 200,
+        payload: { ok: true, data: { agentCreated: true } },
+      });
+      const cart = initialized.payload.data;
+      expect((await call('/webmcp/carts', init)).payload.data.cartId).toBe(
+        cart.cartId,
+      );
+      const input = creation(cart);
+      const path = `/webmcp/carts/${cart.cartId}/orders`;
+      expect(
+        await call(path, input, { origin: 'https://other.example' }),
+      ).toMatchObject({ status: 403 });
+      expect(await call(path, { ...input, aiEligible: false })).toMatchObject({
+        status: 400,
+      });
+      const made = await call(path, input);
+      expect(made).toMatchObject({
+        status: 200,
+        payload: {
+          ok: true,
+          data: {
+            order: {
+              createdByChannel: 'WEBMCP',
+              aiEligible: true,
+              status: 'CHECKOUT',
+            },
+          },
+        },
+      });
+      expect((await call(path, input)).payload.data.order.orderId).toBe(
+        made.payload.data.order.orderId,
+      );
+      expect(
+        (await call(`/orders/${made.payload.data.order.orderId}`)).payload.data
+          .status,
+      ).toBe('CHECKOUT');
+      expect(await db.order.count()).toBe(1);
+    });
     it('recovers initialization and operations without duplicating rows, rejects stale/changed payloads', async () => {
       const input = initialization();
       const first = await call('/carts', input);

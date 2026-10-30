@@ -27,10 +27,18 @@ import {
 } from './lifecycle-commands';
 import type { EditResult, OperationIntent } from './commands';
 type Context = {
+  toolInitialize: (
+    input: Parameters<CartCommands['initialize']>[0],
+  ) => Promise<Call<ShoppingCartView>>;
+  toolOperate: (
+    id: string,
+    input: Parameters<CartCommands['operate']>[1],
+  ) => Promise<Call<ShoppingCartView>>;
   orderRevision: number;
   createOrder: (
     id: string,
     input?: Parameters<typeof createCartOrder>[2],
+    entrance?: 'webmcp',
   ) => ReturnType<typeof createCartOrder>;
   currentCartId: string | null;
   view: ShoppingCartView | null;
@@ -251,9 +259,28 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }),
     );
   }
+  const toolInitialize = (input: Parameters<CartCommands['initialize']>[0]) => {
+    if (current.current && !commands.current?.hasPending())
+      return Promise.resolve(failure('STALE_CONTEXT'));
+    return run(() => commands.current!.initialize(input, 'webmcp'));
+  };
+  const toolOperate = (
+    id: string,
+    input: Parameters<CartCommands['operate']>[1],
+  ) => {
+    if (current.current !== id)
+      return Promise.resolve(failure('STALE_CONTEXT'));
+    if (
+      draft.current?.id === id &&
+      (draft.current.dirty || draft.current.reload)
+    )
+      return Promise.resolve(failure('UNSAVED_DRAFT'));
+    return run(() => commands.current!.operate(id, input));
+  };
   async function createOrder(
     id: string,
     input?: Parameters<typeof createCartOrder>[2],
+    entrance?: 'webmcp',
   ) {
     if (!ready || active.current) return failure('CART_BUSY');
     if (current.current !== id) return failure('STALE_CONTEXT');
@@ -266,7 +293,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     active.current = true;
     setBusy(true);
     try {
-      return await createCartOrder(localStorage, id, input);
+      return await createCartOrder(localStorage, id, input, entrance);
     } finally {
       active.current = false;
       setBusy(false);
@@ -284,6 +311,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   return (
     <CartContext.Provider
       value={{
+        toolInitialize,
+        toolOperate,
         orderRevision,
         createOrder,
         currentCartId,

@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import { PageTools } from '@/features/webmcp/page-tools';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -68,6 +69,7 @@ export function OrderPage({
   );
   return (
     <main id="main" tabIndex={-1} className="commerce-page order-page">
+      {!share && <PageTools orderId={id} />}
       <div className="commerce-page-heading">
         <p className="eyebrow">{share ? 'SHARED ORDER' : 'ORDER'}</p>
         <h1 aria-live="polite">{title}</h1>

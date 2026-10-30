@@ -171,3 +171,22 @@ describe('persistent cart commands', () => {
     expect(storage.getItem(pendingCartKey(id))).toBeNull();
   });
 });
+
+it('recovers a WebMCP initialization through the original channel after a lost response', async () => {
+  const storage = memory(),
+    input = {
+      requestId: key,
+      initialItems: [{ productId: 'P001', quantity: 1 }],
+    };
+  vi.stubGlobal('fetch', async () => {
+    throw Error('lost');
+  });
+  await new CartCommands(storage).initialize(input, 'webmcp');
+  vi.stubGlobal('fetch', async (url: string) => {
+    expect(url).toBe('/api/v1/shopping/webmcp/carts');
+    return ok({ ...cart(), agentCreated: true });
+  });
+  expect(
+    await new CartCommands(storage).initialize(input, 'webmcp'),
+  ).toMatchObject({ kind: 'success', data: { agentCreated: true } });
+});
