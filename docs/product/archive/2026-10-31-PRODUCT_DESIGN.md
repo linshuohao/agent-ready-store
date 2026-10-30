@@ -23,7 +23,7 @@
 - **Status：Approved — Product Design Baseline v0.2（批准范围及保留项见下表）**。
 - **版本 / 适用范围：** v0.2；归档 Human Web 与 Agent Handoff 的购物体验、五页线框结构、三个代表性视觉稿、视觉与响应式方向及必要异常状态。已接受的设计结构与方向范围见下表；本基线已获 Human 正式批准；批准不等于完整验收通过或业务实现授权。
 - **整理日期：** 2026-10-28（Asia/Shanghai）；2026-10-29 完成目录合并后的最终一致性修订，承接 Human「Product Design Baseline — Final Review & Alignment」指令；同日获 Human 最终批准，范围如下。
-- **依据：** [Requirements v0.2](../REQUIREMENTS.md)、[产品决策 D-01～D-22](../../../DECISIONS.md)、[UX 决策与演进](#ux-decisions)、[附件 Markdown 原件](../../../design/references/UX_DECISIONS.md)、[HTML 视觉与流程参考](../../../design/references/UX_DECISIONS.html)、[既有线框](../../../design/index.html?mode=wireframe)。Requirements v0.2 已由本轮 Baseline Finalization 批准已确认范围，P-02 / P-04 保留非阻塞设计细化。
+- **依据：** [Requirements v0.2](2026-10-31-REQUIREMENTS.md)、[产品决策 D-01～D-22](../../../DECISIONS.md)、[UX 决策与演进](#ux-decisions)、[附件 Markdown 原件](../../../design/references/UX_DECISIONS.md)、[HTML 视觉与流程参考](../../../design/references/UX_DECISIONS.html)、[既有线框](../../../design/index.html?mode=wireframe)。Requirements v0.2 已由本轮 Baseline Finalization 批准已确认范围，P-02 / P-04 保留非阻塞设计细化。
 - **Human 确认依据：** Human 在此前「Agent-Ready Store — Product Design Phase Closure」请求中明确说明，主要 UI/UX 决策已经由 Human + ChatGPT 完成，五个 Wireframes 与三个代表性 Visual Mockups 已完成方向性 Review，目前未发现需要重新设计的重大问题，并要求记录设计方向已接受、完成本阶段归档。确认人：Human；记录日期：2026-10-28（Asia/Shanghai）；不补造历史审批编号或独立测试结论。此前五页线框作为结构基础的明确批准继续有效，演进见第 9 节。
 - **最终批准记录：** 确认人：Human；日期：2026-10-29（Asia/Shanghai）；直接依据：Human 在最终一致性修订交付后回复“批准”。批准对象为本 Product Design Baseline v0.2 的结构、页面职责、关键交互及视觉方向；Pending Verification、Planned Enhancement、P-02 / P-04 和工程传播差异继续保留，不视为验证通过、增强机制批准或实施/Commit/Push 授权。
 - **取代关系：** v0.2 整理并替代 v0.1 Draft 的当前阶段状态，不替代产品或 UX 决策，不改变设计资产或既有业务语义。保留 v0.1 生成、线框结构批准、方向性 Review 与阶段归档的演进，不将其改写成一次完整验收。
@@ -78,7 +78,7 @@
 
 **当前 MVP：** Agent 创建购物车并生成 Handoff，Human 在 Hosted Checkout 查看完整摘要，明确确认并直接提交购买。下图及现有五页/三稿覆盖此路径。
 
-**后续增强：** 按 [D-01 最新确认](../../../DECISIONS.md#d01-authorization-20261029)与 [Requirements §3.3](../REQUIREMENTS.md#33-后续增强human-具体授权后的-agent-代提交)，Human 对具体购买内容作出有效授权后，可由 Agent 代提交；未经 Human 授权的自动购买始终禁止。购买内容或报价变化仍须依现有规则重新展示与授权，交接访问权及 Agent 自称已获批准都不能替代购买授权。授权入口、授权状态与失效/重新授权反馈属于 Planned Enhancement，尚未设计或验证，不新增页面或重做当前资产。服务端可验证的授权与提交机制留后续审议，参见 [T-02 / T-05 / C-01](../../engineering/ENGINEERING_DECISIONS.md#技术决策归档--2026-10-29)；当前传播结果见 §8。
+**后续增强：** 按 [D-01 最新确认](../../../DECISIONS.md#d01-authorization-20261029)与 [Requirements §3.3](2026-10-31-REQUIREMENTS.md#33-后续增强human-具体授权后的-agent-代提交)，Human 对具体购买内容作出有效授权后，可由 Agent 代提交；未经 Human 授权的自动购买始终禁止。购买内容或报价变化仍须依现有规则重新展示与授权，交接访问权及 Agent 自称已获批准都不能替代购买授权。授权入口、授权状态与失效/重新授权反馈属于 Planned Enhancement，尚未设计或验证，不新增页面或重做当前资产。服务端可验证的授权与提交机制留后续审议，参见 [T-02 / T-05 / C-01](../../engineering/ENGINEERING_DECISIONS.md#技术决策归档--2026-10-29)；当前传播结果见 §8。
 
 ```mermaid
 flowchart TD
@@ -101,7 +101,7 @@ flowchart TD
 
 打开链接、进入 Checkout、加购或编辑都不是购买确认。确认前展示商品 ID 与名称、数量、单价、各项小计、优惠前总小计、满减、适用 AI 优惠、运费及应付金额。提交前重新检查商品、数量、库存、价格、优惠和金额；一次明确确认、重验通过后完成模拟结账，没有额外支付步骤。
 
-商品、数量、单价、适用优惠、运费或应付金额任一变化，均展示新摘要并等待 Human 再次确认；即使总额不变也不能省略。仅库存变化且仍满足数量时无需再次确认，但库存校验仍有效。完整业务定义引用 [Requirements §8](../REQUIREMENTS.md#8-最终确认模拟结账与订单)，本设计不另设判定阈值。
+商品、数量、单价、适用优惠、运费或应付金额任一变化，均展示新摘要并等待 Human 再次确认；即使总额不变也不能省略。仅库存变化且仍满足数量时无需再次确认，但库存校验仍有效。完整业务定义引用 [Requirements §8](2026-10-31-REQUIREMENTS.md#8-最终确认模拟结账与订单)，本设计不另设判定阈值。
 
 ## 4. 核心交互与状态
 
@@ -185,13 +185,13 @@ flowchart TD
 
 演示仍采用固定场景：加购只反馈；搜索/筛选为结构控件；数量调整只切换固定样本；报价为预先核对的常量；不请求 API、不存购物状态、不真实成单。详见 [展示边界](../PRODUCT_DESIGN.md#preview-boundaries)。商品变价/缺货是合成样本，不是 Mock 原始数据变更。
 
-- [P-02](../REQUIREMENTS.md#p-02)（Pending / 非阻塞设计细化）：搜索匹配、具体筛选、同分次级排序、摘要与评论概览字段及分页细则仍待明确；当前目录页大小、示例同分 ID 顺序与评论平均分只是展示安排，不批准业务契约。
-- [P-04](../REQUIREMENTS.md#p-04)（Pending / 非阻塞设计细化）：通用故障恢复、购物车独立保留期限、成功订单后续查询和凭证过期后的结果访问仍未决；现有“未知结果”提示不补充权限机制。
+- [P-02](2026-10-31-REQUIREMENTS.md#p-02)（Pending / 非阻塞设计细化）：搜索匹配、具体筛选、同分次级排序、摘要与评论概览字段及分页细则仍待明确；当前目录页大小、示例同分 ID 顺序与评论平均分只是展示安排，不批准业务契约。
+- [P-04](2026-10-31-REQUIREMENTS.md#p-04)（Pending / 非阻塞设计细化）：通用故障恢复、购物车独立保留期限、成功订单后续查询和凭证过期后的结果访问仍未决；现有“未知结果”提示不补充权限机制。
 
 P-02 / P-04 不阻塞基线整体批准，但依赖其细则的设计、实现与验收前仍须明确；非阻塞不代表已接受未知风险或批准默认参数。
 
 - 图像是明确的原创示意，不承诺实物外观；尚无正式商品摄影资产。
-- 五个 Wireframes 与三个 Visual Mockups 的设计方向已获 Human 接受，Product Design 阶段已归档；完整验收仍开放。当时的单次设计方向确认仅覆盖该次设计批准范围，不自动批准 Requirements 整体、技术架构、技术选型或正式开发；Requirements v0.2 当前已独立获批，见 [Requirements Baseline 批准记录](../REQUIREMENTS.md)，其他文档与技术选择的状态以各自独立批准记录为准。
+- 五个 Wireframes 与三个 Visual Mockups 的设计方向已获 Human 接受，Product Design 阶段已归档；完整验收仍开放。当时的单次设计方向确认仅覆盖该次设计批准范围，不自动批准 Requirements 整体、技术架构、技术选型或正式开发；Requirements v0.2 当前已独立获批，见 [Requirements Baseline 批准记录](2026-10-31-REQUIREMENTS.md)，其他文档与技术选择的状态以各自独立批准记录为准。
 
 ## 9. 阶段归档与交接
 
@@ -230,7 +230,7 @@ P-02 / P-04 不阻塞基线整体批准，但依赖其细则的设计、实现�
 - **记录日期：** 2026-10-28（Asia/Shanghai）。这是持久化日期，不补写此前讨论或批准日期，也不声称已取得完整历史对话。
 - **文档状态（历史与当前）：** 首次为待核对的已确认决策记录；当前方向 Review 及批准范围见本文开头。本节不单独批准整份基线、静态参数或 UI 实现。
 - **职责：** 本节保存体验、页面、交互和视觉取舍的决策依据，合并前独立维护于 `docs/UX_DECISIONS.md`；本节不替代 [产品决策](../../../DECISIONS.md)、Requirements、Product Design 或 OpenSpec。
-- **相关上下文（历史与当前）：** 本节此前记录的 [Requirements v0.2](../REQUIREMENTS.md) **Draft — Pending Final Human Approval** 为其获批前的历史状态；当时须分别核对 Accepted 产品决策与直接记录的 Human 补充确认，不能将待批准稿视为 Approved。当前该文档已独立获批为 **Approved Product Requirements Baseline v0.2**，批准依据、范围及保留项见其开头记录；不由本节 UX 决策的接受推导。设计产物标准参照 [产品、设计与交付契约](../../workflow/PRODUCT_ENGINEERING.md#product-design-内容与验收标准)。
+- **相关上下文（历史与当前）：** 本节此前记录的 [Requirements v0.2](2026-10-31-REQUIREMENTS.md) **Draft — Pending Final Human Approval** 为其获批前的历史状态；当时须分别核对 Accepted 产品决策与直接记录的 Human 补充确认，不能将待批准稿视为 Approved。当前该文档已独立获批为 **Approved Product Requirements Baseline v0.2**，批准依据、范围及保留项见其开头记录；不由本节 UX 决策的接受推导。设计产物标准参照 [产品、设计与交付契约](../../workflow/PRODUCT_ENGINEERING.md#product-design-内容与验收标准)。
 - **证据边界：** 理由仅整理本轮交接提供的讨论依据，不声称经过用户测试、数据分析、运营验证或 Codex 技术实验。未提供的候选名称、方案编号和历史比较不补造；未明确的细节保留 Pending。
 - **当时归档范围（历史）：** 仅持久化原 UX 决策文件，不生成正式设计文档、原型、HTML、商城代码或 OpenSpec Change，不修改产品/技术决策、Requirements、Workflow 或 Skills，不授权 Commit、Push、Merge 或部署。
 
@@ -427,7 +427,7 @@ P-02 / P-04 不阻塞基线整体批准，但依赖其细则的设计、实现�
 
 ### 对照结论与后续待细化边界
 
-首次 UX 决策归档时的对照未发现上述选择与当时 Accepted 产品决策或 Requirements 待批准稿的实质冲突；这是历史对照结论。当前适用的需求依据为已独立获批的 [Requirements Baseline v0.2](../REQUIREMENTS.md)，批准范围及保留项以其记录为准。以下说明仅澄清适用关系，不替代已有规则：
+首次 UX 决策归档时的对照未发现上述选择与当时 Accepted 产品决策或 Requirements 待批准稿的实质冲突；这是历史对照结论。当前适用的需求依据为已独立获批的 [Requirements Baseline v0.2](2026-10-31-REQUIREMENTS.md)，批准范围及保留项以其记录为准。以下说明仅澄清适用关系，不替代已有规则：
 
 | 对照点 | 适用关系 |
 | --- | --- |
@@ -444,22 +444,22 @@ P-02 / P-04 不阻塞基线整体批准，但依赖其细则的设计、实现�
 
 上述“本轮”与“后续”均为 UX 决策首次归档时的说明；当前设计表达见 §1～6、未完成验收见 §7，已细化参数不等于逐项获批。后续设计记录若与有效产品约束出现实质冲突，应列出来源、影响和选项交 Human 裁决，不能以设计细化覆盖产品决策。
 
-[req-journey]: ../REQUIREMENTS.md#3-核心用户旅程
-[req-catalog]: ../REQUIREMENTS.md#4-商品发现详情与评论
-[req-data]: ../REQUIREMENTS.md#42-商品可购买状态与数据边界
-[req-cart]: ../REQUIREMENTS.md#5-购物车与来源
-[req-quantity]: ../REQUIREMENTS.md#quantity-confirmation
-[req-origin]: ../REQUIREMENTS.md#cart-05
-[req-price]: ../REQUIREMENTS.md#price-02
-[req-handoff]: ../REQUIREMENTS.md#7-匿名交接与访问边界
-[req-order]: ../REQUIREMENTS.md#8-最终确认模拟结账与订单
-[req-reconfirm]: ../REQUIREMENTS.md#reconfirmation-rules
-[req-states]: ../REQUIREMENTS.md#82-关键状态与异常结果
-[req-nfr]: ../REQUIREMENTS.md#nfr-01
-[req-delivery]: ../REQUIREMENTS.md#10-作业工程交付与验收
-[req-pending]: ../REQUIREMENTS.md#11-pending缺口与后置边界
-[req-acceptance]: ../REQUIREMENTS.md#121-关键验收场景
-[req-ac10]: ../REQUIREMENTS.md#ac-10
+[req-journey]: 2026-10-31-REQUIREMENTS.md#3-核心用户旅程
+[req-catalog]: 2026-10-31-REQUIREMENTS.md#4-商品发现详情与评论
+[req-data]: 2026-10-31-REQUIREMENTS.md#42-商品可购买状态与数据边界
+[req-cart]: 2026-10-31-REQUIREMENTS.md#5-购物车与来源
+[req-quantity]: 2026-10-31-REQUIREMENTS.md#quantity-confirmation
+[req-origin]: 2026-10-31-REQUIREMENTS.md#cart-05
+[req-price]: 2026-10-31-REQUIREMENTS.md#price-02
+[req-handoff]: 2026-10-31-REQUIREMENTS.md#7-匿名交接与访问边界
+[req-order]: 2026-10-31-REQUIREMENTS.md#8-最终确认模拟结账与订单
+[req-reconfirm]: 2026-10-31-REQUIREMENTS.md#reconfirmation-rules
+[req-states]: 2026-10-31-REQUIREMENTS.md#82-关键状态与异常结果
+[req-nfr]: 2026-10-31-REQUIREMENTS.md#nfr-01
+[req-delivery]: 2026-10-31-REQUIREMENTS.md#10-作业工程交付与验收
+[req-pending]: 2026-10-31-REQUIREMENTS.md#11-pending缺口与后置边界
+[req-acceptance]: 2026-10-31-REQUIREMENTS.md#121-关键验收场景
+[req-ac10]: 2026-10-31-REQUIREMENTS.md#ac-10
 [design-standard]: ../../workflow/PRODUCT_ENGINEERING.md#product-design-内容与验收标准
 [showcase-standard]: ../../workflow/PRODUCT_ENGINEERING.md#project-showcase-生成与维护
 [d01]: ../../../DECISIONS.md#d-01--agent-购物权限与最终确认
