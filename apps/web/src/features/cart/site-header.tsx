@@ -8,8 +8,7 @@ export function SiteHeader() {
   const { currentCartId } = useCartOperations();
   const path = usePathname().split('/');
   const routeCart =
-    ['cart', 'checkout', 'orders'].includes(path[1]) &&
-    cartIdInput.safeParse(path[2]).success
+    path[1] === 'cart' && cartIdInput.safeParse(path[2]).success
       ? path[2]
       : null;
   const cartId = routeCart ?? currentCartId;
@@ -20,7 +19,7 @@ export function SiteHeader() {
           AGENT / STORE
         </Link>
         <span className="site-tagline">為人與 AI 助理設計</span>
-        {path[1] !== 'order-details' && (
+        {!['order-details', 'orders', 'checkout'].includes(path[1]) && (
           <nav aria-label="購物導覽">
             <Link
               className="site-cart-link"

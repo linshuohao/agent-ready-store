@@ -62,7 +62,19 @@ OrderView 保存唯一明细/金额快照，状态为 CHECKOUT / PAID，关闭�
 - 首次加购才建车，纯浏览/空车页零创建；原车存在订单后仍可继续加购。URL显示另一辆车不会覆盖已有当前指针，编辑受当前目标核对；完整本人跨入口确认接续仍属5.5。
 - 车页首次全不选，提供全选和逐行选择；保存/移除按单行提交，Enter或失焦保存数量，非法草稿可恢复已保存量。连续单版本快照保留仍存在且数量相同的选择；跨越多个版本可能隐藏移出/重加，因此保守要求重新选择。显式重载也清空选择，新行不自动勾选。
 - 前台刷新保护未保存草稿；在途返回先记录待校准，写入完成后再查询。车结果核对ID/version，报价核对完整选择与版本，不用迟到响应覆盖新状态。未知逐项操作用全局可见的原请求恢复入口，不由GET猜测写入是否执行。
-- 生单使用5.1接口并提供原订单链接，空车仍显示待支付及所有历史订单。原创建请求在`store.order.create.{cartId}`发送前保存，未知恢复不会把另一份草稿清掉；完整订单终态协调/导航仍属5.3～5.5，当前订单详情旧页尚未接入新流程，不能当作完整购买交付。
+- 生单使用5.1接口并提供原订单链接，空车仍显示待支付及所有历史订单。原创建请求在`store.order.create.{cartId}`发送前保存，未知恢复不会把另一份草稿清掉；统一订单页已在5.3接入；完整终态乱序协调及跨入口接续仍属5.4～5.5，不等于全部入口交付。
 - 旧WebMCP的准备/编辑调用在Provider明确拒绝，专用新通道与PageTools迁移仍属6.3；旧Commands仅供尚未迁移的旧入口，不参与普通Web新车操作。
 
 浏览器集成：`CHECKOUT_INTEGRATION=1 WEB_BASE_URL=http://127.0.0.1:3004 pnpm exec playwright test e2e/cart-lifecycle.spec.ts --workers=1`，测试Web必须代理store_test API3003且API的WEB_ORIGIN同为`http://127.0.0.1:3004`。这是自动化Chrome桌面/移动视口，不是真实Host/Human验收；测试以代理HTTP准备车、注入响应丢失/延迟，再通过真实核心验证结果。测试前可按已有测试重置方式只初始化store_test，严禁业务库。
+
+
+## 普通 Web 订单页（Task 5.3）
+
+`/orders/{orderId}`统一读取订单并展示固定商品/规格/数量/单价、金额分项、生单通道、AI资格、截止和当前状态。支付仅由UI按钮直接调用原orderId，不生成第二笔订单；取消只关闭原单且不自动回车。同车提供继续购物与分页订单导航，已支付可刷新重读。`SiteHeader`不再从订单URL推断cartId。
+
+- 无React的`order-commands.ts`复用既有shoppingRequest；`use-order-page.ts`负责本页查询和动作状态，展示继续复用commerce-ui的金额组件，无新增依赖或金额算法。
+- 请求前将orderId和pay/cancel保存在`store.order.pending.{orderId}`；未知只查原单，显式重试限原动作，存储不可用不发送。已确认快照不因后续404消失；本地到期只禁用新支付并查询，不当作已提交关闭。5.4的完整跨页迟到结果保存、Commands/竞态矩阵仍未完成。
+- 同车多单导航已实现；其他车/无当前车不自动改指针。`?view=share`先隐藏来源车、其他单及取消，页头也不显示车导航；完整本人接续确认、分享集成及最终体验仍属5.5，尚未验收。
+- 旧`/checkout/{cartId}`及`/order-details/{orderId}`只显示退出提示，不兑换fragment、不加载旧购买控制器。`/orders`动态参数仅作orderId查询，不按cartId映射；不存在时提供新流程提示及重查。旧控制器文件仍供后续迁移清理核对，不再由这些路由挂载。
+
+浏览器回归：`CHECKOUT_INTEGRATION=1 WEB_BASE_URL=http://127.0.0.1:3004 pnpm exec playwright test e2e/order-lifecycle.spec.ts e2e/cart-lifecycle.spec.ts --workers=1`；环境同上，仅store_test。订单用例包含真实HTTP生单、UI支付/取消、同ID固定摘要、继续购物/多单、旧路由无写入、丢响应刷新、技术故障/存储失败、本地到期，以及取消未知/已支付后404两项回归。浏览器故障注入不替代共享核心已执行的真实PostgreSQL事务与竞态验证，也不代表真实Human点击验收。
