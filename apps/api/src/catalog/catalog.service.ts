@@ -14,7 +14,7 @@ export class CatalogService {
     return new Map(
       (await this.db.inventory.findMany()).map((r) => [
         r.productId,
-        r.quantity,
+        r.quantity - r.reservedQuantity,
       ]),
     );
   }

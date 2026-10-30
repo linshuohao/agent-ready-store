@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
-import { priceCart } from '../../src/cart/pricing.js';
+import { priceSelection } from '../../src/cart/pricing.js';
 import { Catalog } from '../../src/catalog/catalog.js';
 
 const line = (unitPrice: string, quantity = 1, productId = 'A') => ({
@@ -23,7 +23,9 @@ describe('approved cart pricing', () => {
   ] as const)(
     '%s at %s uses independent promotion and shipping thresholds',
     (origin, subtotal, thresholdDiscount, aiDiscount, shipping, total) => {
-      expect(priceCart([line(subtotal)], origin).quote).toMatchObject({
+      expect(
+        priceSelection([line(subtotal)], origin === 'AGENT'),
+      ).toMatchObject({
         currency: 'TWD',
         subtotal,
         thresholdDiscount,
@@ -34,7 +36,7 @@ describe('approved cart pricing', () => {
     },
   );
   it('rounds HALF_UP after aggregation, not per item', () => {
-    expect(priceCart([line('0.10', 3)], 'AGENT').quote).toMatchObject({
+    expect(priceSelection([line('0.10', 3)], true)).toMatchObject({
       subtotal: '0.30',
       aiDiscount: '0.01',
       shipping: '100.00',
@@ -42,25 +44,11 @@ describe('approved cart pricing', () => {
     });
   });
   it('does not charge shipping for an empty cart', () => {
-    expect(priceCart([], 'HUMAN')).toEqual({ quote: null, quoteHash: null });
-  });
-  it('hashes purchase contents and remains stable under line reordering', () => {
-    const original = priceCart(
-      [line('500.00', 1, 'A'), line('500.00', 1, 'B')],
-      'HUMAN',
-    );
-    const reversed = priceCart(
-      [line('500.00', 1, 'B'), line('500.00', 1, 'A')],
-      'HUMAN',
-    );
-    const changed = priceCart([line('1000.00', 1, 'C')], 'HUMAN');
-    expect(original.quoteHash).toBe(reversed.quoteHash);
-    expect(original.quote?.total).toBe(changed.quote?.total);
-    expect(original.quoteHash).not.toBe(changed.quoteHash);
+    expect(priceSelection([], false)).toBeNull();
   });
   it('rejects overflow instead of truncating the amount', () => {
     expect(() =>
-      priceCart([line('9007199254740991.00', 2147483647)], 'HUMAN'),
+      priceSelection([line('9007199254740991.00', 2147483647)], false),
     ).toThrow('AMOUNT_OUT_OF_RANGE');
   });
   it('preserves the catalog price literal before binary number conversion', () => {

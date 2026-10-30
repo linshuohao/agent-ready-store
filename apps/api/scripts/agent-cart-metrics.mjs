@@ -5,8 +5,7 @@ await client.connect();
 try {
   await client.query('BEGIN READ ONLY');
   const { rows } = await client.query(
-    'SELECT count(*)::text AS count FROM "Cart" WHERE origin = $1',
-    ['AGENT'],
+    'SELECT count(*)::text AS count FROM "Cart" WHERE "agentCreated"',
   );
   await client.query('COMMIT');
   process.stdout.write(

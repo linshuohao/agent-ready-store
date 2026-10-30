@@ -1,15 +1,14 @@
 import { Decimal } from 'decimal.js';
-import { createHash } from 'node:crypto';
-import type { CartOrigin, PriceLine, Quote } from '@store/contracts';
+import type { PriceLine, Quote } from '@store/contracts';
 import { AppError } from '../shared/app-error.js';
 
 const Money = Decimal.clone({ precision: 50, rounding: Decimal.ROUND_HALF_UP });
 const maximum = new Money('999999999999999999.99');
-export function priceCart(
+export function priceSelection(
   lines: PriceLine[],
-  origin: CartOrigin,
-): { quote: Quote | null; quoteHash: string | null } {
-  if (!lines.length) return { quote: null, quoteHash: null };
+  aiEligible: boolean,
+): Quote | null {
+  if (!lines.length) return null;
   const items = [...lines]
     .sort((a, b) =>
       a.productId < b.productId ? -1 : a.productId > b.productId ? 1 : 0,
@@ -25,7 +24,7 @@ export function priceCart(
   const discount = subtotal.gte(1000) ? new Money(100) : new Money(0);
   const afterDiscount = subtotal.sub(discount);
   const merchandise = (
-    origin === 'AGENT' ? afterDiscount.mul('0.95') : afterDiscount
+    aiEligible ? afterDiscount.mul('0.95') : afterDiscount
   ).toDecimalPlaces(2);
   const shipping = subtotal.gte(990) ? new Money(0) : new Money(100);
   const total = merchandise.add(shipping);
@@ -40,8 +39,5 @@ export function priceCart(
     shipping: shipping.toFixed(2),
     total: total.toFixed(2),
   };
-  const quoteHash = createHash('sha256')
-    .update(JSON.stringify({ origin, quote }))
-    .digest('hex');
-  return { quote, quoteHash };
+  return quote;
 }

@@ -1,6 +1,6 @@
 # Tasks
 
-状态：Planning Draft，2026-10-31（Asia/Shanghai）。本轮完成基线传播及独立Planning Review，业务实现任务均未实施；产物齐全与审查通过不等于Human Approval或实施授权。依赖顺序为1→2→3→4→5→6→7→8→9；每组同步自己的测试与文档，不建立平行计划。
+状态：Implementation，2026-10-31（Asia/Shanghai）。Human本轮明确要求“继续在实施分支开发结算流程重构，按同一 Change 的 Tasks 推进，先完成数据模型、共享契约和交易核心及相关验证”，据此批准实施本Change相关规划差异；不扩大为实际库清理、Push、Merge或发布授权。依赖顺序为1→2→3→4→5→6→7→8→9；每组同步自己的测试与文档，不建立平行计划。
 
 依据：[Proposal](proposal.md)、[Design](design.md)、本Change的12份[Delta Specs](specs/)、T-08～T-11及Technical Design目标方案。旧正式Spec仍描述旧实现；产品基线已传播为v0.3 Draft，原批准全文保留在历史快照；只在本Change获批范围内替代，历史批准不改写。2026-10-31 Human已确认本轮不新增停售/禁售功能；SALE_BLOCKED仅保留未来条件性讨论，不进入本轮字段、工具或验证承诺。
 
@@ -8,27 +8,27 @@
 
 - [x] 1.1 将Design §2的限定差异传播到DECISIONS的D-01/D-04～07/D-21～24及Requirements §3/5～9、Product Design §2～4/8，Technical Design同步本轮禁售范围澄清；保留旧批准历史与T-08～T-11来源，不标记整体Approved。验证：逐条对照12份Delta，无旧原生确认、一车一单、支付实时计价或车TTL残留为新流程约束。
 - [x] 1.2 对本Change做独立只读Planning Review，重点核对完整旧要求替代、同键恢复、锁序/截止、配额/可售量区别、来源、分享及迁移；在本Tasks记录Findings与处理证据。验证：阻塞发现已解决或经Human明确裁决，不能把本轮自查算独立Review。
-- [ ] 1.3 呈交规划及受影响基线取得Human批准与实施授权，按Git Checkpoint Policy形成获授权的规划Checkpoint并运行Guard。验证：真实审批来源、提交和精确成果路径可核对；Guard通过才进入业务实现，提交不替代批准。
+- [x] 1.3 呈交规划及受影响基线取得Human批准与实施授权，按Git Checkpoint Policy形成获授权的规划Checkpoint并运行Guard。验证：真实审批来源、提交和精确成果路径可核对；Guard通过才进入业务实现，提交不替代批准。
 
 ## 2. 数据结构与共享契约
 
-- [ ] 2.1 修改apps/api/prisma/schema.prisma及新迁移：Cart.orders一对多、Order CHECKOUT/PAID与关闭/截止字段、OrderLine唯一明细、固定金额、Inventory.reservedQuantity和持久操作幂等；删除旧Review/epoch/凭证依赖，不新增Checkout/Session。验证：独立store_test迁移及约束检查通过，正常库存不变量和PAID/关闭互斥成立，P008负库存样本仍保真且不可预留；不得为CHECK约束静默修正原件。
-- [ ] 2.2 更新packages/contracts的Cart/Order视图、selectedItems、请求键、预算/币种/规格约束、分页、错误、allowedActions及普通/分享入口；明确每个用例的输入和通道派生方式。验证：契约测试覆盖非法/未知字段、重复ID、数量断言、ID关联、配额和终态；文档标明新接口不兼容旧购买schema。
-- [ ] 2.3 保留apps/api/src/cart/pricing.ts精确金额算法，输入改为选中集合和本单服务端AI资格，订单快照只存一份明细/金额；删除purchaseHash依赖。验证：现有pricing测试迁移后覆盖990/1000门槛、HALF_UP、未选商品不贡献门槛、入口资格矩阵及金额上界。
+- [x] 2.1 修改apps/api/prisma/schema.prisma及新迁移：Cart.orders一对多、Order CHECKOUT/PAID与关闭/截止字段、OrderLine唯一明细、固定金额、Inventory.reservedQuantity和持久操作幂等；删除旧Review/epoch/凭证依赖，不新增Checkout/Session。验证：独立store_test迁移及约束检查通过，正常库存不变量和PAID/关闭互斥成立，P008负库存样本仍保真且不可预留；不得为CHECK约束静默修正原件。
+- [x] 2.2 更新packages/contracts的Cart/Order视图、selectedItems、请求键、预算/币种/规格约束、分页、错误、allowedActions及普通/分享入口；明确每个用例的输入和通道派生方式。验证：契约测试覆盖非法/未知字段、重复ID、数量断言、ID关联、配额和终态；文档标明新接口不兼容旧购买schema。
+- [x] 2.3 保留apps/api/src/cart/pricing.ts精确金额算法，输入改为选中集合和本单服务端AI资格，订单快照只存一份明细/金额；删除purchaseHash依赖。验证：现有pricing测试迁移后覆盖990/1000门槛、HALF_UP、未选商品不贡献门槛、入口资格矩阵及金额上界。
 
 ## 3. 持续购物车与原子生单
 
-- [ ] 3.1 在现有CartService边界实现ID接续、初始化幂等与加购/设量/移除持久幂等；不引入通用编排层。验证：扩展cart-operations-db.test.ts等真实PostgreSQL测试，初始条目与Agent归因原子创建、纯浏览不建车、初始空Agent车拒绝、同键并发/跨重启/丢响应只操作一次，同键异载荷拒绝，旧版本冲突且无丢失更新；已关联订单不使车只读；创建/add/set零价/缺库存拒绝，set/remove不存在行拒绝，0不当删除，remove问题行可用。
-- [ ] 3.2 实现quote_selection与create_order共享用例：完整选择/预算/规格校验、锁价、预留、转出整行及递增版本同事务；按Design §6锁序，同键恢复优先。验证：真实库故障注入覆盖每个持久化边界，空/重复/缺失/数量不符整笔拒绝，未选问题行不阻止；两车竞争最后库存不超卖，不同键同车旧版本至多一次成功。
-- [ ] 3.3 实现默认10且可配置的待支付额度，校验正整数、Cart锁内准入、满额同键恢复及到期不占名额。验证：9→10竞争、降配置、支付/取消/到期释放名额，以及已到期未释放库存时不能借额度超卖；同步配置说明。
-- [ ] 3.4 实现get_order/list_orders及有效待支付列表，返回固定快照和当前状态，不调用实时计价重构历史。验证：同车多单、空车查单、有界分页、长期/跨重启查询，价格涨跌/促销结束/运费改变后原单金额和资格不变。
+- [x] 3.1 在现有CartService边界实现ID接续、初始化幂等与加购/设量/移除持久幂等；不引入通用编排层。验证：扩展cart-operations-db.test.ts等真实PostgreSQL测试，初始条目与Agent归因原子创建、纯浏览不建车、初始空Agent车拒绝、同键并发/跨重启/丢响应只操作一次，同键异载荷拒绝，旧版本冲突且无丢失更新；已关联订单不使车只读；创建/add/set零价/缺库存拒绝，set/remove不存在行拒绝，0不当删除，remove问题行可用。
+- [x] 3.2 实现quote_selection与create_order共享用例：完整选择/预算/规格校验、锁价、预留、转出整行及递增版本同事务；按Design §6锁序，同键恢复优先。验证：真实库故障注入覆盖每个持久化边界，空/重复/缺失/数量不符整笔拒绝，未选问题行不阻止；两车竞争最后库存不超卖，不同键同车旧版本至多一次成功。
+- [x] 3.3 实现默认10且可配置的待支付额度，校验正整数、Cart锁内准入、满额同键恢复及到期不占名额。验证：9→10竞争、降配置、支付/取消/到期释放名额，以及已到期未释放库存时不能借额度超卖；同步配置说明。
+- [x] 3.4 实现get_order/list_orders及有效待支付列表，返回固定快照和当前状态，不调用实时计价重构历史。验证：同车多单、空车查单、有界分页、长期/跨重启查询，价格涨跌/促销结束/运费改变后原单金额和资格不变。
 
 ## 4. 支付关闭、可售投影与最小运行核对
 
-- [ ] 4.1 实现原订单UI模拟支付、取消及到期关闭短事务；锁订单后有序锁库存，锁后数据库时间准入；实际量与预留量只消费/释放一次。验证：真实PostgreSQL确定性并发覆盖支付/取消/到期、多实例竞争、等锁跨截止、截止前准入后提交、重复终态和事务回滚；已支付不退款，关闭原因不改写。
-- [ ] 4.2 在API进程内实现默认每秒扫描及启动补扫，不新增队列/Redis；提供只读预留账实核对及积压/最老超时信息。验证：多实例和重启补扫不重复释放，正常服务/数据库与明确记录的设计负载下释放延迟目标≤5秒；报告样本量、并发量、环境和实际最大延迟，故障期间不承诺上限。
-- [ ] 4.3 修改CatalogService可售投影与购物查询，保留异常原值、缺库存错误及初始化保护。验证：catalog/inventory及真实库集成覆盖预留、消费、释放后的可售一致性，公开可售零时原持有单仍可支付，依赖失败不fallback。
-- [ ] 4.4 更新受控本地统计：有效Agent建车一次，订单创建/有效待支付/物化关闭/PAID分别计量，收入仅PAID；文档说明过期未物化口径。验证：同车多单、重试、普通车AI生单、取消、超时数据集与数据库事实逐项一致，不新增公开统计服务。
+- [x] 4.1 实现原订单UI模拟支付、取消及到期关闭短事务；锁订单后有序锁库存，锁后数据库时间准入；实际量与预留量只消费/释放一次。验证：真实PostgreSQL确定性并发覆盖支付/取消/到期、多实例竞争、等锁跨截止、截止前准入后提交、重复终态和事务回滚；已支付不退款，关闭原因不改写。
+- [x] 4.2 在API进程内实现默认每秒扫描及启动补扫，不新增队列/Redis；提供只读预留账实核对及积压/最老超时信息。验证：多实例和重启补扫不重复释放，正常服务/数据库与明确记录的设计负载下释放延迟目标≤5秒；报告样本量、并发量、环境和实际最大延迟，故障期间不承诺上限。
+- [x] 4.3 修改CatalogService可售投影与购物查询，保留异常原值、缺库存错误及初始化保护。验证：catalog/inventory及真实库集成覆盖预留、消费、释放后的可售一致性，公开可售零时原持有单仍可支付，依赖失败不fallback。
+- [x] 4.4 更新受控本地统计：有效Agent建车一次，订单创建/有效待支付/物化关闭/PAID分别计量，收入仅PAID；文档说明过期未物化口径。验证：同车多单、重试、普通车AI生单、取消、超时数据集与数据库事实逐项一致，不新增公开统计服务。
 
 ## 5. 普通Web最小完整闭环
 
@@ -82,3 +82,21 @@
 - 行为限制：未运行业务测试；真实PostgreSQL并发/回滚、正常负载5秒释放目标、清理演练/实际切换、真实Agent接入Host/Human验收均未完成，旧证据不用于宣称新模型通过。
 - 可视化：沿用目标方案已有状态/流程图和本次限定替代矩阵，足以审阅本轮传播与修订；没有新建Recap或发布展示。
 - 阶段边界：Planning Review已pass，Human规划批准/实施授权未取得；此前尚无checkpoint；本轮针对22份成果路径执行Guard，实际返回BLOCKED，仅因Human Approval pending与缺少checkpoint；Review已pass，不进入Implementation。Human随后于2026-10-31明确“那就提交”，授权提交本次规划与基线文档；该授权不等于规划整体批准或实施授权。实际提交由Git历史核对，未获Push/Merge授权。原main及两个未跟踪目录保持原状。
+
+## 实施交接（2026-10-31）
+
+- 本轮实施授权见本Tasks开头的Human原话；实施分支 `codex/checkout-lifecycle-implementation`，现有worktree `/private/tmp/agent-ready-store-checkout-planning`。规划checkpoint `55d8cfe`已包含于HEAD `4d9e945`。以该提交22份实际成果文件逐项运行Guard：verification=pass、review=pass（沿用上文独立规划审查）、approval=approved，结果PASS。首次传目录路径被Guard拒绝，改用精确文件清单后通过；没有绕过检查。
+
+
+### 数据模型、共享契约与交易核心增量
+
+- 完成 Tasks 2.1～4.4，连同本轮1.3交接为14/30；Tasks 5～9仍未完成。新接口/通道、配置、迁移和验证入口见 [CHECKOUT_CORE](../../../docs/engineering/CHECKOUT_CORE.md)，不建立第二套计划。迁移删除旧Review/epoch/凭证结构，但遇到任何旧交易记录先拒绝，未执行实际库清理；P008保留-1且不能预留。
+- 核心实现：持久Cart初始化/逐项操作幂等；整行选择与预算/规格校验；一车多CHECKOUT、固定金额/明细、15分钟预留和Cart内配额；原单支付/取消/到期事务；长期快照/分页；可售投影；API启动补扫、周期扫描及只读预留/生命周期统计。旧交易HTTP明确410，旧MCP写流程拒绝且从发现中退出，目录查询保留。旧权限/Review/TTL/一车一单数据库测试由本轮生命周期用例替代；旧前端及待改HTTP测试不作为新流程证据，三入口尚不能完成新购物流程。
+- 真实验证环境：本机darwin arm64 / Node v24.22.2 / pnpm12.11.2，已有本地PostgreSQL容器、127.0.0.1:5432新建独立store_test。安装仅按已有锁文件恢复worktree依赖，未新增依赖或更改锁文件。离线安装因缺元数据失败，联网锁文件校验后安装成功；首次受sandbox限制的迁移连接失败，获工具许可后仅对store_test迁移成功。未读出或记录秘密，业务store没有迁移/清理。
+- `pnpm --filter @store/api db:generate`、`db:migrate`（DATABASE_URL=store_test）通过；新增迁移约束与回滚schema演练1项通过，确认旧Cart存在时迁移拒绝且保留记录，空交易模型迁移保留负库存。该演练不是Tasks8受控清理/切换完成。
+- `pnpm test apps/api/test/cart/lifecycle-db.test.ts apps/api/test/inventory/inventory.test.ts --no-file-parallelism`（TEST_DATABASE_URL=store_test）：30项通过。覆盖持久键/跨客户端恢复、同键异载荷、非法选择、来源矩阵、预算规格、每个生单写边界回滚、操作幂等回滚、支付/关闭回滚、竞争最后库存、同车旧版本、9→10配额、降配置、到期额度与库存区别、锁后跨截止、截止前准入后提交、固定快照/多单、异常库存/账实统计。`migration-db.test.ts`另1项通过。
+- 到期运行样本：同一进程两个真实数据库工作实例，20笔启动前已到期单+1笔周期到期单；启动补扫83ms，全部样本最大物化释放延迟884ms。正常本机小负载满足≤5秒目标；没有声称故障期间、任意负载或多主机性能保证。单笔异常保持原状并逐笔报告、批次轮转，不自动修账。
+- 实际编译启动API（store_test，loopback 3003，WEB_ORIGIN=http://localhost:3004）成功，`retired-http.test.ts`真实HTTP/MCP 1项通过：旧车/支付/接手/链接入口410、MCP仅目录工具及旧写调用拒绝；测试API已停止。没有把这一退役验证称作新Web/MCP/Apps购买验收。
+- 工作区 `pnpm typecheck`、`pnpm lint`、API `build`通过；默认 `pnpm test`为86通过、45环境条件跳过，跳过不算通过（本轮核心环境用例另按前两项实跑）。OpenSpec strict validate通过，git diff --check通过。旧UI自动化仍验证旧前端局部行为，不证明其已接入新核心；未跑全流程E2E、Docker交付构建或真实Host/Human支付。
+- 独立Code Review：全新只读上下文 `/root/core_review` 对本轮未提交Diff及原Change契约审阅，发现P2“最旧坏单令到期整批饿死”。已核实、真实DB复现，逐单失败报告+keyset轮转修复，batchSize=1跨批回归及全部受影响DB重验通过；独立定向复核通过。随后对终态/Cart关联输出契约、配额入口及新增约束测试再次定向复核，无新增可行动缺陷。审阅者未运行破坏性测试，运行证据由实施者提供，不将其说成审阅者执行。
+- Git：本轮未新增提交；当前所有核心修改/新增/旧代码删除都在实施worktree，未触碰main工作区两个未跟踪配置目录。当前授权不含本次实现Commit/Push/Merge；可审查Diff与验证已准备，实施Checkpoint等待Human提交授权；本轮针对全部实际修改/新增路径执行 `implementation-task-group` Guard，Verification/Review/Approval均满足，但因没有本次checkpoint commit实际返回BLOCKED（exit 1），未进入后续入口阶段或归档。无需新可视化：本轮用例/事务已有Design图和契约，核心增量摘要及测试证据足够审阅。

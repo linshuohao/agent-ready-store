@@ -5,6 +5,8 @@ export class AppError extends Error {
     public readonly status: number,
     public readonly details?: {
       issues?: CartIssue[];
+      pendingOrderIds?: string[];
+      pendingOrders?: { orderId: string; orderUrl: string }[];
       currentCartVersion?: number;
     },
   ) {

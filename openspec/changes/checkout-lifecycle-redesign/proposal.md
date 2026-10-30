@@ -1,6 +1,8 @@
 # Proposal
 
-状态：**Planning Draft v0.13 / 下一里程碑规划，未批准实施**。2026-10-31，Asia/Shanghai。
+状态：**Implementation / 数据模型、共享契约及交易核心增量**。2026-10-31，Asia/Shanghai。
+
+Human本轮明确授权继续在实施分支按同一Change推进数据模型、共享契约和交易核心及相关验证，授权原话、规划Checkpoint和实际完成范围见[Tasks](tasks.md)。下文“本轮仅规划/未授权实施”等保留先前规划轮次的历史语境，以此当前状态为准；不扩展为实际环境清理、Push、Merge、发布或完整流程验收。
 
 Human授权本轮整理设计，不开发。完整目标方案见[Technical Design](../../../docs/engineering/TECHNICAL_DESIGN.md)，变更级细节见[Design](design.md)：持久单车、一车多订单、整行选择、Agent生单后Human模拟支付；生单固定金额并预留库存15分钟，单车待支付上限env默认10。车和订单不设查看期限。
 

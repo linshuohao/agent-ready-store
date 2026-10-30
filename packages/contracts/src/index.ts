@@ -84,22 +84,14 @@ export type Result<T> =
       requestId: string;
     };
 
-export const cartIdInput = z.uuid();
-export const cartTokenInput = z.string().regex(/^[A-Za-z0-9_-]{43}$/);
-export const cartItemInput = z
-  .object({
-    productId: z.string().min(1).max(64),
-    quantity: z.number().int().positive().max(2147483647),
-  })
-  .strict();
-export const cartItemsInput = z
-  .array(cartItemInput)
-  .max(100)
-  .refine(
-    (items) =>
-      new Set(items.map((item) => item.productId)).size === items.length,
-    { message: 'Duplicate product IDs' },
-  );
+import {
+  cartIdInput,
+  cartTokenInput,
+  cartItemInput,
+  cartItemsInput,
+  cartOperationInput,
+} from './cart-input.js';
+export * from './cart-input.js';
 export const cartCreateInput = z
   .object({
     createRequestId: z.uuid(),
@@ -113,16 +105,6 @@ export const cartReplaceInput = z
     items: cartItemsInput,
   })
   .strict();
-export const cartOperationInput = z.discriminatedUnion('type', [
-  cartItemInput.extend({ type: z.literal('add_item') }).strict(),
-  cartItemInput.extend({ type: z.literal('set_quantity') }).strict(),
-  z
-    .object({
-      type: z.literal('remove_item'),
-      productId: cartItemInput.shape.productId,
-    })
-    .strict(),
-]);
 export const cartOperateInput = z
   .object({
     expectedCartVersion: cartReplaceInput.shape.expectedCartVersion,
@@ -446,3 +428,6 @@ export const purchaseMaterialsResultOutput = z.discriminatedUnion('ok', [
     })
     .strict(),
 ]);
+
+// New lifecycle contracts are breaking; old exports only serve UI consumers pending Tasks 5–7.
+export * from './lifecycle.js';
