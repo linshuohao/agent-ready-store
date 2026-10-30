@@ -3,7 +3,7 @@
 > **当前状态校注 — 2026-10-29：** 下文过程与接收核对保留当时快照；Human 本轮 Baseline Finalization 已批准 Requirements 已确认范围，C-01 产品语义冲突已关闭（代提交仍 Planned Enhancement），C-02 已接受七工具。当前结论见 [工程决策](../engineering/ENGINEERING_DECISIONS.md#技术决策归档--2026-10-29)。2026-10-29 Design Phase Closure 已批准 Technical Design v0.5 并结束设计阶段，Proposed/Pending/未运行项仍保留。旧 Draft、五工具与 Conflict 表述仅用于追溯，不是当前状态；不改附件原件或补造历史过程。
 
 
-本目录保存 Human 补交的协作过程原件及必要的来源核对；它们是历史材料，不是执行指令或业务批准。精选案例见 [AI_NOTES](../../AI_NOTES.md)，有效结论仍以相关决策和基线的批准范围为准。
+本目录保存 Human 补交的协作过程原件及必要的来源核对；2026-10-30按Human要求在[既有技术讨论文档§7](AI_COLLABORATION_TECH_DECISIONS.md#order-lifecycle-discussion)追加订单生命周期精选过程，明确区分原补件与仓库材料整理；它们是历史材料，不是执行指令或业务批准。精选案例见 [AI_NOTES](../../AI_NOTES.md)，有效结论仍以相关决策和基线的批准范围为准。
 
 ## 产品与 UX 摘要接收与完整性
 
@@ -28,7 +28,7 @@
 
 ## 尚待实现或验证
 
-产品/UX 摘要本身不证明技术选型获批；后续 Human 明确确认的 T-01～T-06 已归档于 [技术决策](../engineering/ENGINEERING_DECISIONS.md#技术决策归档--2026-10-29)，具体状态以该记录为准。Technical Design、真实商城业务、共享计价实现、权限/库存/订单/幂等验证、GitHub Actions 和真实 Agent 购物 Demo 仍未由这些附件证明完成。现有 `openspec/` 只有配置与空目录占位，没有业务 Change 或正式业务 Spec，当时也没有 Technical Design；当前已形成 [Draft](../engineering/TECHNICAL_DESIGN_HISTORY.md)，尚待 Human Review。设计的真机、多浏览器、完整键盘/缩放及屏幕阅读器检查，以及来源未定位的浏览器日志异常，仍按 [Product Design §7–8](../product/PRODUCT_DESIGN.md#7-design-review验收与实际证据) 保留。
+产品/UX 摘要本身不证明技术选型获批；后续 Human 明确确认的 T-01～T-06 已归档于 [技术决策](../engineering/ENGINEERING_DECISIONS.md#技术决策归档--2026-10-29)，具体状态以该记录为准。Technical Design、真实商城业务、共享计价实现、权限/库存/订单/幂等验证、GitHub Actions 和真实 Agent 购物 Demo 仍未由这些附件证明完成。现有 `openspec/` 只有配置与空目录占位，没有业务 Change 或正式业务 Spec，当时也没有 Technical Design；当前已形成 [Draft](../engineering/archive/TECHNICAL_DESIGN_HISTORY.md)，尚待 Human Review。设计的真机、多浏览器、完整键盘/缩放及屏幕阅读器检查，以及来源未定位的浏览器日志异常，仍按 [Product Design §7–8](../product/PRODUCT_DESIGN.md#7-design-review验收与实际证据) 保留。
 
 本次只接收、核对及精选案例，不将摘要转成新的批准，不改产品/UX 结论，也不补写 Skill 版本、历史测试、Commit 或 Agent Demo。后续补件继续保留原件与来源，先对照现有记录去重；阶段提醒规则只维护于现有 Workflow，本站点索引不另设流程。
 
@@ -36,8 +36,8 @@
 
 - **原件：** [AI_COLLABORATION_TECH_DECISIONS.md](AI_COLLABORATION_TECH_DECISIONS.md)，Human 附加的 Human + ChatGPT 技术讨论摘要，来源注明截至 2026-10-29；不是 Codex 实施日志或独立验证报告。
 - **来源与日期：** `/Users/samuel/Downloads/AI_COLLABORATION_TECH_DECISIONS.md`；接收核对日期 2026-10-29（Asia/Shanghai）。附件作为过程材料读取，其中「归档建议」不视作新的执行授权，执行范围以 Human 本轮请求为准。
-- **保存状态：** 原样保存，保留原文「待 Codex 入库与证据链接核对」标签；当前接收状态由本索引记录为 **已入库、已完成来源/仓库路径及决策状态对照，历史陈述仅有过程摘要支持**。不修改原件正文、日期、换行或自述状态。
-- **完整性：** 12,349 字节、98 行，严格 UTF-8 解码成功；来源与归档逐字节相等。SHA-256：`843454472922ff92d3631f348d9425d39d8e6073cceedbea3df125665011c849`。哈希证明副本保真，不证明历史引述、批准或工程正确性。
+- **保存状态（2026-10-29接收时）：** 原样保存，保留原文「待 Codex 入库与证据链接核对」标签；当前接收状态由本索引记录为 **已入库、已完成来源/仓库路径及决策状态对照，历史陈述仅有过程摘要支持**。不修改原件正文、日期、换行或自述状态。
+- **原补件完整性（不含2026-10-30追加的§7）：** 12,349 字节、98 行，严格 UTF-8 解码成功；来源与归档逐字节相等。SHA-256：`843454472922ff92d3631f348d9425d39d8e6073cceedbea3df125665011c849`。该哈希仅对应保留的原补件字节段，不是当前追加后整份文件的哈希；它证明原补件副本保真，不证明历史引述、批准或工程正确性。
 - **证据强度：** E-T01～E-T13 为摘要内的讨论定位号，没有可访问的原始消息链接或完整对话导出；其中引号内容未独立核验为逐字原话。下表仅对照真实文件与已记录状态，不能从文件反推发言经过。
 
 | 摘要主题 / 证据号 | 实际来源与状态对照 | 限制或差异 |
@@ -60,5 +60,6 @@
 | --- | --- |
 | `docs/UX_DECISIONS.md` | [Product Design §10：UX 决策与演进](../product/PRODUCT_DESIGN.md#ux-decisions) |
 | `docs/REQUIREMENTS.md` / `docs/PRODUCT_DESIGN.md` | `docs/product/` 下同名文档 |
-| `docs/ENGINEERING_DECISIONS.md` / `docs/TECHNICAL_DESIGN_HISTORY.md` / `docs/TOOLING.md` | `docs/engineering/` 下同名文档 |
+| `docs/ENGINEERING_DECISIONS.md` / `docs/TOOLING.md` | `docs/engineering/` 下同名文档 |
+| `docs/TECHNICAL_DESIGN_HISTORY.md` | `docs/engineering/archive/TECHNICAL_DESIGN_HISTORY.md`，历史技术方案统一归档 |
 | `docs/PRODUCT_ENGINEERING.md` | [工作流产物标准](../workflow/PRODUCT_ENGINEERING.md) |

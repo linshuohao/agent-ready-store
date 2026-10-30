@@ -14,7 +14,7 @@
 **2026-10-30 Human 需求变更（当前方向）:** [D-01 两步 Agent 购买确认](../../DECISIONS.md#d01-agent-two-step-20261030) 已将基础MCP/WebMCP/MCP Apps两步确认后的Agent代提交纳入当前需求，替代旧的C-01 Planned Enhancement范围判断。人先请求准备，审阅最终摘要后再明确确认，Agent才可执行已授权提交；普通Web人工路径与交易不变量保持。本文既有“七工具无提交/仅浏览器人工提交/代提交后置”描述保留为已批准旧设计及现有实现的范围，不作为新需求排除依据；新确认入口、可验证授权、提交通道和异常恢复须另行完成统一设计与OpenSpec规划，尚未获技术设计或实施批准。历史批准与验收不追溯改写。
 
 
-> **当前基线状态 — 2026-10-29：** Human「Design Phase Closure & Git History Consolidation」已批准 [Technical Design v0.5](TECHNICAL_DESIGN.md) 并结束本轮设计阶段。下文 Draft/待审记录保留其当时范围；Proposed 实施候选、L-01/P-04 等 Pending 与未运行证据不因整体批准自动升级，既有 Accepted 决策不重写。
+> **当前基线状态 — 2026-10-29：** Human「Design Phase Closure & Git History Consolidation」已批准 [Technical Design v0.5](archive/TECHNICAL_DESIGN_HISTORY.md) 并结束本轮设计阶段。下文 Draft/待审记录保留其当时范围；Proposed 实施候选、L-01/P-04 等 Pending 与未运行证据不因整体批准自动升级，既有 Accepted 决策不重写。
 
 本文件保存工程治理与重要技术选择，保留原有 ENG-* 决策 ID，业务技术专题按需使用 T-*。针对 PM 需求的假设、判断、取舍及回复另见 [DECISIONS.md](../../DECISIONS.md)，不在这里混合维护；不另建职责相同的 TECH_DECISIONS.md。
 
@@ -317,7 +317,7 @@ Human 明确确认并授权：日常 Web/API 开发在本机运行，Docker 主�
 
 ### Technical Design Final Review — 2026-10-29
 
-Human 已通过整体架构，授权收敛 [Technical Design v0.2](TECHNICAL_DESIGN.md)，文件仍待最终批准。接受七工具、确定性文本查询/必要筛选、推荐分数降序/同分稳定及有界 Offset，P-02 参数边界和错误结构由切片细化。接受独立 Hosted Checkout 确认上下文、匿名保证范围、必要 Cart 版本/完整报价语义指纹、独立访问与 24h Handoff 权限、短事务条件扣减/原子订单/永久同车去重、精确十进制与订单级 HALF_UP。具体 Schema、凭证编码、Challenge 生命周期、Prisma API、锁及重试配置是 Implementation Detail，不提前固定。有效权限内可读原订单；长期过期结果读取/清理/保留仍为非阻塞 P-04。C-01 保持 Planned Enhancement，C-02 已解决；S1 即验证真实 Codex 只读 MCP，后续依次 Cart/Quote、Checkout、完整 Handoff、WebMCP、MCP Apps。未授权业务代码、Change、Commit、Push、Merge 或部署。
+Human 已通过整体架构，授权收敛 [Technical Design v0.2（历史记录）](archive/TECHNICAL_DESIGN_HISTORY.md)，文件仍待最终批准。接受七工具、确定性文本查询/必要筛选、推荐分数降序/同分稳定及有界 Offset，P-02 参数边界和错误结构由切片细化。接受独立 Hosted Checkout 确认上下文、匿名保证范围、必要 Cart 版本/完整报价语义指纹、独立访问与 24h Handoff 权限、短事务条件扣减/原子订单/永久同车去重、精确十进制与订单级 HALF_UP。具体 Schema、凭证编码、Challenge 生命周期、Prisma API、锁及重试配置是 Implementation Detail，不提前固定。有效权限内可读原订单；长期过期结果读取/清理/保留仍为非阻塞 P-04。C-01 保持 Planned Enhancement，C-02 已解决；S1 即验证真实 Codex 只读 MCP，后续依次 Cart/Quote、Checkout、完整 Handoff、WebMCP、MCP Apps。未授权业务代码、Change、Commit、Push、Merge 或部署。
 
 ### T-05 演进 — 单 Cart Token 与分享式 Handoff（2026-10-29）
 
@@ -341,7 +341,7 @@ Human 已通过整体架构，授权收敛 [Technical Design v0.2](TECHNICAL_DES
 <a id="order-lifecycle-decisions"></a>
 ## 订单生命周期重构：下一里程碑技术决策 — 2026-10-30
 
-**来源与范围：** 本聊天Human明确选择单一Order、单车多订单、固定15分钟库存/金额、长期上下文、demo权限简化，并多轮明确要求“按建议统一更新、不进入开发”；本轮要求记录技术决策及更新技术方案。以下Accepted仅指这些已采用设计选择，不代表新增架构整合稿整体Approved、独立Review通过或实施授权。证据为实际对话与[OpenSpec Design](../../openspec/changes/checkout-lifecycle-redesign/design.md)，无本轮运行实验。架构说明见[Technical Design架构总览](TECHNICAL_DESIGN.md#order-lifecycle-architecture)。
+**来源与范围：** 本聊天Human明确选择单一Order、单车多订单、固定15分钟库存/金额、长期上下文、demo权限简化，并多轮明确要求“按建议统一更新、不进入开发”；本轮要求记录技术决策及更新技术方案。以下Accepted仅指这些已采用设计选择，不代表新增架构整合稿整体Approved、独立Review通过或实施授权。证据为实际对话与[OpenSpec Design](../../openspec/changes/checkout-lifecycle-redesign/design.md)，无本轮运行实验。架构说明见[Technical Design架构总览](TECHNICAL_DESIGN.md#order-lifecycle-architecture)，精选推导与Human纠偏见[既有讨论文档§7](../ai-collaboration/AI_COLLABORATION_TECH_DECISIONS.md#order-lifecycle-discussion)。本次补充复用原ID，不改变上述确认日期与批准范围。
 
 | 新决策 | 限定替代的旧结论 | 保留部分 |
 | --- | --- | --- |
@@ -357,9 +357,9 @@ Human 已通过整体架构，授权收敛 [Technical Design v0.2](TECHNICAL_DES
 - **Status：Accepted（下一里程碑设计选择；未实施）。** Human确认，2026-10-30。
 - **Problem：** 整车准备、整车版本和每车唯一订单把继续购物与付款绑定，产生跨入口阻塞和多次确认。
 - **Context & Constraints：** 同车整行勾选；默认最多10笔待支付；Agent生单后由人模拟支付；固定15分钟锁价和预留，不续期；本轮不开发。
-- **Decision：** Cart可编辑且持续存在；Order创建即CHECKOUT，支付更新同ID为PAID；关闭用closedAt/closeReason记录。OrderLine与Order金额组成唯一不可变快照。Order.cartId必填非唯一。Inventory采用quantity/reservedQuantity，订单明细与状态作为最小预留归属账本。
+- **Decision：** Cart可编辑且持续存在；Order创建即CHECKOUT，支付更新同ID为PAID；关闭用closedAt/closeReason记录。OrderLine与Order金额组成唯一不可变快照。Order.cartId必填非唯一。Inventory采用quantity/reservedQuantity，订单明细与状态作为最小预留归属账本。生单固定价格/优惠/运费，支付不随实时计价变化；关闭不回车、不复活，改量或超时重购须重新选购并新建订单。AI资格按本单生单入口固定，不继承Cart来源。
 - **Alternatives：** 每次购买换车不能解决单车多单；独立Checkout再转Order增加实体和转换；建单直接扣实际库存混淆预留和成交；实时聚合全部待支付单增加可售查询/协调成本。本轮均不采用。
-- **Trade-offs：** 支付不再依赖车与当前价格，交互自然；代价是预留计数、关闭任务及所有“订单存在即成交”的消费者必须调整。
+- **Trade-offs：** 支付不再依赖车与当前价格，交互自然；代价是预留计数、关闭任务及所有“订单存在即成交”的消费者必须调整；锁价期内不自动享受后续降价，订单也不能原地改量。
 - **Evidence：** Human多次明确模型与期限；现有schema/CartService的限制已静态梳理于Change §1。库存并发与释放时延未实测。
 - **Consequences：** 取消旧Order.cartId唯一约束；旧流程数据切换时清理，不做旧单回填。真实支付/退款出现时重新评审生命周期，不预建状态。
 
@@ -378,9 +378,9 @@ Human 已通过整体架构，授权收敛 [Technical Design v0.2](TECHNICAL_DES
 
 - **Status：Accepted（设计选择；未实施）。** Human确认，2026-10-30。
 - **Problem：** 去掉车级业务锁后，仍须防止重试重复加购、生单，以及支付/取消/到期重复处理库存。
-- **Decision：** 用现有PostgreSQL短事务实现车操作幂等、生单转行+预留、订单支付/关闭。幂等记录和变更一起提交；同键先恢复再校验旧版本。后台在API内扫描与补扫，按目标订单及有序库存锁关闭。不使用Redis锁、长事务、队列或浏览器独占计时器。保留Cart整车version，生单用一份selectedItems及expectedQuantity断言完整数量。
+- **Decision：** 用现有PostgreSQL短事务实现车操作幂等、生单转行+预留、订单支付/关闭。幂等记录和变更一起提交；同键先恢复再校验旧版本。后台在API内扫描与补扫，按目标订单及有序库存锁关闭。不使用Redis锁、长事务、队列或浏览器独占计时器。保留Cart整车version，生单用一份selectedItems及expectedQuantity断言完整数量。多工具准备不作为大事务，完整目标准备失败不自动部分生单；单车配额在创建短事务内准入，原键恢复不受满额阻挡。
 - **Alternatives：** 只靠禁用按钮无法覆盖重试/多端；持有15分钟锁不可接受；分布式锁与队列没有当前多服务需求；逐行版本增加模型复杂度而尚无瓶颈证据。
-- **Trade-offs：** 数据库集中保障更易验证，但不同车行编辑仍可能产生整车版本冲突；后台释放存在短暂调度延迟。到点始终拒绝新支付，不能以延迟释放续期。
+- **Trade-offs：** 数据库集中保障更易验证，但不同车行编辑仍可能产生整车版本冲突；后台释放存在短暂调度延迟。到点始终拒绝新支付，不能以延迟释放续期。截止前锁后准入的支付可完成提交；关闭原因按锁后数据库时间统一判定，既有终态不改写。未物化释放按保守库存计数，接受暂时少卖。
 - **Evidence：** Human要求精简锁且多轮采纳幂等/状态裁决细化；当前逻辑和目标不变量静态可对照，真实竞态尚未验证。
 - **Consequences：** 5秒释放目标是待验收性能目标，不是运行承诺；必要验证使用真实PostgreSQL/确定性并发。只有实际冲突率或吞吐证据才重访逐行模型/独立调度设施。
 
@@ -388,8 +388,8 @@ Human 已通过整体架构，授权收敛 [Technical Design v0.2](TECHNICAL_DES
 
 - **Status：Accepted（复用既有T-01/T-04并采用本轮边界）；新增架构表达为Draft整合。** 2026-10-30。
 - **Problem：** 各端各自实现购买规则会分歧；强行共享页面又会耦合Next Router、React生命周期和Host SDK。
-- **Decision：** Nest用例唯一维护计价、库存、状态、幂等；HTTP/MCP适配器翻译协议。Web与WebMCP复用无React依赖Commands，Hook负责页面协调；Apps通过Host适配，不依赖Next环境。共享contracts和纯展示模型，有真实复用再抽组件。订单统一入口按状态显示不同内容，不用路由表示交易状态。
+- **Decision：** Nest用例唯一维护计价、库存、状态、幂等；HTTP/MCP适配器翻译协议。Web与WebMCP复用无React依赖Commands，Hook负责页面协调；Apps通过Host适配，不依赖Next环境。共享contracts和纯展示模型，有真实复用再抽组件。订单统一入口按状态显示不同内容，不用路由表示交易状态。查询副本按cartId/version和orderId隔离，局部未决操作不锁全局；迟到响应不覆盖终态或抢占导航，矛盾结果重查服务端。
 - **Alternatives：** 每端独立业务链重复维护；万能购物Store/跨端大组件耦合Host与业务；为每层创建服务/包/接口类形成无消费者抽象。本轮不采用。
 - **Trade-offs：** 部分UI适配代码保留在各端，换取明确依赖与可测试性。前端保存的是查询副本和局部意图，数据库才是交易权威。
-- **Evidence：** 现有Technical Design §5.2已有Commands/Hooks/Adapters边界，本轮继续复用并按Order生命周期调整；Human要求跨端流程、前端分层与维护性设计。没有新依赖选型或运行基准。
+- **Evidence：** [重设计前Technical Design §5.2](archive/TECHNICAL_DESIGN_HISTORY.md#snapshot-20261030)已有Commands/Hooks/Adapters边界，本轮继续复用并按Order生命周期调整；Human要求跨端流程、前端分层与维护性设计。没有新依赖选型或运行基准。
 - **Consequences：** 服务端用例、无React Commands、纯组件和真实Host分别验证；扩展入口不复制库存/金额规则。具体文件拆分在实施时按消费者决定，不预建通用编排框架。

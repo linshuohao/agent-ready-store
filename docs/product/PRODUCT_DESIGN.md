@@ -25,7 +25,7 @@
 - **Human 确认依据：** Human 在此前「Agent-Ready Store — Product Design Phase Closure」请求中明确说明，主要 UI/UX 决策已经由 Human + ChatGPT 完成，五个 Wireframes 与三个代表性 Visual Mockups 已完成方向性 Review，目前未发现需要重新设计的重大问题，并要求记录设计方向已接受、完成本阶段归档。确认人：Human；记录日期：2026-10-28（Asia/Shanghai）；不补造历史审批编号或独立测试结论。此前五页线框作为结构基础的明确批准继续有效，演进见第 9 节。
 - **最终批准记录：** 确认人：Human；日期：2026-10-29（Asia/Shanghai）；直接依据：Human 在最终一致性修订交付后回复“批准”。批准对象为本 Product Design Baseline v0.2 的结构、页面职责、关键交互及视觉方向；Pending Verification、Planned Enhancement、P-02 / P-04 和工程传播差异继续保留，不视为验证通过、增强机制批准或实施/Commit/Push 授权。
 - **取代关系：** v0.2 整理并替代 v0.1 Draft 的当前阶段状态，不替代产品或 UX 决策，不改变设计资产或既有业务语义。保留 v0.1 生成、线框结构批准、方向性 Review 与阶段归档的演进，不将其改写成一次完整验收。
-- **Pending：** 第 7 节未完成验收、来源未定位的浏览器日志及第 8 节 P-02 / P-04 继续保留；§10 保留 15 项 Accepted UX 决策及其历史依据。本次 Human 已说明 v0.2 Review 完成、现有方向通过且无需重做设计；本文记录此次 Review、对齐与最终批准，不虚构外部对话。当前技术选择及已 Approved 的 Technical Design v0.5（2026-10-29 Design Phase Closure）分别见[技术决策](../engineering/ENGINEERING_DECISIONS.md#决策索引)和[技术设计](../engineering/TECHNICAL_DESIGN_HISTORY.md)，不因此批准本设计完整验收或业务开发。
+- **Pending：** 第 7 节未完成验收、来源未定位的浏览器日志及第 8 节 P-02 / P-04 继续保留；§10 保留 15 项 Accepted UX 决策及其历史依据。本次 Human 已说明 v0.2 Review 完成、现有方向通过且无需重做设计；本文记录此次 Review、对齐与最终批准，不虚构外部对话。当前技术选择及已 Approved 的 Technical Design v0.5（2026-10-29 Design Phase Closure）分别见[技术决策](../engineering/ENGINEERING_DECISIONS.md#决策索引)和[技术设计](../engineering/archive/TECHNICAL_DESIGN_HISTORY.md)，不因此批准本设计完整验收或业务开发。
 
 ### 当前状态与最终批准范围
 
