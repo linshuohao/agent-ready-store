@@ -4,6 +4,7 @@ import type { Page, ProductSummary } from '@store/contracts';
 import { publicApi } from '@/lib/api';
 import { ProductCard } from '@/features/product-discovery/components/product-card';
 import { SearchForm } from '@/features/product-discovery/components/search-form';
+import { PageTools } from '@/features/webmcp/page-tools';
 export const dynamic = 'force-dynamic';
 export default async function Home({
   searchParams,
@@ -32,6 +33,7 @@ export default async function Home({
   retry.delete('offset');
   return (
     <main tabIndex={-1} id="main">
+      <PageTools catalog={response} queryKey={params.toString()} />
       <section className="hero">
         <p className="eyebrow">日常選物 / Agent-Ready 商店</p>
         <h1>找一件適合日常的好物。</h1>

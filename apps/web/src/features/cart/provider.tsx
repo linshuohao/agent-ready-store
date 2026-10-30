@@ -27,6 +27,7 @@ type Creation = {
   createRequestId: string;
   cartToken: string;
   items: CartItem[];
+  entrance?: 'webmcp';
 };
 const creationPendingKey = 'cartCreationPending';
 type Context = {
@@ -35,7 +36,13 @@ type Context = {
   restart: () => void;
   busy: boolean;
   pendingEdit: EditIntent | null;
-  add: (productId: string) => Promise<void>;
+  add: (
+    productId: string,
+    entrance?: 'webmcp',
+  ) => Promise<EditResult | undefined>;
+  toolSave: (intent: EditIntent) => Promise<EditResult | undefined>;
+  retryTool: (cartId?: string) => Promise<EditResult | undefined>;
+  setDraftGuard: (id: string, dirty: boolean) => void;
   save: (intent: EditIntent) => Promise<EditResult | undefined>;
   retryEdit: () => Promise<EditResult | undefined>;
 };
@@ -51,6 +58,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const creation = useRef<Creation | null>(null);
   const lock = useRef(true);
   const inFlight = useRef(false);
+  const draftGuard = useRef<{ id: string; dirty: boolean } | null>(null);
+  const setDraftGuard = useCallback((id: string, dirty: boolean) => {
+    draftGuard.current = { id, dirty };
+  }, []);
   // The ref blocks writes until storage is read; avoid an unnecessary mount update
   // around streamed children when this tab has no pending creation.
   const [busy, setBusy] = useState(false);
@@ -137,13 +148,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     inFlight.current = true;
     lock.current = true;
     setBusy(true);
-    const { selectionVersion: owner, ...input } = creation.current;
-    const result = await createCart(input);
+    const { selectionVersion: owner, entrance, ...input } = creation.current;
+    const result = await createCart(input, entrance);
     inFlight.current = false;
     if (result.kind === 'unknown') {
       setCreationUnknown(true);
       setMessage('建立結果未明，請使用原請求重試。');
-      return;
+      return result;
     }
     setCreationUnknown(false);
     creation.current = null;
@@ -161,9 +172,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
     sessionStorage.removeItem(creationPendingKey);
     unlock();
+    return result;
   }
-  async function add(productId: string) {
-    if (lock.current || inFlight.current) return;
+  async function add(
+    productId: string,
+    entrance?: 'webmcp',
+  ): Promise<EditResult | undefined> {
+    if (entrance && draftGuard.current?.dirty)
+      return { kind: 'failure', error: { code: 'UNSAVED_DRAFT' } };
+    if (lock.current || inFlight.current)
+      return { kind: 'failure', error: { code: 'CART_BUSY' } };
     lock.current = true;
     setBusy(true);
     setMessage('');
@@ -183,14 +201,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         createRequestId: crypto.randomUUID(),
         cartToken: token,
         items: [{ productId, quantity: 1 }],
+        entrance,
       };
       // Persist only uncertainty, never the capability or request materials.
       sessionStorage.setItem(creationPendingKey, '1');
-      await finishCreation();
-      return;
+      return finishCreation();
     }
     select(id);
+    const owner = selectionVersion.current;
     const latest = await getCart(id);
+    if (selectionVersion.current !== owner) {
+      unlock();
+      return { kind: 'failure', error: { code: 'STALE_CONTEXT' } };
+    }
     if (latest.kind !== 'success') {
       unlock();
       setMessage(
@@ -202,13 +225,13 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         latest.kind === 'failure' &&
           ['FORBIDDEN', 'CREDENTIAL_EXPIRED'].includes(latest.error.code),
       );
-      return;
+      return latest;
     }
     if (latest.cart.orderId) {
       unlock();
       setMessage('此購物車已完成購買，請明確開始新的購物。');
       setCanRestart(true);
-      return;
+      return { kind: 'failure', error: { code: 'CART_COMPLETED' } };
     }
     const items = latest.cart.items.map(({ productId, quantity }) => ({
       productId,
@@ -220,13 +243,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     // Transfer the synchronous page lock to the mutation without an event-loop gap.
     lock.current = false;
     const result = await performSave(
-      { cartId: id, expectedCartVersion: latest.cart.cartVersion, items },
+      {
+        cartId: id,
+        expectedCartVersion: latest.cart.cartVersion,
+        items,
+        entrance,
+      },
       false,
     );
     if (result?.kind === 'success') setMessage('已加入購物車');
     else if (result?.kind === 'conflict')
       setMessage('購物車已變更，請開啟購物車重新調整。');
     else if (result?.kind === 'failure') setMessage(failureText(result.error));
+    return result;
   }
   const restart = () => {
     if (inFlight.current) return;
@@ -249,6 +278,53 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         busy,
         pendingEdit,
         add,
+        setDraftGuard,
+        retryTool: (cartId) => {
+          if (creation.current?.entrance === 'webmcp') {
+            if (
+              cartId ||
+              creation.current.selectionVersion !== selectionVersion.current
+            )
+              return Promise.resolve({
+                kind: 'failure',
+                error: { code: 'STALE_CONTEXT' },
+              });
+            return finishCreation();
+          }
+          if (pendingEdit?.entrance === 'webmcp') {
+            if (pendingEdit.cartId !== (cartId ?? currentId.current))
+              return Promise.resolve({
+                kind: 'failure',
+                error: { code: 'STALE_CONTEXT' },
+              });
+            return performSave(pendingEdit, true);
+          }
+          return Promise.resolve({
+            kind: 'failure',
+            error: { code: 'NO_PENDING_TOOL_OPERATION' },
+          });
+        },
+        toolSave: (intent) => {
+          if (
+            draftGuard.current?.id === intent.cartId &&
+            draftGuard.current.dirty
+          )
+            return Promise.resolve({
+              kind: 'failure',
+              error: { code: 'UNSAVED_DRAFT' },
+            });
+          if (lock.current || inFlight.current)
+            return Promise.resolve({
+              kind: 'failure',
+              error: { code: 'CART_BUSY' },
+            });
+          if (currentId.current !== intent.cartId)
+            return Promise.resolve({
+              kind: 'failure',
+              error: { code: 'STALE_CONTEXT' },
+            });
+          return performSave({ ...intent, entrance: 'webmcp' }, false);
+        },
         save: (intent) => performSave(intent, false),
         retryEdit: () =>
           pendingEdit

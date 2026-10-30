@@ -2,7 +2,7 @@
 
 面向人类与 AI Agent 的商店作业。目标与交付约束见只读的 [作业原件](references/home-quiz.md) 和 [商品原件](references/products.json)；PM 需求仍是草稿。
 
-本轮产品与技术设计阶段已由 Human 批准结束（2026-10-29，Asia/Shanghai）：Requirements v0.2、Product Design v0.2 与 [Technical Design v0.5](docs/engineering/TECHNICAL_DESIGN.md) 均为 Approved Baseline；产品/技术决策及演进保留。已批准五页结构、三份视觉方向和前端主导的 Next.js/NestJS/Agent 架构；其余 Proposed Implementation Details、P-04、WebMCP 来源及运行验收缺口继续保留；L-01 已由 S2 限定补充批准解决，见下方当前规划。基础 MCP、WebMCP、MCP Apps 均属本次完整交付目标，S1 商品发现已实现并记录 Human 验收，Web交易已实现，S4基础MCP闭环已通过Human验收（真实接手链路补证限制见S4 Tasks）；WebMCP/MCP Apps尚未实施。
+本轮产品与技术设计阶段已由 Human 批准结束（2026-10-29，Asia/Shanghai）：Requirements v0.2、Product Design v0.2 与 [Technical Design v0.5](docs/engineering/TECHNICAL_DESIGN.md) 均为 Approved Baseline；产品/技术决策及演进保留。已批准五页结构、三份视觉方向和前端主导的 Next.js/NestJS/Agent 架构；其余 Proposed Implementation Details、P-04 及运行验收缺口继续保留；WebMCP 来源已有 S5 限定补充；L-01 已由 S2 限定补充批准解决，见下方当前规划。基础 MCP、WebMCP、MCP Apps 均属本次完整交付目标，S1 商品发现已实现并记录 Human 验收，Web交易已实现，S4基础MCP闭环已通过Human验收（真实接手链路补证限制见S4 Tasks）；S5 WebMCP 实施中，MCP Apps 尚未实施。
 
 阶段关闭记录见 [Technical Design §10.4](docs/engineering/TECHNICAL_DESIGN.md#104-设计阶段关闭与交接--2026-10-29)。Human 已批准 [S1 规划](openspec/changes/archive/2026-10-29-s1-product-discovery/proposal.md) 并授权实施；S1 已完成本轮 Review 并归档，运行证据与保留限制见 [归档 Tasks](openspec/changes/archive/2026-10-29-s1-product-discovery/tasks.md)；后续切片等待对应授权。精益执行原则见 [AGENTS](AGENTS.md#默认执行原则)。
 
@@ -12,7 +12,7 @@ S3已完成实施并于2026-10-30通过Human验收：[Proposal](openspec/changes
 
 ## S4 Agent Handoff
 
-[S4 Change](openspec/changes/archive/2026-10-30-s4-agent-handoff/proposal.md) 已实施七工具、同车分享/兑换及本地有效创建统计，并于2026-10-30通过Human验收；验证与保留限制见 [Tasks](openspec/changes/archive/2026-10-30-s4-agent-handoff/tasks.md)。四份正式Spec已同步，Change已归档。真实Host七工具已有证据，Human实际接手/编辑/确认的新增可核对证据未补齐，按Human知悉限制后的明确授权保留此缺口归档；S5/S6未实施。
+[S4 Change](openspec/changes/archive/2026-10-30-s4-agent-handoff/proposal.md) 已实施七工具、同车分享/兑换及本地有效创建统计，并于2026-10-30通过Human验收；验证与保留限制见 [Tasks](openspec/changes/archive/2026-10-30-s4-agent-handoff/tasks.md)。四份正式Spec已同步，Change已归档。真实Host七工具已有证据，Human实际接手/编辑/确认的新增可核对证据未补齐，按Human知悉限制后的明确授权保留此缺口归档；S5 实施中，S6 未实施。
 
 基础 MCP 仍为 `http://localhost:3002/mcp`，使用本机 `MCP_SERVICE_TOKEN` 的 Bearer 认证及既有 Host/Origin 限制。七工具为 `search_products`、`get_product`、`list_product_reviews`、`create_cart`、`get_cart`、`update_cart`、`create_handoff`。无订单提交工具。单个配置的服务身份共享创建键命名空间，不能区分 Host 或顾客；每个新意图使用随机 UUID `createRequestId`。
 
@@ -25,6 +25,22 @@ S3已完成实施并于2026-10-30通过Human验收：[Proposal](openspec/changes
 已有数据库只需执行 `docker compose exec api pnpm db:migrate`（服务未启动时使用前文 `run --rm` 入口），新增可空 `handoffIssuedAt`，不 seed、不删卷。已分享后不能回退到忽略此字段的旧权限实现。只读统计执行 `docker compose exec api pnpm --filter @store/api metrics:agent-carts`，按持久 AGENT Cart ID 计数；后续删空、到期或成交不撤销创建，不代表独立顾客或运营目标已达成。本轮无自动清理。
 
 S4测试：专用 `store_test` 库迁移后，设置 `TEST_DATABASE_URL` 串行运行 `apps/api/test/cart/handoff-db.test.ts`；MCP/HTTP测试设置 `API_BASE_URL=http://localhost:3002`、`MCP_SERVICE_TOKEN`、`WEB_ORIGIN` 后运行 `apps/api/test/cart/handoff-http.test.ts`；桌面/移动 `e2e/handoff.spec.ts` 另需相同服务Token与匹配 `WEB_BASE_URL`。真实Host调用和模拟协议/浏览器测试分别记证，不把自动化点击称为Human验收。
+
+## S5 WebMCP
+
+[S5 Change](openspec/changes/s5-webmcp/proposal.md) 已由 Human 批准规划并授权实施，当前实现与验证进度见 [Tasks](openspec/changes/s5-webmcp/tasks.md)，尚未获得最终验收；S6 未实施。以下是本轮新增运行契约，不将基础 MCP 成功当作 WebMCP 验收。
+
+支持 `document.modelContext` 的浏览器按页面提供工具：目录页 `search_products`、`add_to_cart`；详情页 `get_product`、`list_product_reviews`、`add_to_cart`；活动购物车页 `update_cart`。上述页面还提供 `get_cart` 和明确恢复原意图的 `retry_cart_operation`；Checkout 仅 `get_cart`，无购买确认/提交工具。Host 发现名称可能带本次注册后缀，必须使用当前发现结果，不能缓存旧句柄。
+
+商品详情/评论为当前页商品，不接受任意 `productId`；评论分页沿用 offset/limit/catalogRevision。搜索参数沿用目录契约，更新 URL 后返回同一次页面查询的结构化结果；导航未确认不声称已取得新结果。工具加购传 productId；编辑传 expectedCartVersion/items，操作当前车，不接收车 Token 或客户端来源/报价。返回完整服务端 CartView/报价或明确错误。脏草稿、同页忙碌、版本冲突、未知结果均不自动覆盖；恢复使用原入口、原材料和原版本，离页后旧结果不更新新车。
+
+新车及成功接手编辑的普通车享 AGENT 优惠；来源升级不延长车权限，不代表购买确认。来源防伪按 Human 决定后置，本轮不额外认证，不能防止模拟 WebMCP 的 HTTP 请求；车 Cookie、同源防护、服务端计价及 Human Checkout 确认保持。无 WebMCP 时显示限制并可继续普通 Web 购物。
+
+新增浏览器 HTTP 通道为 `POST /api/v1/webmcp/carts` 与 `PUT /api/v1/webmcp/carts/:id/items`；沿用普通车的浏览器证明和 HttpOnly Cookie，不使用或下发 `MCP_SERVICE_TOKEN`。WebMCP 与普通创建命名空间隔离，原车升级后普通创建请求仍可恢复原车。
+
+升级时先停止 API 写服务，再运行 `docker compose run --rm api pnpm db:migrate`，生成客户端并重启 API/Web；保留所有卷，不 seed。新增不可变 `agentCreated`：迁移时历史 AGENT 回填 true，HUMAN false，今后只有有效 Agent 新建写 true，HUMAN 后续升级不改此事实。不可回退到仅按 origin 统计的旧应用；需回退时先停用 WebMCP 新写入口，保留新数据并使用兼容创建事实的修订版，不能批量降来源或重写订单。
+
+S5 隔离 DB 测试为 `apps/api/test/cart/webmcp-db.test.ts`，与其他 DB 套件串行运行且仅指向 `store_test`。HTTP 测试为 `apps/api/test/cart/webmcp-http.test.ts`（API_BASE_URL、WEB_ORIGIN）；浏览器协调测试为 `e2e/webmcp.spec.ts`（WEB_BASE_URL 必须匹配 WEB_ORIGIN）。注册替身测试与真实 Host 证据分开记录，自动化确认不称为 Human 验收。
 
 ## S1 本地开发
 

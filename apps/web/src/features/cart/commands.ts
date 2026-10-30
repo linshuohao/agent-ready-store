@@ -15,6 +15,7 @@ export type EditIntent = {
   cartId: string;
   expectedCartVersion: number;
   items: CartItem[];
+  entrance?: 'webmcp';
 };
 export type EditResult = CartCall | { kind: 'conflict'; cart: CartView };
 async function request(
@@ -45,16 +46,23 @@ async function request(
 }
 export const getCart = (id: string) =>
   request(`/carts/${encodeURIComponent(id)}`);
-export const createCart = (input: {
-  createRequestId: string;
-  cartToken: string;
-  items: CartItem[];
-}) => request('/carts', 'POST', input);
+export const createCart = (
+  input: {
+    createRequestId: string;
+    cartToken: string;
+    items: CartItem[];
+  },
+  entrance?: 'webmcp',
+) => request(entrance ? '/webmcp/carts' : '/carts', 'POST', input);
 export const replaceCart = (intent: EditIntent) =>
-  request(`/carts/${encodeURIComponent(intent.cartId)}/items`, 'PUT', {
-    expectedCartVersion: intent.expectedCartVersion,
-    items: intent.items,
-  });
+  request(
+    `${intent.entrance ? '/webmcp' : ''}/carts/${encodeURIComponent(intent.cartId)}/items`,
+    'PUT',
+    {
+      expectedCartVersion: intent.expectedCartVersion,
+      items: intent.items,
+    },
+  );
 export function sameItems(a: CartItem[], b: CartItem[]) {
   const key = (items: CartItem[]) =>
     JSON.stringify(
@@ -71,7 +79,8 @@ export async function inspectEdit(intent: EditIntent): Promise<EditResult> {
   if (result.kind !== 'success') return result;
   if (result.cart.cartVersion <= intent.expectedCartVersion)
     return { kind: 'unknown' };
-  return sameItems(result.cart.items, intent.items)
+  return sameItems(result.cart.items, intent.items) &&
+    (!intent.entrance || result.cart.origin === 'AGENT')
     ? result
     : { kind: 'conflict', cart: result.cart };
 }

@@ -665,6 +665,8 @@ Server MCP 为 External Agent Host → Nest MCP Adapter → UseCases，不经过
 
 ### 6.3 同一 Cart 的写入一致性与各环境快照
 
+**S5 限定补充（2026-10-30）：** Human 已批准 [S5 WebMCP 规划](../../openspec/changes/s5-webmcp/proposal.md)并授权实施。下段“新车来源 Pending”及“JavaScript 声明不能取得优惠”为原设计阶段边界，现由 [D-07 S5 补充](../../DECISIONS.md#s5-webmcp-source-20261030)限定取代：WebMCP 工具新建车及成功接手编辑普通车具备 AGENT 优惠资格；额外身份认证/来源防伪后置，不宣称专用 HTTP 通道能防请求模拟。来源转换、版本与条目同事务提交，原权限期限不变；独立创建事实用于保持 D-22 统计，接手不补计创建。具体实现与验收证据留同一 Change，不改写历史归档或推定 S5 已获最终验收。
+
 **写入唯一落点：** 四种入口的 Cart 写入均经 Nest Commerce UseCases，Cart Version 与数据库裁决并发；不建设跨 Host 客户端锁。冲突返回最新状态/处理指引，各环境保留自己的未保存意图供 Human/Agent 核对，不自动合并或静默覆盖。真正的来源由服务端入口确定，WebMCP 的 JavaScript 声明不能取得 AGENT 优惠；新车来源问题继续 Pending。
 
 **同一页面内：** Human Web 与 WebMCP 共用 Browser Commands；Hook 或 Adapter 的页面协调回调将成功结果更新/失效同一 cartId 的 Query。脏草稿、请求代次、版本/指纹和确认失效仍按 §4.2/5.3；不把整份 UI state/QueryClient 传入 Commands，不另建工具 Store。WebMCP 注册/注销随页面能力与路由清理，离页后旧结果不能导航或更新另一车。

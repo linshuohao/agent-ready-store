@@ -158,7 +158,7 @@ const catalog = new Catalog(raw);
         confirmation: r.confirmation,
       }),
     ).toEqual(order);
-    await db.$executeRaw`UPDATE "Cart" SET "createdAt" = clock_timestamp() - interval '24 hours' WHERE id=${c.cart.cartId}::uuid`;
+    await db.$executeRaw`UPDATE "Cart" SET "createdAt" = date_trunc('milliseconds', clock_timestamp()) - interval '24 hours' WHERE id=${c.cart.cartId}::uuid`;
     await expect(
       restarted.order(c.cart.cartId, c.cartToken),
     ).rejects.toMatchObject({ code: 'CREDENTIAL_EXPIRED' });

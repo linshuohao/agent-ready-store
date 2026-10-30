@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { PurchaseSummary, PurchaseChanges } from './purchase-summary';
 import { useOrderMemory } from './order-memory';
 import { pendingKey, reviewCheckout, submitOrder, readOrder } from './commands';
+import { PageTools } from '@/features/webmcp/page-tools';
 
 type Ready = Extract<CheckoutReview, { state: 'ready' }>;
 type Phase =
@@ -195,6 +196,7 @@ export function CheckoutPage({ id }: { id: string }) {
   );
   return (
     <main id="main" tabIndex={-1} className="commerce-page checkout-page">
+      <PageTools cartId={id} readonly />
       <div className="commerce-page-heading">
         <p className="eyebrow">CHECKOUT</p>
         <h1>結帳</h1>

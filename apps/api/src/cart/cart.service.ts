@@ -151,18 +151,27 @@ export class CartService {
     );
     return { cart: result.cart, cartAccessToken: result.token };
   }
+  async createWebMcp(input: unknown) {
+    const parsed = cartCreateInput.safeParse(input);
+    if (!parsed.success || parsed.data.items.length === 0)
+      throw new AppError('VALIDATION_ERROR', 400);
+    return this.createInternal(parsed.data, 'AGENT', 'webmcp');
+  }
   private async createInternal(
     data: { cartToken: string; createRequestId: string; items: CartItem[] },
     origin: 'HUMAN' | 'AGENT',
+    entrance: 'mcp' | 'webmcp' = 'mcp',
   ) {
     const { cartToken, createRequestId } = data;
     const items = [...data.items].sort((a, b) =>
       a.productId < b.productId ? -1 : a.productId > b.productId ? 1 : 0,
     );
     const scope =
-      origin === 'AGENT'
+      origin === 'AGENT' && entrance === 'mcp'
         ? this.credentials.principalScope('store-mcp-v1')
-        : this.credentials.scope(cartToken);
+        : this.credentials.scope(
+            entrance === 'webmcp' ? `webmcp:${cartToken}` : cartToken,
+          );
     const hash = createHash('sha256')
       .update(JSON.stringify(items))
       .digest('hex');
@@ -177,8 +186,8 @@ export class CartService {
         const id = randomUUID();
         const encrypted = this.credentials.encrypt(id, cartToken);
         const inserted = await tx.$queryRaw<{ id: string }[]>`
-          INSERT INTO "Cart" (id, origin, items, version, "createdAt", "createScope", "createRequestId", "createPayloadHash", "encryptedCartToken")
-          VALUES (${id}::uuid, ${origin}, ${JSON.stringify(items)}::jsonb, 1, clock_timestamp(), ${scope}, ${createRequestId}::uuid, ${hash}, ${encrypted})
+          INSERT INTO "Cart" (id, origin, "agentCreated", items, version, "createdAt", "createScope", "createRequestId", "createPayloadHash", "encryptedCartToken")
+          VALUES (${id}::uuid, ${origin}, ${origin === 'AGENT'}, ${JSON.stringify(items)}::jsonb, 1, clock_timestamp(), ${scope}, ${createRequestId}::uuid, ${hash}, ${encrypted})
           ON CONFLICT ("createScope", "createRequestId") DO NOTHING RETURNING id`;
         replayed = inserted.length === 0;
         row = await tx.cart.findUniqueOrThrow({
@@ -261,7 +270,7 @@ export class CartService {
     );
   }
   async agentCreationCount() {
-    return this.db.cart.count({ where: { origin: 'AGENT' } });
+    return this.db.cart.count({ where: { agentCreated: true } });
   }
   async get(id: string, token: string): Promise<CartView> {
     if (!cartIdInput.safeParse(id).success)
@@ -271,6 +280,21 @@ export class CartService {
     return this.view(this.db, row);
   }
   async replace(id: string, token: string, input: unknown): Promise<CartView> {
+    return this.replaceInternal(id, token, input, false);
+  }
+  async replaceWebMcp(
+    id: string,
+    token: string,
+    input: unknown,
+  ): Promise<CartView> {
+    return this.replaceInternal(id, token, input, true);
+  }
+  private async replaceInternal(
+    id: string,
+    token: string,
+    input: unknown,
+    agent: boolean,
+  ): Promise<CartView> {
     if (!cartIdInput.safeParse(id).success)
       throw new AppError('FORBIDDEN', 403);
     const parsed = cartReplaceInput.safeParse(input);
@@ -287,12 +311,20 @@ export class CartService {
         });
       const items = parsed.data.items;
       this.validateContents(
-        await this.contents(tx, items, row.origin as 'HUMAN' | 'AGENT'),
+        await this.contents(
+          tx,
+          items,
+          agent ? 'AGENT' : (row.origin as 'HUMAN' | 'AGENT'),
+        ),
       );
       this.authorize(row, token, await this.now(tx));
       const updated = await tx.cart.update({
         where: { id, version: parsed.data.expectedCartVersion },
-        data: { items, version: { increment: 1 } },
+        data: {
+          items,
+          ...(agent ? { origin: 'AGENT' } : {}),
+          version: { increment: 1 },
+        },
       });
       return this.view(tx, updated);
     });

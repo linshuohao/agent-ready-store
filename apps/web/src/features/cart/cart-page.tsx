@@ -14,6 +14,7 @@ import { useCartOperations } from './provider';
 import { getCart, failureText, type EditResult } from './commands';
 import { MoneyBreakdown } from './money-breakdown';
 import { formatMoney } from '@/lib/money';
+import { PageTools } from '@/features/webmcp/page-tools';
 
 const drafts = (items: CartItem[]) =>
   Object.fromEntries(
@@ -40,6 +41,19 @@ export function CartPage({ id }: { id?: string }) {
   const [expired, setExpired] = useState(false);
   const [loading, setLoading] = useState(Boolean(id));
   const [loadAttempt, setLoadAttempt] = useState(0);
+  const { setDraftGuard } = operations;
+  const dirty = Boolean(
+    view &&
+    (Object.keys(draft).length !== view.items.length ||
+      view.items.some(
+        (item) => Number(draft[item.productId]) !== item.quantity,
+      )),
+  );
+  useEffect(() => {
+    if (!id) return;
+    setDraftGuard(id, dirty);
+    return () => setDraftGuard(id, false);
+  }, [id, dirty, setDraftGuard]);
   useEffect(() => {
     if (!id) return;
     let active = true;
@@ -95,8 +109,9 @@ export function CartPage({ id }: { id?: string }) {
     return () => clearTimeout(timer);
   }, [view]);
   const pending = operations.pendingEdit?.cartId === id;
-  function accept(result: EditResult | undefined) {
+  function accept(result: EditResult | undefined, intentItems?: CartItem[]) {
     if (!result) return;
+    if ('cart' in result && result.cart.cartId !== id) return;
     setStatus('');
     if (result.kind === 'success') {
       setView(result.cart);
@@ -107,6 +122,7 @@ export function CartPage({ id }: { id?: string }) {
       setStatus('已儲存，內容與報價已更新。');
     }
     if (result.kind === 'conflict') {
+      if (intentItems) setDraft(drafts(intentItems));
       setView(result.cart);
       setConflicted(true);
       setSaveIssues([]);
@@ -207,6 +223,7 @@ export function CartPage({ id }: { id?: string }) {
     view.items.every((item) => Number(draft[item.productId]) === item.quantity);
   return (
     <main id="main" tabIndex={-1} className="commerce-page cart-page">
+      <PageTools cartId={id} onCartChanged={accept} />
       <div className="commerce-page-heading">
         <p className="eyebrow">CART</p>
         <h1>購物車</h1>
@@ -228,7 +245,8 @@ export function CartPage({ id }: { id?: string }) {
           <Button
             type="button"
             onClick={async () => {
-              accept(await operations.retryEdit());
+              const intentItems = operations.pendingEdit?.items;
+              accept(await operations.retryEdit(), intentItems);
             }}
           >
             重試原保存
