@@ -6,19 +6,22 @@
     "node": ">=24.11 <25"
   },
   "scripts": {
-    "dev": "pnpm dev:deps && docker compose up web api",
-    "build": "pnpm --filter @store/contracts build && pnpm --filter @store/api build && pnpm --filter @store/web build",
+    "dev": "pnpm --filter @store/contracts build && node scripts/local.mjs dev",
+    "build": "node scripts/local.mjs build",
     "typecheck": "pnpm --filter @store/contracts build && pnpm -r typecheck",
     "lint": "pnpm -r lint",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
-    "db:generate": "pnpm --filter @store/api db:generate",
-    "db:migrate": "pnpm --filter @store/api db:migrate",
-    "db:seed": "pnpm --filter @store/api db:seed",
-    "start": "docker compose -f compose.yaml -f compose.production.yaml up web api",
+    "db:generate": "node scripts/local.mjs db:generate",
+    "db:migrate": "node scripts/local.mjs db:migrate",
+    "db:seed": "node scripts/local.mjs db:seed",
+    "start": "node scripts/local.mjs start",
     "test:e2e": "playwright test",
-    "dev:deps": "docker compose run --rm deps"
+    "dev:deps": "docker compose run --rm deps",
+    "dev:docker": "pnpm dev:deps && docker compose up web api",
+    "start:docker": "docker compose -f compose.yaml -f compose.production.yaml up web api",
+    "build:apps": "pnpm --filter @store/contracts build && pnpm --filter @store/api build && pnpm --filter @store/web build"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
