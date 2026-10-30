@@ -6,7 +6,7 @@
     "node": ">=24.11 <25"
   },
   "scripts": {
-    "dev": "pnpm --filter @store/contracts build && node scripts/local.mjs dev",
+    "dev": "node scripts/local.mjs dev",
     "build": "node scripts/local.mjs build",
     "typecheck": "pnpm --filter @store/contracts build && pnpm -r typecheck",
     "lint": "pnpm -r lint",
@@ -18,10 +18,11 @@
     "db:seed": "node scripts/local.mjs db:seed",
     "start": "node scripts/local.mjs start",
     "test:e2e": "playwright test",
-    "dev:deps": "docker compose run --rm deps",
-    "dev:docker": "pnpm dev:deps && docker compose up web api",
-    "start:docker": "docker compose -f compose.yaml -f compose.production.yaml up web api",
-    "build:apps": "pnpm --filter @store/contracts build && pnpm --filter @store/api build && pnpm --filter @store/mcp-app build && pnpm --filter @store/web build"
+    "start:docker": "docker compose up -d --no-build",
+    "build:apps": "pnpm --filter @store/contracts build && pnpm --filter @store/api build && pnpm --filter @store/mcp-app build && pnpm --filter @store/web build",
+    "build:docker": "docker compose build",
+    "db:migrate:docker": "docker compose run --rm api pnpm --filter @store/api db:migrate",
+    "db:seed:docker": "docker compose run --rm api pnpm --filter @store/api db:seed"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",

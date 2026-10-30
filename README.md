@@ -39,7 +39,7 @@ S3已完成实施并于2026-10-30通过Human验收：[Proposal](openspec/changes
 
 旧购买确认不随首次分享延长。`CONFIRMATION_EXPIRED/409` 允许显式重新审阅并等待新点击；`CREDENTIAL_EXPIRED/410` 表示车权限到期。客户端确认计时到期本身不证明车已过期。兑换未知时原材料仅在内存中供重试；刷新且 Cookie 未到达，或旧 Cookie 已被浏览器移除时，须重新打开原有效链接，不凭车ID补权限。链接/Token不应写入公开日志、截图、持久客户端缓存或共享材料。
 
-已有数据库只需执行 `docker compose exec api pnpm db:migrate`（服务未启动时使用前文 `run --rm` 入口），新增可空 `handoffIssuedAt`，不 seed、不删卷。已分享后不能回退到忽略此字段的旧权限实现。只读统计执行 `docker compose exec api pnpm --filter @store/api metrics:agent-carts`，按持久 AGENT Cart ID 计数；后续删空、到期或成交不撤销创建，不代表独立顾客或运营目标已达成。本轮无自动清理。
+已有数据库只需执行 `docker compose exec api pnpm --filter @store/api db:migrate`（服务未启动时使用前文 `run --rm` 入口），新增可空 `handoffIssuedAt`，不 seed、不删卷。已分享后不能回退到忽略此字段的旧权限实现。只读统计执行 `docker compose exec api pnpm --filter @store/api metrics:agent-carts`，按持久 AGENT Cart ID 计数；后续删空、到期或成交不撤销创建，不代表独立顾客或运营目标已达成。本轮无自动清理。
 
 S4测试：专用 `store_test` 库迁移后，设置 `TEST_DATABASE_URL` 串行运行 `apps/api/test/cart/handoff-db.test.ts`；MCP/HTTP测试设置 `API_BASE_URL=http://localhost:3002`、`MCP_SERVICE_TOKEN`、`WEB_ORIGIN` 后运行 `apps/api/test/cart/handoff-http.test.ts`；桌面/移动 `e2e/handoff.spec.ts` 另需相同服务Token与匹配 `WEB_BASE_URL`。真实Host调用和模拟协议/浏览器测试分别记证，不把自动化点击称为Human验收。
 
@@ -57,7 +57,7 @@ S4测试：专用 `store_test` 库迁移后，设置 `TEST_DATABASE_URL` 串行�
 
 浏览器创建通道为 `POST /api/v1/webmcp/carts`；逐项操作为 `POST /api/v1/carts/:id/operations` 与 `POST /api/v1/webmcp/carts/:id/operations`。请求严格为 `{expectedCartVersion,operation}`，operation 为 `add_item(productId,quantity)`、`set_quantity(productId,quantity)` 或 `remove_item(productId)`；成功返回完整 CartView，冲突或行不存在须刷新，未知不自动重试增量。目标行严格校验，未触及旧问题行可保留并逐条修复，整车有问题不可结算。原 `PUT /carts/:id/items`、`PUT /webmcp/carts/:id/items` 与基础 MCP 七工具参数保持兼容，WebMCP 的同名 update_cart 不再接收 items。各入口沿用普通车的浏览器证明和 HttpOnly Cookie，不使用或下发 `MCP_SERVICE_TOKEN`。WebMCP 与普通创建命名空间隔离，原车升级后普通创建请求仍可恢复原车。
 
-升级时先停止 API 写服务，再运行 `docker compose run --rm api pnpm db:migrate`，生成客户端并重启 API/Web；保留所有卷，不 seed。新增不可变 `agentCreated`：迁移时历史 AGENT 回填 true，HUMAN false，今后只有有效 Agent 新建写 true，HUMAN 后续升级不改此事实。不可回退到仅按 origin 统计的旧应用；需回退时先停用 WebMCP 新写入口，保留新数据并使用兼容创建事实的修订版，不能批量降来源或重写订单。
+升级时先停止 API 写服务，再运行 `docker compose run --rm api pnpm --filter @store/api db:migrate`，生成客户端并重启 API/Web；保留所有卷，不 seed。新增不可变 `agentCreated`：迁移时历史 AGENT 回填 true，HUMAN false，今后只有有效 Agent 新建写 true，HUMAN 后续升级不改此事实。不可回退到仅按 origin 统计的旧应用；需回退时先停用 WebMCP 新写入口，保留新数据并使用兼容创建事实的修订版，不能批量降来源或重写订单。
 
 S5 隔离 DB 测试为 `apps/api/test/cart/webmcp-db.test.ts`，及 `apps/api/test/cart/cart-operations-db.test.ts`，与其他 DB 套件串行运行且仅指向 `store_test`。HTTP 测试为 `apps/api/test/cart/webmcp-http.test.ts`及 `apps/api/test/cart/cart-operations-http.test.ts`（API_BASE_URL、WEB_ORIGIN）；浏览器协调测试为 `e2e/webmcp.spec.ts` 和 `e2e/cart-operations.spec.ts`（WEB_BASE_URL 必须匹配 WEB_ORIGIN）。注册替身测试与真实 Host 证据分开记录，自动化确认不称为 Human 验收。
 
@@ -72,55 +72,73 @@ S5 隔离 DB 测试为 `apps/api/test/cart/webmcp-db.test.ts`，及 `apps/api/te
 
 “前往商城結帳”经 Bridge 读取同车、签发原交接并请求 Host 打开。Host 返回成功只表示请求返回，页面没有打开时仍需核对 Host 限制；此处不会购买。必须由 Human 在 Hosted Checkout 审阅并明确确认。车 Token 与交接 URL 仅在 Adapter 内存及显式 Bridge 请求中使用，不进入展示 props、DOM、日志或存储；不直连网站 API，不复制链接到 DOM，不申请额外浏览器权限。
 
-根 `pnpm build` 和 Compose API 开发启动会构建 Apps；资源随 API 的 `dist/mcp-app/` 交付，无新增常驻服务。Apps 源码修改后运行 `pnpm --filter @store/mcp-app build`，再让 Host 重新调用工具；元数据变更后刷新 MCP 连接。单独 `nest build` 会清理 dist，应使用根构建或随后构建 Apps。构建使用 `WEB_ORIGIN` 固定合法 Checkout origin；生产 Compose 将其传入构建参数，修改 origin 后重建。官方 ext-apps 固定 1.1.2，复用 SDK 1.32.2；不运行其 setup-bun 脚本，不安装未使用的可选 Bun 运行时。
+根 `pnpm build` 和本机 `pnpm dev` 会生成 Apps；资源随 API 的 `dist/mcp-app/` 交付，无新增常驻服务。开发时 Apps/共享 UI 修改会自动重建，再让 Host 重新调用工具；生产产物可用 `pnpm --filter @store/mcp-app build` 单独构建；元数据变更后刷新 MCP 连接。单独 `nest build` 会清理 dist，应使用根构建或随后构建 Apps。构建使用 `WEB_ORIGIN` 固定合法 Checkout origin；交付 Compose 将其传入构建参数，修改 origin 后重建。官方 ext-apps 固定 1.1.2，复用 SDK 1.32.2；不运行其 setup-bun 脚本，不安装未使用的可选 Bun 运行时。
 
 实现回归：`pnpm test apps/mcp-app/test`、`pnpm test packages/commerce-ui/test`；先构建再运行 `pnpm test:e2e e2e/mcp-app.spec.ts`。该浏览器测试使用官方 AppBridge **替身 Host**，不是目标 Host 验收。专用 PostgreSQL 的 `apps/api/test/mcp/apps-cart-db.test.ts` 需要 `TEST_DATABASE_URL` 指向 `store_test`，会清理该测试库并模拟已有 Checkout；禁止指向正式库。资源 HTTP 测试使用原 `API_BASE_URL` 与本机服务凭证，具体命令按现有测试入口配置。
 
-## 本地 Node 启动（无需 Docker）
+## 本机开发
 
-需要 Node 24（>=24.11 <25）、pnpm 12.11.2 和本机 PostgreSQL 18。先在 PostgreSQL 创建专用用户与其拥有的空库（例如 `store`），不使用已有的其他业务库。
+日常开发使用本机 Node 24（>=24.11 <25）、pnpm 12.11.2 与 PostgreSQL 18；Docker 仅用于交付验证，不再提供容器热更新开发模式。
+
+首次准备，在 PostgreSQL 创建专用用户和空库后：
 
 ```sh
 cp .env.example .env
-# 编辑 .env：DATABASE_URL 指向本机数据库，设置随机 MCP_SERVICE_TOKEN，
-# CART_ENCRYPTION_KEY 设置为稳定的 32 字节随机值（64 位十六进制）。
-# 可用 node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))" 生成。
+# 编辑 DATABASE_URL、稳定的 CART_ENCRYPTION_KEY、随机 MCP_SERVICE_TOKEN。
+# WEB_ORIGIN 必须与浏览器访问地址一致；本机 HTTP 显式设置 CART_COOKIE_SECURE=false。
 pnpm install --frozen-lockfile
 pnpm db:generate
 pnpm db:migrate
-pnpm build
-# 仅首次空库执行；已有库存时拒绝初始化，升级不要再次 seed。
+# 仅首次空库：自动准备 API 编译，不会构建 Web；已有库存时拒绝初始化。
 pnpm db:seed
+```
+
+日常启动只运行：
+
+```sh
 pnpm dev
 ```
 
-Web 为 http://localhost:3000，API 健康检查为 http://localhost:3002/api/v1/health，MCP 为 http://localhost:3002/mcp。浏览器使用与 `WEB_ORIGIN` 一致的地址；Web 同源反代至本机 API。`WEB_PORT`、`API_PUBLIC_PORT` 可配置，变更时同步 `WEB_ORIGIN`、`MCP_ALLOWED_HOSTS`。不要与相同端口的 Compose 服务同时运行。
+无需先执行 `pnpm build`。入口加载根 `.env`（已导出的变量优先），自动生成 Prisma Client 和必要的 contracts/API/Apps 产物，然后监听 contracts、API、Apps 及共享 UI，Web 使用 Next dev。这里的首次 TypeScript 编译不是 Next 生产构建。Apps 文件更新后由 Host 重新加载资源；Host 内已打开的卡片不承诺热更新。Ctrl+C 停止本次进程组。
 
-本地入口自动加载根目录 `.env`（已导出的环境变量优先），目录原件路径默认解析到仓库的 `references/products.json`。开发会 watch contracts、API 与 Web；Ctrl+C 停止本次启动的进程。构建后用 `pnpm start` 运行生产产物；API 代理地址在构建时写入产物，修改 `API_PUBLIC_PORT` 或 `API_INTERNAL_URL` 后须重新构建。已有库升级先停写服务，显式 `pnpm db:generate && pnpm db:migrate && pnpm build`，再启动，不 seed、不删除数据；启动入口不会隐式迁移或初始化数据库。真实 `.env` 不提交，密钥跨重启保留。
+默认 Web 为 http://localhost:3000，API 为 http://localhost:3002/api/v1/health，MCP 为 http://localhost:3002/mcp。`WEB_PORT`、`API_PUBLIC_PORT` 可配置，同时调整 `WEB_ORIGIN`、`MCP_ALLOWED_HOSTS`。`CATALOG_PATH` 相对仓库根解析，默认只读原件。不要与相同端口的交付服务同时运行。
 
-## Docker Compose 启动
+已有本机数据库升级：停止写服务 → `pnpm db:migrate` → `pnpm dev`，不 seed、不删数据。Prisma schema 变化后独立执行测试/构建前运行 `pnpm db:generate`。
 
-需要 Node 24、pnpm 12.11.2、Docker/Compose。版本锁定于 package.json 与 pnpm-lock.yaml。以下为本项目操作入口，首次运行需下载依赖/镜像；S1 自动验证与真实 Codex Host 验证已完成，Human 已验收 S1。真实读屏实测仍无证据，本轮 Review 修订的验证与限制见 Tasks。
+本机生产预览单独使用 `pnpm db:generate && pnpm build && pnpm start`。`start` 只运行已构建产物，不编译、迁移或 seed。修改代码或构建期 `API_INTERNAL_URL`/`WEB_ORIGIN` 后重新构建；日常开发不走此入口。
+
+## Docker 交付
+
+默认 `compose.yaml` 是生产模式：Web/API 使用同一个交付镜像，PostgreSQL 保留 `inventory` 持久卷。没有源码挂载、开发依赖卷或 watcher；只有 API 只读挂载 `references/`。原件不打入镜像，部署机器必须提供该目录。镜像保留 Prisma CLI 所需工作区依赖，未做极限依赖裁剪。
+
+配置根 `.env` 中的 `POSTGRES_PASSWORD`、稳定密钥、Token、origin 后，首次交付：
 
 ```sh
-cp .env.example .env
-# 编辑 .env，设置独立本地 POSTGRES_PASSWORD、随机 MCP_SERVICE_TOKEN，
-# 以及稳定的 CART_ENCRYPTION_KEY（32字节随机值的64位十六进制，不随重启重建）
-pnpm install --frozen-lockfile
-pnpm --filter @store/contracts build
-docker compose build api
-pnpm dev:deps
+pnpm build:docker
+# 若未安装宿主 pnpm，可直接 docker compose build。
 docker compose up -d db
-docker compose run --rm api pnpm db:generate
-docker compose run --rm api pnpm db:migrate
-# Catalog 功能就绪后首次空库显式执行；已有任何库存行会拒绝
-docker compose run --rm api sh -c 'pnpm db:generate && pnpm --filter @store/contracts build && pnpm --filter @store/api build && pnpm db:seed'
-pnpm dev:docker
+pnpm db:migrate:docker
+# 仅首次空库，已有库禁止重复执行：
+pnpm db:seed:docker
+pnpm start:docker
 ```
 
-Web 默认 http://localhost:3000，API 为 http://localhost:3002/api/v1；API_PUBLIC_PORT/WEB_PORT 可配置，改变端口时同步 WEB_ORIGIN/MCP_ALLOWED_HOSTS。浏览器经 Web 同源反代，Next Server 经 Compose 内网访问 API，MCP Host 直连 http://localhost:3002/mcp；数据库不暴露宿主端口。真实 .env 不提交。
+`build:docker` 只构建镜像，不连接业务数据库。`db:migrate:docker` 与 `db:seed:docker` 使用同一生产镜像的工具/编译产物。`start:docker` 不隐式构建、迁移或 seed。
 
-`pnpm dev:deps` 使用开发服务共用的依赖卷执行 frozen-lockfile 安装，首次运行及依赖变化后均可显式同步；重建镜像或宿主安装不会更新已有依赖卷。`pnpm dev:docker` 先顺序完成该同步，再运行三服务开发配置，API 侧同时 watch contracts/TypeScript 和 Node 依赖；Web 使用 Next dev。先构建生产镜像 `docker compose -f compose.yaml -f compose.production.yaml build`，再 `pnpm start:docker` 使用编译产物运行；构建不连接数据库、不迁移或 seed。停止使用 `docker compose down`，保留库存卷；不运行带 `-v` 的清理命令。
+已有部署升级：
+
+```sh
+pnpm build:docker
+docker compose stop api web
+pnpm db:migrate:docker
+pnpm start:docker
+```
+
+迁移失败时保持写服务停止，排查后重试迁移；不要启动旧的不兼容代码或重新 seed。回退使用兼容现有数据的镜像，不反向删除订单/库存事实。`IMAGE_TAG` 可标识镜像版本，构建、迁移、启动必须使用相同值。旧 `compose.production.yaml` 和 `dev:docker`/`dev:deps` 已移除；旧开发容器切换时先停止，再按上述入口重建/迁移/启动，既有 project 名与库存卷名不变。旧依赖卷不会自动删除。
+
+Web/API 仍仅映射到宿主 loopback，默认端口 3000/3002；数据库不映射宿主端口。这是本机交付验证配置，公网入口/TLS 不在本轮范围。`WEB_ORIGIN` 编入 Apps，Next 代理使用镜像构建时的 `http://api:3001`，更改构建配置须重建。停止用 `docker compose down`，保留库存卷，不使用 `down -v` 清理已有部署。
+
+CI 执行本机应用检查及独立项目中的交付镜像构建、迁移、seed、健康与 Web/API 冒烟检查，不推送镜像或自动发布。
 
 基础检查：`pnpm typecheck`、`pnpm lint`、`pnpm format:check`、`pnpm build`。`pnpm format` 只处理工程文件，保留原件/设计/历史文档。`pnpm test` 运行 Catalog 契约；真实 DB/API 套件分别需 TEST_DATABASE_URL/API_BASE_URL，无配置时明确 skipped，不代表集成通过。Playwright 用例随页面建立，入口 `pnpm test:e2e`。
 
@@ -132,7 +150,7 @@ Web 默认 http://localhost:3000，API 为 http://localhost:3002/api/v1；API_PU
 
 未交接Cart创建起固定24小时，到期不续期。服务端重验权限和版本；按 [D-23](DECISIONS.md#d-23--服务端权威与购物车客户端简化)，保存冲突或结果未明提示“重新载入购物车（放弃未保存修改）”，刷新后以完整服务端数据替换；不比较差异、合并或重放编辑。当前请求结束即解除提交状态，服务端继续校验版本。创建响应丢失时复用原材料恢复；刷新丢失内存材料后，标签页仅保留非敏感待确认标记，提示结果无法确认，须明确重新发起才允许新建。内存材料与Cookie均丢失时无法自动恢复，不凭ID补发；重新发起可能留下无法访问的旧车。首次分享后完整24小时已由S4实现，分享通过MCP工具提供，普通Web不另增分享操作。
 
-现有数据库升级仅新增Cart表，执行`docker compose run --rm api pnpm db:migrate`，保留Inventory，不重新seed或删卷。`CART_ENCRYPTION_KEY`仅存本机安全环境，备份并跨重启保留；丢失或替换会使既有Cart凭证无法恢复。`.env.example`只含空占位。`CART_COOKIE_SECURE=false`只允许显式的本机HTTP例外，HTTPS使用true。加密实现与精确计价依赖均已锁定，运行证据以Tasks为准。
+现有数据库升级仅新增Cart表，执行`docker compose run --rm api pnpm --filter @store/api db:migrate`，保留Inventory，不重新seed或删卷。`CART_ENCRYPTION_KEY`仅存本机安全环境，备份并跨重启保留；丢失或替换会使既有Cart凭证无法恢复。`.env.example`只含空占位。`CART_COOKIE_SECURE=false`只允许显式的本机HTTP例外，HTTPS使用true。加密实现与精确计价依赖均已锁定，运行证据以Tasks为准。
 
 Cart DB测试必须指向专用`store_test`并与Inventory DB测试串行，不能指向演示库。复用上方DB命令，测试文件改为`apps/api/test/cart/cart.test.ts`，加`--no-file-parallelism`。HTTP测试使用`S2_API_BASE_URL=http://localhost:3002/api/v1`且`WEB_ORIGIN`须与服务一致；`pnpm test:e2e`包含桌面/移动购物车旅程。无DB/API变量时对应套件会明确跳过，不能算集成通过。
 
@@ -190,9 +208,11 @@ Agent Host 的手動 MCP 接入步驟、Codex 範例、憑證方式與信任邊�
 隔離資料庫整合測試：
 
 ```sh
-docker compose --profile test up -d db-test
-docker compose run --rm -e DATABASE_URL=postgresql://store_test:test_only@db-test:5432/store_test -e TEST_DATABASE_URL=postgresql://store_test:test_only@db-test:5432/store_test api sh -c 'pnpm --filter @store/contracts build && pnpm db:generate && pnpm db:migrate && pnpm test apps/api/test/inventory.test.ts'
-API_BASE_URL=http://localhost:3002 node --env-file=.env node_modules/vitest/vitest.mjs run apps/api/test/http.test.ts apps/api/test/mcp.test.ts
+# 测试使用本机源码和专用 PostgreSQL store_test；设置 DATABASE_URL/TEST_DATABASE_URL 后：
+pnpm db:generate
+pnpm db:migrate
+pnpm test apps/api/test/inventory/inventory.test.ts --no-file-parallelism
+API_BASE_URL=http://localhost:3002 node --env-file=.env node_modules/vitest/vitest.mjs run apps/api/test/http/http.test.ts apps/api/test/mcp/mcp.test.ts
 pnpm test:e2e
 ```
 

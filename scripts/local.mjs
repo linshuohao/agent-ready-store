@@ -22,7 +22,10 @@ const env = {
 const commands = {
   build: [['pnpm', ['build:apps']]],
   dev: [
-    ['node', ['scripts/service-dev.mjs', 'api']],
+    ['pnpm', ['--filter', '@store/contracts', 'dev']],
+    ['pnpm', ['--filter', '@store/api', 'dev']],
+    ['node', ['--watch', '--watch-preserve-output', 'apps/api/dist/main.js']],
+    ['pnpm', ['--filter', '@store/mcp-app', 'dev']],
     [
       'pnpm',
       [
@@ -72,7 +75,42 @@ function stop(code) {
     }
   }
 }
-for (const [command, args] of commands[mode]) {
+// Only local development/seed prepare compiler outputs. Production start never builds.
+const prepare =
+  mode === 'dev' || mode === 'db:seed'
+    ? [
+        ['--filter', '@store/api', 'db:generate'],
+        ['--filter', '@store/contracts', 'build'],
+        ['--filter', '@store/api', 'compile'],
+        ...(mode === 'dev' ? [['--filter', '@store/mcp-app', 'build']] : []),
+      ]
+    : [];
+process.on('SIGINT', () => stop(130));
+process.on('SIGTERM', () => stop(143));
+for (const args of prepare) {
+  const code = await new Promise((resolve) => {
+    const child = spawn('pnpm', args, {
+      cwd: root,
+      env,
+      stdio: 'inherit',
+      detached: true,
+    });
+    children.push(child);
+    child.on('error', (error) => {
+      console.error(error.message);
+      resolve(1);
+    });
+    child.on('exit', (code, signal) => {
+      children.splice(children.indexOf(child), 1);
+      resolve(code ?? (signal ? 1 : 0));
+    });
+  });
+  if (code || stopping) {
+    stop(code || process.exitCode);
+    break;
+  }
+}
+for (const [command, args] of stopping ? [] : commands[mode]) {
   const child = spawn(command, args, {
     cwd: root,
     env,
@@ -86,5 +124,3 @@ for (const [command, args] of commands[mode]) {
   });
   child.on('exit', (code, signal) => stop(code ?? (signal ? 1 : 0)));
 }
-process.on('SIGINT', () => stop(130));
-process.on('SIGTERM', () => stop(143));

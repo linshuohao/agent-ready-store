@@ -5,7 +5,8 @@
   "scripts": {
     "build": "node build.mjs",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src"
+    "lint": "eslint src",
+    "dev": "node build.mjs --watch"
   },
   "dependencies": {
     "@base-ui/react": "1.9.0",

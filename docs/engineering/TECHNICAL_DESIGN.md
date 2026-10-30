@@ -815,9 +815,9 @@ S1～S6 均服务于本次完整交付。S4 是基础购物闭环里程碑，S5/
 
 此表只表达架构依赖，不是第二套 Tasks。实施仍需 Human 批准与授权，正式变更由 OpenSpec 管理。本地 Compose 沿用 Web/API/PostgreSQL 三服务方向，数据库持久卷、首次 seed 不覆盖；依赖版本、实际启动命令、loopback 与 Host 可达性由 S1 验证，本文不声称一键启动成功。公网部署、登录/支付、多实例目录与代提交不进入本轮。
 
-### 10.2.1 本地 Node 运行、网络与构建（Proposed 配置）
+### 10.2.1 本地 Node 运行、网络与构建（2026-10-30 运行方式补充）
 
-Compose 仍为 Next Web、Nest API、PostgreSQL 三服务，Web 需要 Node Server，不是静态导出站点。开发采用 Next dev/HMR 与 Nest watch，pnpm workspace 挂载需隔离容器 node_modules；演示构建运行 Next production Node Server 与 Nest build 产物。具体脚本、Node/Next/React/pnpm 版本、standalone 与否在 S1 验证，不编造现成启动命令。
+Compose 仍为 Next Web、Nest API、PostgreSQL 三服务，Web 需要 Node Server，不是静态导出站点。按 T-06 的 2026-10-30 Human 补充，开发在本机运行 Next dev/HMR、API TypeScript/Node watch 与 Apps 资源监听，不提供应用开发容器。Docker 仅运行 Next production Node Server 与 Nest 编译产物，不挂载源码或开发依赖卷。初始化、迁移、构建与启动分离，具体命令和验证边界见 README 与对应 Change。
 
 - **Next Server → Nest：** server-only `API_INTERNAL_URL` 指向 Compose 服务名（例如 `http://api:3001`，端口仅建议）。构建时不得依赖尚未启动的 API/DB，因此动态目录获取放请求期；构建需联网预取的配置须显式取消或验证。
 - **Browser → Nest：** 浏览器访问 Web 公共 origin（例如 loopback 3000），`/api/v1/*` 由 Next 配置级 rewrite/透明反代到 Nest，不为每个接口建 Route Handler/Server Action。该层只转发，不计算价格、提升权限或重写业务结果；若配置反代不能满足响应 Cookie/安全头，先定位再提出最小替代，不默建完整 BFF。

@@ -8,14 +8,15 @@
   "type": "module",
   "scripts": {
     "build": "nest build",
-    "dev": "nest start --watch",
+    "dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
     "start": "node dist/main.js",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:seed": "node --env-file-if-exists=../../.env dist/infrastructure/database/seed.js",
-    "metrics:agent-carts": "node scripts/agent-cart-metrics.mjs"
+    "metrics:agent-carts": "node scripts/agent-cart-metrics.mjs",
+    "compile": "tsc -p tsconfig.build.json"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.2",

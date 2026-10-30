@@ -250,6 +250,10 @@ T-01～T-06 原为未选择方案的讨论索引；2026-10-29 按 Human 明确�
 - **Consequences：** WebMCP 不单建服务器，MCP Apps 不提前增加独立常驻服务。先后顺序不删除 D-16 评论分页、D-22 指标口径、真实 Agent 购物记录、GitHub Actions 与 UI/UX 验收等已有交付约束；MVP 不等同最终全部交付完成。真实外部 Host 若需可访问端点，后续以验证需求评估连接方式，不由本条自动授权公网暴露或购买资源。
 - **Evidence / Pending Detail：** 尚无 Compose、容器运行、CI 或真实 Agent 闭环证据。Node/pnpm/依赖版本、服务启动/健康检查、数据卷/初始化、环境变量、开发与演示命令、测试工具及 Host 联调入口待细化；本轮不新增配置或验证脚本。
 
+#### T-06 补充：本机开发与 Docker 交付分离（2026-10-30）
+
+Human 明确确认并授权：日常 Web/API 开发在本机运行，Docker 主要服务可复现交付，删除容器开发入口。开发启动无需手动生产 build；初始化、迁移、生产构建与运行分别提供命令，启动不隐式迁移/seed。保留三服务交付、原件只读及数据卷不覆盖约束；没有公网发布授权。替代前文待细化的开发容器方向，原始历史与业务约束不变。实现与实际验证见 [local-dev-delivery-build](../../openspec/changes/local-dev-delivery-build/tasks.md)。
+
 <a id="conflict--需-human-批准的修订与契约缺口"></a>
 
 ### C-01 / C-02 — 历史冲突、解决与增强边界
