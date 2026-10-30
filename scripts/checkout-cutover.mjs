@@ -18,7 +18,12 @@ export function parseOptions(args, env) {
   for (let i = 0; i < args.length; i++) {
     const key = args[i];
     if (
-      ['--dry-run', '--execute', '--writers-stopped-and-drained'].includes(key)
+      [
+        '--dry-run',
+        '--execute',
+        '--writers-stopped-and-drained',
+        '--authorized-local-store',
+      ].includes(key)
     ) {
       if (flags.has(key)) throw Error('DUPLICATE_OPTION');
       flags.add(key);
@@ -38,13 +43,19 @@ export function parseOptions(args, env) {
   } catch {
     throw Error('CUTOVER_DATABASE_URL_REQUIRED');
   }
+  const database = flags.has('--authorized-local-store')
+    ? 'store'
+    : 'store_test';
   if (
     !['postgres:', 'postgresql:'].includes(target.protocol) ||
     !['127.0.0.1', 'localhost', '[::1]'].includes(target.hostname) ||
-    target.pathname !== '/store_test' ||
+    target.pathname !== `/${database}` ||
     target.search ||
     target.hash ||
-    values['--database'] !== 'store_test'
+    values['--database'] !== database ||
+    (database === 'store' &&
+      (target.hostname !== '127.0.0.1' ||
+        (target.port && target.port !== '5432')))
   )
     throw Error('ISOLATED_LOOPBACK_STORE_TEST_TARGET_REQUIRED');
   if (flags.has('--execute') && flags.has('--dry-run'))
@@ -53,7 +64,7 @@ export function parseOptions(args, env) {
   const execute = flags.has('--execute');
   if (
     execute &&
-    (values['--confirm-target'] !== 'store_test' ||
+    (values['--confirm-target'] !== database ||
       !flags.has('--writers-stopped-and-drained'))
   )
     throw Error('EXECUTION_REQUIRES_EXACT_TARGET_AND_STOPPED_DRAINED_WRITERS');
@@ -63,7 +74,7 @@ export function parseOptions(args, env) {
     target: {
       host: target.hostname,
       port: target.port || '5432',
-      database: 'store_test',
+      database,
       schema: 'public',
     },
   };
@@ -140,14 +151,22 @@ function scope(namespace) {
     throw Error('INVALID_CUTOVER_SCHEMA');
   return `"${namespace}"`;
 }
-export async function inspect(client, namespace = 'public') {
+export async function inspect(
+  client,
+  namespace = 'public',
+  database = 'store_test',
+) {
   const qualified = scope(namespace);
   const identity = (
     await client.query(
       'SELECT current_database() AS database, current_schema() AS schema',
     )
   ).rows[0];
-  if (identity.database !== 'store_test' || identity.schema !== namespace)
+  if (
+    !['store_test', 'store'].includes(database) ||
+    identity.database !== database ||
+    identity.schema !== namespace
+  )
     throw Error('CONNECTED_TARGET_MISMATCH');
   const { rows: columns } = await client.query(
     'SELECT table_name,column_name FROM information_schema.columns WHERE table_schema=$1',
@@ -227,7 +246,12 @@ export async function inspect(client, namespace = 'public') {
     reservationMismatches,
   };
 }
-export async function cleanupLegacy(client, seed, namespace = 'public') {
+export async function cleanupLegacy(
+  client,
+  seed,
+  namespace = 'public',
+  database = 'store_test',
+) {
   const qualified = scope(namespace);
   await client.query('BEGIN');
   try {
@@ -235,7 +259,7 @@ export async function cleanupLegacy(client, seed, namespace = 'public') {
     await client.query(
       `LOCK TABLE ${qualified}."PurchaseReview",${qualified}."Order",${qualified}."Cart",${qualified}."Inventory" IN EXCLUSIVE MODE NOWAIT`,
     );
-    const plan = buildPlan(await inspect(client, namespace), seed);
+    const plan = buildPlan(await inspect(client, namespace, database), seed);
     if (plan.blockers.length) throw Error(plan.blockers.join(','));
     for (const table of legacyTables)
       await client.query(`DELETE FROM ${qualified}."${table}"`);
@@ -246,7 +270,7 @@ export async function cleanupLegacy(client, seed, namespace = 'public') {
       );
       if (result.rowCount !== 1) throw Error('SKU_CHANGED_DURING_CUTOVER');
     }
-    const after = buildPlan(await inspect(client, namespace), seed);
+    const after = buildPlan(await inspect(client, namespace, database), seed);
     if (after.blockers.length) throw Error(after.blockers.join(','));
     if (
       legacyTables.some((table) => after.counts[table] !== 0) ||
@@ -304,7 +328,10 @@ export async function main(args = process.argv.slice(2), env = process.env) {
   await client.connect();
   try {
     await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
-    const plan = buildPlan(await inspect(client), seed);
+    const plan = buildPlan(
+      await inspect(client, 'public', options.target.database),
+      seed,
+    );
     await client.query('COMMIT');
     console.log(
       JSON.stringify({
@@ -315,11 +342,16 @@ export async function main(args = process.argv.slice(2), env = process.env) {
     );
     if (!options.execute) return plan;
     if (plan.blockers.length) throw Error(plan.blockers.join(','));
-    const cleanup = await cleanupLegacy(client, seed);
+    const cleanup = await cleanupLegacy(
+      client,
+      seed,
+      'public',
+      options.target.database,
+    );
     console.log(JSON.stringify({ phase: 'cleanup-committed', ...cleanup }));
     await migrate(options.connectionString);
     await client.query('BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY');
-    const after = await inspect(client);
+    const after = await inspect(client, 'public', options.target.database);
     await client.query('COMMIT');
     if (
       after.schema !== 'lifecycle' ||

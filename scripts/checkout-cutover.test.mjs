@@ -133,3 +133,40 @@ test('blocks missing/extra SKU, unknown schema/dependencies, active peers and ev
     [],
   );
 });
+
+test('local store requires explicit authorization flag and exact approved address and target', () => {
+  const url = connection.replace('/store_test', '/store');
+  const args = [
+    '--database',
+    'store',
+    '--authorized-local-store',
+    '--execute',
+    '--confirm-target',
+    'store',
+    '--writers-stopped-and-drained',
+  ];
+  assert.equal(
+    parseOptions(args, { CUTOVER_DATABASE_URL: url }).target.database,
+    'store',
+  );
+  for (const candidate of [
+    url.replace('5432', '5433'),
+    url.replace('127.0.0.1', 'localhost'),
+    url.replace(/\/store$/, '/other'),
+  ])
+    assert.throws(() =>
+      parseOptions(args, { CUTOVER_DATABASE_URL: candidate }),
+    );
+  assert.throws(() =>
+    parseOptions(
+      args.filter((x) => x !== '--authorized-local-store'),
+      { CUTOVER_DATABASE_URL: url },
+    ),
+  );
+  assert.throws(() =>
+    parseOptions(
+      ['--database', 'store', '--authorized-local-store', '--execute'],
+      { CUTOVER_DATABASE_URL: url },
+    ),
+  );
+});
