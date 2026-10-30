@@ -32,7 +32,7 @@
 
 ## 5. 普通Web最小完整闭环
 
-- [ ] 5.1 替换HTTP和Next代理中的旧车Token/Review/提交路径，提供新购物/订单接口及UI专用支付调用，保留适用同源和MCP服务入口保护。验证：真实HTTP在隔离测试API上覆盖新输入、ID关联、错误映射和重复请求；旧写入口不能购买，不将UI专用宣称为身份证明。
+- [x] 5.1 替换HTTP和Next代理中的旧车Token/Review/提交路径，提供新购物/订单接口及UI专用支付调用，保留适用同源和MCP服务入口保护。验证：真实HTTP在隔离测试API上覆盖新输入、ID关联、错误映射和重复请求；旧写入口不能购买，不将UI专用宣称为身份证明。
 - [ ] 5.2 更新features/cart的Provider/Commands/Hook和车页：持久currentCartId、逐项操作、默认全不选/全选、页面内有效选择、新商品不自动选、未保存数量不得生单、所选预估及待支付列表。验证：Commands测试与cart相关E2E覆盖初始化并发、草稿保护、前台刷新、版本乱序、同SKU重加和未知原键恢复；空车仍可找到原订单。
 - [ ] 5.3 将features/checkout和路由改为/orders/{orderId}统一页，直接UI支付、取消、固定摘要、已支付/关闭反馈和多单导航，旧地址仅提示新流程。验证：checkout相关桌面/移动E2E完成真实测试API生单→支付/取消→继续购物；成功是同orderId，旧cartId路由不能误查或写单。
 - [ ] 5.4 实现创建/支付/取消未知材料在请求前保存，Order按ID/查询顺序/已提交终态协调；区分本地到期、派生到期与物化关闭。验证：Commands与E2E注入丢响应、刷新、A/B切页、迟到创建/支付成功、旧查询及矛盾终态，不抢导航、不覆盖新车、不自动重付/重建。
@@ -100,3 +100,16 @@
 - 工作区 `pnpm typecheck`、`pnpm lint`、API `build`通过；默认 `pnpm test`为86通过、45环境条件跳过，跳过不算通过（本轮核心环境用例另按前两项实跑）。OpenSpec strict validate通过，git diff --check通过。旧UI自动化仍验证旧前端局部行为，不证明其已接入新核心；未跑全流程E2E、Docker交付构建或真实Host/Human支付。
 - 独立Code Review：全新只读上下文 `/root/core_review` 对本轮未提交Diff及原Change契约审阅，发现P2“最旧坏单令到期整批饿死”。已核实、真实DB复现，逐单失败报告+keyset轮转修复，batchSize=1跨批回归及全部受影响DB重验通过；独立定向复核通过。随后对终态/Cart关联输出契约、配额入口及新增约束测试再次定向复核，无新增可行动缺陷。审阅者未运行破坏性测试，运行证据由实施者提供，不将其说成审阅者执行。
 - Git：本轮未新增提交；当前所有核心修改/新增/旧代码删除都在实施worktree，未触碰main工作区两个未跟踪配置目录。当前授权不含本次实现Commit/Push/Merge；可审查Diff与验证已准备，实施Checkpoint等待Human提交授权；本轮针对全部实际修改/新增路径执行 `implementation-task-group` Guard，Verification/Review/Approval均满足，但因没有本次checkpoint commit实际返回BLOCKED（exit 1），未进入后续入口阶段或归档。无需新可视化：本轮用例/事务已有Design图和契约，核心增量摘要及测试证据足够审阅。
+
+
+### 核心Checkpoint与普通Web HTTP接入（2026-10-31）
+
+- Human明确授权：“授权提交现有已验证的核心增量，然后继续按同一 Change 的 Tasks 推进，从 5.1 开始，不 Push、不 Merge、不切换实际库。”本段补充本Tasks开头的实施范围，仍不授权实际环境切换；提交授权针对当时已有核心增量。
+- 已按精确范围暂存并提交核心40个文件：`7151fdb feat: implement checkout lifecycle transaction core`。复用上节匹配的验证/独立Review证据，本轮diff检查通过；对提交全部40个成果路径运行implementation-task-group Guard，结果PASS。首次写Git索引被sandbox拒绝，随后获得工具许可完成；未Push/Merge，main工作区未动。
+- 完成5.1，现为15/30。新HTTP以`/api/v1/shopping`分离旧入口，提供持久车、逐项幂等操作、选中报价、生单、分页查单、原单UI支付及取消；普通入口固定WEB、严格输入与关联校验、同源JSON写保护、no-store、业务错误状态映射。Next既有泛型rewrite直接覆盖新路径，未新增代理业务逻辑。接口表及验证约束见CHECKOUT_CORE。页面/Commands与其他入口尚未接入，不宣称普通Web闭环完成。
+- TDD：先新增真实HTTP套件，在旧编译API上因新路由缺失失败；接入后重验通过。补测过程中发现测试用例误嵌套和测试headers类型问题，已修复测试并完整重跑，不改变业务契约。
+- 真实隔离验证：沿用已迁移store_test，不运行迁移或实际库清理。API只监听127.0.0.1:3003，WEB_ORIGIN=http://localhost:3004；Next只监听127.0.0.1:3004且API_INTERNAL_URL指向3003。`lifecycle-http.test.ts`与`retired-http.test.ts`串行6项通过；另经Next代理跑`lifecycle-http.test.ts`5项通过。覆盖初始化/操作/生单重复与冲突、选择/预算失败无写入、WEB资格、空车查单、关联错误、原单重复支付/取消、严格分页与输入、Origin/JSON拒绝；旧HTTP写及MCP购买工具继续退役。测试服务均已停止，测试会清理store_test内测试数据，不连接业务store。
+- API build、工作区typecheck/lint通过；默认pnpm test为86通过、50环境依赖跳过，本段前项已单独实跑新增5项及旧退役1项，其他环境跳过不算通过。未重跑未改的核心并发/迁移套件，沿用核心Checkpoint证据；未运行新页面E2E、Docker构建或真实Host/Human验收。
+- 独立只读Code Review：全新上下文`/root/http_review`核对5.1未提交controller/test、原Change契约、核心及Next代理，未发现可行动缺陷；自行diff检查通过，未声称执行DB/HTTP测试。ID定位无身份隔离、Origin不证明自然人是已批准demo边界，UI/分享/WebMCP属于后续任务。短接口说明足以审阅，无需新增可视化。
+- 此HTTP写入/支付适配增量作为下一组前端接入的交接基线，涉及服务来源与交易入口边界，按Git Checkpoint Policy使用Guard；本轮新增5.1增量尚未获提交授权。下一项5.2待此增量Checkpoint后继续，旧核心提交授权不扩展为自动提交后续增量。
+- 本轮对上述4个精确成果路径实际执行implementation-http-adapter Guard，verification=pass、review=pass、approval=approved（实施授权），返回BLOCKED（exit 1），唯一缺项为本增量checkpoint commit；不是验证或业务批准失败。5.1成果保留未提交，未开始5.2修改。

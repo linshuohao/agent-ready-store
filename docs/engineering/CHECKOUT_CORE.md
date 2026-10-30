@@ -1,6 +1,26 @@
 # 结算交易核心（实施分支）
 
-本文件说明本轮已实现的共享用例及隔离验证方式。权威契约仍为 [checkout-lifecycle-redesign](../../openspec/changes/checkout-lifecycle-redesign/design.md)，进度和运行证据见同一 Change 的 [Tasks](../../openspec/changes/checkout-lifecycle-redesign/tasks.md)。这是不兼容旧购买 schema 的重构；完整 HTTP/Web/MCP/Apps 适配属于 Tasks 5～7，当前旧交易 HTTP 返回 410 / CHECKOUT_FLOW_REPLACED，MCP 仅发现三个目录查询工具，旧交易调用同样拒绝。不要将本分支作为完整可购物交付部署。
+本文件说明本轮已实现的共享用例及隔离验证方式。权威契约仍为 [checkout-lifecycle-redesign](../../openspec/changes/checkout-lifecycle-redesign/design.md)，进度和运行证据见同一 Change 的 [Tasks](../../openspec/changes/checkout-lifecycle-redesign/tasks.md)。这是不兼容旧购买 schema 的重构；Tasks 5.1 的普通 Web HTTP 适配已完成，页面及其余入口仍待 Tasks 5.2～7。旧交易 HTTP 返回 410 / CHECKOUT_FLOW_REPLACED，MCP 仅发现三个目录查询工具，旧交易调用同样拒绝。不要将本分支作为完整可购物交付部署。
+
+## 普通 Web HTTP 与 Next 代理
+
+新接口统一使用 `/api/v1/shopping`，复用 `{ok,data|error,requestId}` envelope，成功与错误响应均 `Cache-Control: no-store`。成功包含同键恢复均返回200；已知业务错误保留400/404/409等状态，依赖失败返回503且不泄露内部异常。不签发或读取车Cookie、Review、旧Token；旧 `/api/v1/carts`、handoff、购买及order-link路径保持410，不能作为新接口别名。
+
+| HTTP（相对新前缀） | 输入 / 用例 |
+| --- | --- |
+| `POST /carts` | getOrCreate输入；新建或按cartId恢复 |
+| `GET /carts/:cartId` | get；不会隐式创建 |
+| `POST /carts/:cartId/operations` | operate输入，必须携原operationRequestId |
+| `POST /carts/:cartId/quote` | quoteSelection输入，无预留 |
+| `POST /carts/:cartId/orders` | createOrder输入，返回原单和剩余车 |
+| `GET /carts/:cartId/orders` | 可选查询offset、limit、pendingOnly=true/false；严格解析、拒绝重复/未知参数，默认/上界见共享用例 |
+| `GET /orders/:orderId` | 可选查询cartId；携带时校验关联 |
+| `POST /orders/:orderId/pay` | UI专用模拟支付；JSON `{}` 或 `{cartId}` |
+| `POST /orders/:orderId/cancel` | 关闭原单；JSON `{}` 或 `{cartId}` |
+
+本组创建、报价与生单固定由适配器派生 `WEB`，不从body/车来源推导AI资格。所有POST要求JSON且Origin等于配置的WEB_ORIGIN；未知字段、旧x-cart-token和非预期查询参数拒绝。UI专用仅为产品交互边界，不证明自然人身份，不新增Agent支付工具。
+
+Next继续复用既有 `/api/v1/:path*` rewrite到服务端API_INTERNAL_URL，保留请求方法、JSON及Origin，无需新增代理业务代码。隔离验证Next端口3004 → API端口3003 → store_test；两端测试写请求的Origin均为API配置的 `http://localhost:3004`。`lifecycle-http.test.ts` 需要TEST_DATABASE_URL仅指向store_test、CHECKOUT_CORE_API_URL为本机3003或3004，且该API确实连接store_test。套件会重置测试库交易与库存，必须与其他破坏性DB套件串行运行；实际业务库不得作为代理目标。
 
 ## 共享用例与输入
 
