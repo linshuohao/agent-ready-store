@@ -1,8 +1,8 @@
 # Proposal
 
-状态：**Draft v0.11 / 下一里程碑设计草案，未批准实施**。2026-10-30，Asia/Shanghai。
+状态：**Draft v0.12 / 下一里程碑设计草案，未批准实施**。2026-10-30，Asia/Shanghai。
 
-Human授权本轮整理设计，不开发。当前完整方案见[Design](design.md)：持久单车、一车多订单、整行选择、Agent生单后Human模拟支付；生单固定金额并预留库存15分钟，单车待支付上限env默认10。车和订单不设查看期限。
+Human授权本轮整理设计，不开发。完整目标方案见[Technical Design](../../../docs/engineering/TECHNICAL_DESIGN.md)，变更级细节见[Design](design.md)：持久单车、一车多订单、整行选择、Agent生单后Human模拟支付；生单固定金额并预留库存15分钟，单车待支付上限env默认10。车和订单不设查看期限。
 
 本Change只包含Proposal/Design草案。目录名用于追踪，不表示存在Checkout实体；Delta Specs/Tasks尚未编写，不使用skip_specs绕过规格。权限、凭证、Review、独立Session实体、Redis、真实支付和旧流程兼容均不在本轮实现范围内。
 
@@ -19,7 +19,7 @@ Human授权本轮整理设计，不开发。当前完整方案见[Design](design
 - **BREAKING** AI 优惠由本笔订单的可信 AI 生单入口触发，不从车来源继承；Human 最终支付不取消该订单资格。仅咨询、加购、读单不触发资格。
 - 咨询只查询；加购只准备车；明确购买意图且内容充分时，Agent 连续完成必要操作并直接创建待支付订单、展示支付界面，不强制车页中转，不代替 Human 支付。
 - 三种 Agent 入口共享订单/库存用例，采用各入口对应的订单展示方式。基础MCP采用明确的网页订单支付入口，不再依赖Host原生支付确认；WebMCP导航、Apps内嵌，最终由Human支付。
-- 多订单导航、按 orderId 恢复创建/支付/取消未知结果、demo上下文与分享展示区分，以及清空旧流程数据后统一切换新流程共同纳入设计；不做历史订单回填或旧流程兼容。
+- 多订单导航、创建按原cartId与请求键恢复、支付/取消按orderId恢复未知结果、demo上下文与分享展示区分，以及清空旧流程数据后统一切换新流程共同纳入设计；不做历史订单回填或旧流程兼容。
 
 取消整车结算占用、车级确认失效链和全局交互互斥；必要一致性收敛到生单短事务、单订单状态转移与共享库存。锁的删减与保留边界见 Design §6.1；不把库存预留解释为持有15分钟数据库锁。
 
@@ -57,4 +57,4 @@ Human授权本轮整理设计，不开发。当前完整方案见[Design](design
 - 范围：Prisma Order/Inventory/Review 模型及迁移、CartService/Controller、Catalog 可售投影、共享 contracts、MCP adapter、Web 购物车/支付页、WebMCP 页面工具、Apps controller/view 和相关验证。见 Design §2。
 - 复用 Next.js/NestJS/PostgreSQL 与共享计价；不预建消息队列、库存服务、账户系统或新状态管理框架。释放任务采用现有服务内的数据库协调短事务。
 - 涉及 D-01、D-04～D-07、D-21～D-24、T-05/T-07 及基线的限定变更。已采用目标与后续验证工作分别记录，正式生效前完成对应 Decision/Baseline/Delta Specs，保留历史批准与归档原文。
-- 当前只交付草案；无业务代码、迁移执行、依赖安装、运行购买或发布。Human已授权本轮设计文档提交并合并；不因此启动实施或将Change标记完成。基础MCP网页接手与真实Human验收仍需未来实测。
+- 当前只交付设计文档；技术方案与T-08～T-11已整合，产品基线传播及Delta Specs/Tasks仍待完成。无业务代码、迁移执行、运行购买或发布。上一轮v0.11的Git授权保留历史范围；Human于2026-10-31另行授权本次文档整体检查无阻塞后提交并合并，不包含Push；不启动实施或将Change标记完成。基础MCP网页接手与真实Human验收仍需未来实测。
