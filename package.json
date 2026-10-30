@@ -21,7 +21,7 @@
     "dev:deps": "docker compose run --rm deps",
     "dev:docker": "pnpm dev:deps && docker compose up web api",
     "start:docker": "docker compose -f compose.yaml -f compose.production.yaml up web api",
-    "build:apps": "pnpm --filter @store/contracts build && pnpm --filter @store/api build && pnpm --filter @store/web build"
+    "build:apps": "pnpm --filter @store/contracts build && pnpm --filter @store/api build && pnpm --filter @store/mcp-app build && pnpm --filter @store/web build"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",

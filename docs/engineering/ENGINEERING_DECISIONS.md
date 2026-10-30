@@ -1,5 +1,17 @@
 # 工程与技术决策
 
+**最新实施授权（2026-10-30）：** Human已明确接受当前购买Change §4.3可信Host/浏览器UI隔离与§6短期可转交订单只读权限，并授权提交、验证与实施。以下“仅修订/尚未批准”保留历史语境；真实Host证据与验收条件不变，见[权限补充](../../DECISIONS.md)及[当前Design](../../openspec/changes/archive/2026-10-30-agent-confirmed-purchase/design.md)。
+
+**2026-10-30最新Human确认：** [D-01直接支付决定](../../DECISIONS.md#d01-direct-payment-20261030)将MCP Apps/WebMCP改为Human支付点击后经受保护UI直接下单并原地显示结果，不依赖Agent接续；基础MCP保留Host原生确认后Agent提交及当前兼容限制。下方较早的三入口统一Agent提交描述保留当时范围；最新机制见当前Change，本轮只修订Spec、不实施代码。
+
+
+**当前补充 — 2026-10-30：** Human已批准[T-07基础MCP原生确认方向](#t-07--基础mcp原生确认与协议会话)，并有条件授权验证通过且无关键待决后实施。下方较早的“尚未获技术方案或实施批准”保留当时范围；不得据此重复请求本方向批准，也不将其解释为全部确认机制或真实Host验收已通过。
+
+**2026-10-30 Human三入口与便利购物澄清：** [D-01当前边界](../../DECISIONS.md#d01-agent-convenience-20261030)保持MCP会话内、WebMCP全步骤工具及Apps内完成购买；Apps允许直接跳页和Agent跨步准备，不强制每页提示/点击，三入口均以减少操作为目标。最终须Human在结算界面亲自点击“支付/确认购买”，Agent不得代点；沿现有模拟结账，成功后才可提供外部订单详情链接。此补充替代增量规划中每步提示唤起/禁止直接跳页的限制；历史基线批准/验收保留，具体确认/权限及Host接续见[当前Change](../../openspec/changes/archive/2026-10-30-agent-confirmed-purchase/design.md)，尚未获技术方案或实施批准。
+
+**2026-10-30 Human 需求变更（当前方向）:** [D-01 两步 Agent 购买确认](../../DECISIONS.md#d01-agent-two-step-20261030) 已将基础MCP/WebMCP/MCP Apps两步确认后的Agent代提交纳入当前需求，替代旧的C-01 Planned Enhancement范围判断。人先请求准备，审阅最终摘要后再明确确认，Agent才可执行已授权提交；普通Web人工路径与交易不变量保持。本文既有“七工具无提交/仅浏览器人工提交/代提交后置”描述保留为已批准旧设计及现有实现的范围，不作为新需求排除依据；新确认入口、可验证授权、提交通道和异常恢复须另行完成统一设计与OpenSpec规划，尚未获技术设计或实施批准。历史批准与验收不追溯改写。
+
+
 > **当前基线状态 — 2026-10-29：** Human「Design Phase Closure & Git History Consolidation」已批准 [Technical Design v0.5](TECHNICAL_DESIGN.md) 并结束本轮设计阶段。下文 Draft/待审记录保留其当时范围；Proposed 实施候选、L-01/P-04 等 Pending 与未运行证据不因整体批准自动升级，既有 Accepted 决策不重写。
 
 本文件保存工程治理与重要技术选择，保留原有 ENG-* 决策 ID，业务技术专题按需使用 T-*。针对 PM 需求的假设、判断、取舍及回复另见 [DECISIONS.md](../../DECISIONS.md)，不在这里混合维护；不另建职责相同的 TECH_DECISIONS.md。
@@ -288,6 +300,14 @@ T-01～T-06 原为未选择方案的讨论索引；2026-10-29 按 Human 明确�
 - 证据：修改前只读模拟已观察到 UI/UX、总体技术设计与最终交付缺少明确输出和检查规则；后续集成验证及覆盖限制见 TOOLING。此为初次制作时拟议机制的历史证据；当前限定接受范围见上方状态演进，不宣称商城或真实 Agent 已运行。
 
 后续仅在重大工程决策或关键变更时新增条目，按需说明状态、依据、理由与影响；不把例行操作写成决策。本文件不替代需求决策、结果型基线、正式规格或任务清单。
+
+### T-07 — 基础MCP原生确认与协议会话
+
+- **Status：Accepted（方向）；实际Host支持待验证。** Human，2026-10-30（Asia/Shanghai），本聊天在明确询问“Host原生购买确认表单，并增加必要的MCP会话/传输支持”后回复“同意”。
+- **Decision：** 基础MCP采用Host原生form elicitation承载完整结算摘要和Human最终购买确认；保留能力协商及确认请求/响应关联所必需的协议会话/传输支持。具体绑定、恢复、拒绝/取消和断连行为归[当前Change Design §4.1](../../openspec/changes/archive/2026-10-30-agent-confirmed-purchase/design.md#41-本轮验证结果及需human确定的基础mcp确认架构)。
+- **理由与取舍：** 满足基础MCP全程会话内且不依赖Apps的要求；接受从逐POST无状态Server调整为必要的协议会话。没有选择外部Checkout、复制回聊或让模型提交一个批准布尔值。
+- **边界：** 模型不获得自授批准工具；只接受与原请求关联、经可信Host取得的具体Human确认。拒绝、取消、缺少能力和确认回执未知均不新增批准；协议会话不延长Cart期限、不替代数据库订单/授权事实。该方向不保证当前Host已支持，不授予Git、发布或真实金流权限。
+- **实施条件：** 复用Human先前“验证无问题且无关键待决后正式实施”的授权；先完成无购买副作用的真实Host探针及其余必要机制验证。失败不得静默改用Apps或外部页面。
 
 ### Technical Design Final Review — 2026-10-29
 

@@ -7,7 +7,7 @@ const token = process.env.MCP_SERVICE_TOKEN;
 (base && token ? describe : describe.skip)(
   'real Streamable HTTP adapter',
   () => {
-    it('discovers seven tools and preserves the three read-only queries and matches HTTP data and errors', async () => {
+    it('preserves seven tools and discovers bounded purchase tools and preserves the three read-only queries and matches HTTP data and errors', async () => {
       const client = new Client({ name: 's1-contract-test', version: '1.0.0' });
       await client.connect(
         new StreamableHTTPClientTransport(new URL(`${base}/mcp`), {
@@ -17,12 +17,20 @@ const token = process.env.MCP_SERVICE_TOKEN;
       try {
         const tools = await client.listTools();
         expect(tools.tools.map((t) => t.name).sort()).toEqual([
+          'cancel_app_purchase',
+          'cancel_purchase',
           'create_cart',
           'create_handoff',
           'get_cart',
+          'get_order_link',
           'get_product',
+          'get_purchase_status',
           'list_product_reviews',
+          'pay_purchase',
+          'prepare_checkout',
+          'request_purchase_confirmation',
           'search_products',
+          'submit_order',
           'update_cart',
         ]);
         expect(

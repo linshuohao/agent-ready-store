@@ -1,18 +1,35 @@
 # Agent-Ready Store
 
+## 当前购买增量（2026-10-30）
+
+本轮收尾：`agent-confirmed-purchase`、S5、S6已于2026-10-30按Human授权归档，六份正式规格已同步；下文旧阶段描述保留历史语境，当前状态以本节及归档Tasks末尾为准。Apps历史准备重挂载P2已修复并独立复核；最终完整Review无新增发现，本地测试89通过、76环境依赖跳过。未完成的基础MCP原生确认/实施、真实Host/Human购买与显式分享验收仍为后续工作，归档不代表三入口全部交付。
+
+[agent-confirmed-purchase](openspec/changes/archive/2026-10-30-agent-confirmed-purchase/proposal.md) 按Human授权先实现Apps/WebMCP与共享交易核心，基础MCP保持原生确认Host阻塞；本节替代下文S5/S6中正常购买外跳Checkout及“无新增购买工具”的现状描述，旧验收事实保留。实施与验证见[Tasks](openspec/changes/archive/2026-10-30-agent-confirmed-purchase/tasks.md)，Human已授权保留已披露缺口归档并本地合入；真实Host/Human最终验收及基础MCP原生确认仍未完成。
+
+- Apps在原卡片核对并准备购买，完整摘要后由Human点击“确认支付”，Bridge直接下单并原地显示结果。WebMCP新增当前车prepare_checkout、确认页get_purchase_status/wait_for_purchase，网页点击确认直接下单。支付均不依赖Agent消息或接续。
+- MCP保留原七工具和原schema/输出，新增五个规划工具名称；基础MCP目标prepare_checkout只给报价预览，不创建review，request_purchase_confirmation/submit_order/cancel_purchase明确返回NATIVE_CONFIRMATION_UNAVAILABLE。get_purchase_status当前只支持Apps准备。app-only的pay_purchase/cancel_app_purchase/get_order_link靠用途绑定材料与车权限鉴权，visibility不是安全边界。不能将工具已发现视为基础MCP购买已实现。
+- Apps的准备/状态新增两个资源，共八个静态资源。确认材料只经工具结果_meta给UI，Web材料只经同源Cookie接口给支付控制器，不进入模型工具输出。信任已授权Host/浏览器隔离，不声称防御恶意Host或证明自然人身份；Agent不得代点支付。
+- 准备与取消绑定原车、入口、scope、内容、版本、epoch及截止；同键恢复不续期、不复活。支付结果未知/刷新仅查询原review，不自动重送或新建车；Human显式重试使用原review。普通Web/Handoff共用原交易核心，同车最多一单。
+- 成交后可显式取得 `/order-details/{orderId}#order-read=…` 只读链接。短期可转交，持链接者在原车截止前能读该订单；fragment先清除再兑换订单专用HttpOnly Cookie，不能编辑车或购买，不自动打开。
+
+迁移新增PurchaseReview表，不回填批准、不seed、不改历史订单。升级先停API写服务，运行 `docker compose run --rm api pnpm --filter @store/api db:migrate` 后重启API/Web；本地已执行。回退应停止新增准备/UI支付入口并保留表、订单和幂等事实，使用兼容数据的代码；不反向扣回已成交库存、不恢复旧批准或删除数据卷。基础MCP后续实施仍须真实原生确认与相应数据扩展，不预建未验证的批准通路。
+
+隔离验证：`apps/api/test/cart/purchase-db.test.ts` 指向 `TEST_DATABASE_URL` 的store_test；真实HTTP/MCP新增 `purchase-http-db.test.ts` 还要求独立 `PURCHASE_TEST_API_URL`（loopback 3001/3003），禁止指向业务库。真实UI集成 `e2e/purchase-integrated.spec.ts` 仅在 `PURCHASE_INTEGRATION=1 WEB_BASE_URL=http://localhost:3004` 启用，测试Web须代理store_test API且其WEB_ORIGIN匹配；普通默认测试跳过它。命令上下文与本轮实际结果见Tasks。
+
+
 面向人类与 AI Agent 的商店作业。目标与交付约束见只读的 [作业原件](references/home-quiz.md) 和 [商品原件](references/products.json)；PM 需求仍是草稿。
 
-本轮产品与技术设计阶段已由 Human 批准结束（2026-10-29，Asia/Shanghai）：Requirements v0.2、Product Design v0.2 与 [Technical Design v0.5](docs/engineering/TECHNICAL_DESIGN.md) 均为 Approved Baseline；产品/技术决策及演进保留。已批准五页结构、三份视觉方向和前端主导的 Next.js/NestJS/Agent 架构；其余 Proposed Implementation Details、P-04 及运行验收缺口继续保留；WebMCP 来源已有 S5 限定补充；L-01 已由 S2 限定补充批准解决，见下方当前规划。基础 MCP、WebMCP、MCP Apps 均属本次完整交付目标，S1 商品发现已实现并记录 Human 验收，Web交易已实现，S4基础MCP闭环已通过Human验收（真实接手链路补证限制见S4 Tasks）；S5 WebMCP 实施中，MCP Apps 尚未实施。
+本轮产品与技术设计阶段已由 Human 批准结束（2026-10-29，Asia/Shanghai）：Requirements v0.2、Product Design v0.2 与 [Technical Design v0.5](docs/engineering/TECHNICAL_DESIGN.md) 均为 Approved Baseline；产品/技术决策及演进保留。已批准五页结构、三份视觉方向和前端主导的 Next.js/NestJS/Agent 架构；其余 Proposed Implementation Details、P-04 及运行验收缺口继续保留；WebMCP 来源已有 S5 限定补充；L-01 已由 S2 限定补充批准解决，见下方当前规划。基础 MCP、WebMCP、MCP Apps 均属本次完整交付目标，S1 商品发现已实现并记录 Human 验收，Web交易已实现，S4基础MCP闭环已通过Human验收（真实接手链路补证限制见S4 Tasks）；S5 WebMCP 实施中，MCP Apps 实施中（真实 Host 外链及最终验收未完成）。
 
 阶段关闭记录见 [Technical Design §10.4](docs/engineering/TECHNICAL_DESIGN.md#104-设计阶段关闭与交接--2026-10-29)。Human 已批准 [S1 规划](openspec/changes/archive/2026-10-29-s1-product-discovery/proposal.md) 并授权实施；S1 已完成本轮 Review 并归档，运行证据与保留限制见 [归档 Tasks](openspec/changes/archive/2026-10-29-s1-product-discovery/tasks.md)；后续切片等待对应授权。精益执行原则见 [AGENTS](AGENTS.md#默认执行原则)。
 
 S2当前状态见 [Cart与报价Change](openspec/changes/archive/2026-10-29-s2-cart-quote/proposal.md)及[Tasks](openspec/changes/archive/2026-10-29-s2-cart-quote/tasks.md)。Web/HTTP购物车与报价已实现，完成自动验证、独立Review及定向修复复核，Human于2026-10-29明确验收通过；两份正式Spec已同步，S2 Change已按Human授权归档。未交接创建起24h、现有恢复限制及S2 Web/HTTP—S4 MCP写工具分期的正式来源见[D-04补充](DECISIONS.md#d-04--交接链接有效期)。S3订单已实现并通过Human验收，S4交接已通过Human验收，不能将当前Cart报价视为完成购买。
 
-S3已完成实施并于2026-10-30通过Human验收：[Proposal](openspec/changes/archive/2026-10-30-s3-hosted-checkout-order/proposal.md)、[Design](openspec/changes/archive/2026-10-30-s3-hosted-checkout-order/design.md)、[Tasks与验收记录](openspec/changes/archive/2026-10-30-s3-hosted-checkout-order/tasks.md)。Human已确认到期准入/结果访问/无自动清理的三项限定边界，见[D-21补充](DECISIONS.md#s3-checkout-boundary-20261029)。三份正式Spec已同步，S3 Change已按Human授权归档；Push/Merge须对应授权。S3范围为普通Web Hosted Checkout与原子订单，S4 Agent交接状态见下文，S5/S6后续分期保持。
+S3已完成实施并于2026-10-30通过Human验收：[Proposal](openspec/changes/archive/2026-10-30-s3-hosted-checkout-order/proposal.md)、[Design](openspec/changes/archive/2026-10-30-s3-hosted-checkout-order/design.md)、[Tasks与验收记录](openspec/changes/archive/2026-10-30-s3-hosted-checkout-order/tasks.md)。Human已确认到期准入/结果访问/无自动清理的三项限定边界，见[D-21补充](DECISIONS.md#s3-checkout-boundary-20261029)。三份正式Spec已同步，S3 Change已按Human授权归档；Push/Merge须对应授权。S3范围为普通Web Hosted Checkout与原子订单，S4 Agent交接状态见下文，S5/S6分期验收保持。
 
 ## S4 Agent Handoff
 
-[S4 Change](openspec/changes/archive/2026-10-30-s4-agent-handoff/proposal.md) 已实施七工具、同车分享/兑换及本地有效创建统计，并于2026-10-30通过Human验收；验证与保留限制见 [Tasks](openspec/changes/archive/2026-10-30-s4-agent-handoff/tasks.md)。四份正式Spec已同步，Change已归档。真实Host七工具已有证据，Human实际接手/编辑/确认的新增可核对证据未补齐，按Human知悉限制后的明确授权保留此缺口归档；S5 实施中，S6 未实施。
+[S4 Change](openspec/changes/archive/2026-10-30-s4-agent-handoff/proposal.md) 已实施七工具、同车分享/兑换及本地有效创建统计，并于2026-10-30通过Human验收；验证与保留限制见 [Tasks](openspec/changes/archive/2026-10-30-s4-agent-handoff/tasks.md)。四份正式Spec已同步，Change已归档。真实Host七工具已有证据，Human实际接手/编辑/确认的新增可核对证据未补齐，按Human知悉限制后的明确授权保留此缺口归档；S5 实施中，S6 实施中，状态见下方 MCP Apps。
 
 基础 MCP 仍为 `http://localhost:3002/mcp`，使用本机 `MCP_SERVICE_TOKEN` 的 Bearer 认证及既有 Host/Origin 限制。七工具为 `search_products`、`get_product`、`list_product_reviews`、`create_cart`、`get_cart`、`update_cart`、`create_handoff`。无订单提交工具。单个配置的服务身份共享创建键命名空间，不能区分 Host 或顾客；每个新意图使用随机 UUID `createRequestId`。
 
@@ -28,9 +45,9 @@ S4测试：专用 `store_test` 库迁移后，设置 `TEST_DATABASE_URL` 串行�
 
 ## S5 WebMCP
 
-**当前已批准修订：** [电商逐项操作与按场景刷新](openspec/changes/s5-webmcp/design.md#4-电商逐项操作服务端权威与按场景刷新本次拟议修订) 已在本地实施；[Tasks §6](openspec/changes/s5-webmcp/tasks.md#6-电商逐项操作与按场景刷新本次修订) 记录实际验证和剩余验收。
+**当前已批准修订：** [电商逐项操作与按场景刷新](openspec/changes/archive/2026-10-30-s5-webmcp/design.md#4-电商逐项操作服务端权威与按场景刷新本次拟议修订) 已在本地实施；[Tasks §6](openspec/changes/archive/2026-10-30-s5-webmcp/tasks.md#6-电商逐项操作与按场景刷新本次修订) 记录实际验证和剩余验收。
 
-[S5 Change](openspec/changes/s5-webmcp/proposal.md) 已由 Human 批准规划并授权实施，当前实现与验证进度见 [Tasks](openspec/changes/s5-webmcp/tasks.md)，尚未获得最终验收；S6 未实施。以下是本轮新增运行契约，不将基础 MCP 成功当作 WebMCP 验收。
+[S5 Change](openspec/changes/archive/2026-10-30-s5-webmcp/proposal.md) 已由 Human 批准规划并授权实施，当前实现与验证进度见 [Tasks](openspec/changes/archive/2026-10-30-s5-webmcp/tasks.md)，尚未获得最终验收；S6 实施中，状态见下方 MCP Apps。以下是本轮新增运行契约，不将基础 MCP 成功当作 WebMCP 验收。
 
 支持 `document.modelContext` 的浏览器按页面提供工具：目录页 `search_products`、`add_to_cart`；详情页 `get_product`、`list_product_reviews`、`add_to_cart`；活动购物车页 `update_cart`。上述页面还提供 `get_cart`；目录/详情另提供仅用于原创建重试的 `retry_cart_creation`，购物车编辑无恢复工具；Checkout 仅 `get_cart`，无购买确认/提交工具。Host 发现名称可能带本次注册后缀，必须使用当前发现结果，不能缓存旧句柄。
 
@@ -43,6 +60,21 @@ S4测试：专用 `store_test` 库迁移后，设置 `TEST_DATABASE_URL` 串行�
 升级时先停止 API 写服务，再运行 `docker compose run --rm api pnpm db:migrate`，生成客户端并重启 API/Web；保留所有卷，不 seed。新增不可变 `agentCreated`：迁移时历史 AGENT 回填 true，HUMAN false，今后只有有效 Agent 新建写 true，HUMAN 后续升级不改此事实。不可回退到仅按 origin 统计的旧应用；需回退时先停用 WebMCP 新写入口，保留新数据并使用兼容创建事实的修订版，不能批量降来源或重写订单。
 
 S5 隔离 DB 测试为 `apps/api/test/cart/webmcp-db.test.ts`，及 `apps/api/test/cart/cart-operations-db.test.ts`，与其他 DB 套件串行运行且仅指向 `store_test`。HTTP 测试为 `apps/api/test/cart/webmcp-http.test.ts`及 `apps/api/test/cart/cart-operations-http.test.ts`（API_BASE_URL、WEB_ORIGIN）；浏览器协调测试为 `e2e/webmcp.spec.ts` 和 `e2e/cart-operations.spec.ts`（WEB_BASE_URL 必须匹配 WEB_ORIGIN）。注册替身测试与真实 Host 证据分开记录，自动化确认不称为 Human 验收。
+
+
+## S6 MCP Apps
+
+[S6 Change](openspec/changes/archive/2026-10-30-s6-mcp-apps/proposal.md) 已获实施授权，进度与真实 Host 限制见 [Tasks](openspec/changes/archive/2026-10-30-s6-mcp-apps/tasks.md)。当前 Host 的 UI、输入/结果和 Bridge 查询已实测；localhost 外链虽返回成功但未实际打开，Human 授权先实施、交付前补验，不能视为完整验收。
+
+六个资源为 `ui://store/{search-products,get-product,create-cart,get-cart,update-cart,create-handoff}-v1.html`，均为 `text/html;profile=mcp-app`。它们共用 React 单文件代码，各自内置入口工具名；原七工具 schema、报价、权限和订单逻辑保持。基础 MCP 不支持 Apps 时仍返回原文本与结构化结果；评论工具不关联视图。
+
+商品选择与建车由 Agent 完成；Apps 编辑原车数量、移除条目，点击“儲存調整”按原版本整车替换（不是 WebMCP 单操作）。首次载入、手动重载及结账前重新读取服务端报价；草稿、冲突或未知结果阻止继续写入/结账，须明确放弃并重载，不自动重送。读写与结账全链在途禁止输入和重复操作。
+
+“前往商城結帳”经 Bridge 读取同车、签发原交接并请求 Host 打开。Host 返回成功只表示请求返回，页面没有打开时仍需核对 Host 限制；此处不会购买。必须由 Human 在 Hosted Checkout 审阅并明确确认。车 Token 与交接 URL 仅在 Adapter 内存及显式 Bridge 请求中使用，不进入展示 props、DOM、日志或存储；不直连网站 API，不复制链接到 DOM，不申请额外浏览器权限。
+
+根 `pnpm build` 和 Compose API 开发启动会构建 Apps；资源随 API 的 `dist/mcp-app/` 交付，无新增常驻服务。Apps 源码修改后运行 `pnpm --filter @store/mcp-app build`，再让 Host 重新调用工具；元数据变更后刷新 MCP 连接。单独 `nest build` 会清理 dist，应使用根构建或随后构建 Apps。构建使用 `WEB_ORIGIN` 固定合法 Checkout origin；生产 Compose 将其传入构建参数，修改 origin 后重建。官方 ext-apps 固定 1.1.2，复用 SDK 1.32.2；不运行其 setup-bun 脚本，不安装未使用的可选 Bun 运行时。
+
+实现回归：`pnpm test apps/mcp-app/test`、`pnpm test packages/commerce-ui/test`；先构建再运行 `pnpm test:e2e e2e/mcp-app.spec.ts`。该浏览器测试使用官方 AppBridge **替身 Host**，不是目标 Host 验收。专用 PostgreSQL 的 `apps/api/test/mcp/apps-cart-db.test.ts` 需要 `TEST_DATABASE_URL` 指向 `store_test`，会清理该测试库并模拟已有 Checkout；禁止指向正式库。资源 HTTP 测试使用原 `API_BASE_URL` 与本机服务凭证，具体命令按现有测试入口配置。
 
 ## 本地 Node 启动（无需 Docker）
 

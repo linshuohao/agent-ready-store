@@ -378,3 +378,71 @@ export const handoffOutput = z
   })
   .strict();
 export const exchangeResultOutput = cartResultOutput;
+
+export const purchasePrepareInput = z
+  .object({
+    prepareRequestId: z.uuid(),
+    expectedCartVersion: cartReplaceInput.shape.expectedCartVersion,
+  })
+  .strict();
+export const purchasePayInput = z
+  .object({ payToken: z.string().min(1).max(4096) })
+  .strict();
+export const purchaseCancelInput = z
+  .object({ cancelToken: z.string().min(1).max(4096) })
+  .strict();
+export const purchaseStatusOutput = z
+  .object({
+    reviewId: z.uuid().nullable(),
+    cartId: cartIdInput,
+    channel: z.enum(['apps', 'webmcp']),
+    state: z.enum([
+      'pending',
+      'stale',
+      'expired',
+      'cancelled',
+      'blocked',
+      'completed',
+    ]),
+    summary: purchaseSummaryOutput,
+    expiresAt: z.iso.datetime(),
+    order: orderOutput.nullable(),
+  })
+  .strict();
+export type PurchaseStatus = z.infer<typeof purchaseStatusOutput>;
+export const purchaseMaterialsOutput = z
+  .object({ payToken: z.string(), cancelToken: z.string() })
+  .strict();
+export type PurchaseMaterials = z.infer<typeof purchaseMaterialsOutput>;
+export const purchaseResultOutput = z.discriminatedUnion('ok', [
+  z
+    .object({
+      ok: z.literal(true),
+      data: purchaseStatusOutput,
+      requestId: z.string(),
+    })
+    .strict(),
+  z
+    .object({
+      ok: z.literal(false),
+      error: checkoutErrorOutput,
+      requestId: z.string(),
+    })
+    .strict(),
+]);
+export const purchaseMaterialsResultOutput = z.discriminatedUnion('ok', [
+  z
+    .object({
+      ok: z.literal(true),
+      data: purchaseMaterialsOutput,
+      requestId: z.string(),
+    })
+    .strict(),
+  z
+    .object({
+      ok: z.literal(false),
+      error: checkoutErrorOutput,
+      requestId: z.string(),
+    })
+    .strict(),
+]);

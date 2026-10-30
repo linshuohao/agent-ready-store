@@ -5,3 +5,7 @@ allowBuilds:
   '@prisma/engines': true
   prisma: true
   unrs-resolver: true
+  '@modelcontextprotocol/ext-apps': false
+# Apps uses published JS through Vite; the SDK's optional Bun runtime is unused.
+ignoredOptionalDependencies:
+  - '@oven/bun-*'

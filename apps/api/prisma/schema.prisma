@@ -17,6 +17,7 @@ model Cart {
   handoffIssuedAt    DateTime? @db.Timestamptz(3)
   checkoutEpoch      BigInt   @default(0)
   order              Order?
+  purchaseReviews    PurchaseReview[]
   id                 String   @id @db.Uuid
   origin             String   @default("HUMAN")
   agentCreated       Boolean  @default(false)
@@ -42,4 +43,26 @@ model Order {
   pricingRuleVersion String
   origin             String
   snapshot           Json
+}
+
+
+model PurchaseReview {
+  id                 String @id @db.Uuid
+  cartId             String @db.Uuid
+  cart               Cart @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  prepareScope       String
+  prepareRequestId   String @db.Uuid
+  requestHash        String
+  channel            String
+  actorScope         String
+  cartVersion        Int
+  purchaseHash       String
+  checkoutEpoch      BigInt
+  summary            Json
+  createdAt          DateTime @db.Timestamptz(3)
+  expiresAt          DateTime @db.Timestamptz(3)
+  cancelled          Boolean @default(false)
+
+  @@unique([prepareScope, prepareRequestId])
+  @@index([cartId])
 }
