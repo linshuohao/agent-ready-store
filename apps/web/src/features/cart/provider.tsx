@@ -39,7 +39,7 @@ type Context = {
     entrance?: 'webmcp',
   ) => Promise<EditResult | undefined>;
   toolSave: (intent: OperationIntent) => Promise<EditResult | undefined>;
-  retryTool: (cartId?: string) => Promise<EditResult | undefined>;
+  retryTool: (cartId?: string) => Promise<EditResult>;
   setDraftGuard: (id: string, dirty: boolean, needsReload?: boolean) => void;
   save: (intent: OperationIntent) => Promise<EditResult | undefined>;
 };
@@ -119,8 +119,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       active = false;
     };
   }, []);
-  async function finishCreation() {
-    if (!creation.current || inFlight.current) return;
+  async function finishCreation(): Promise<EditResult> {
+    if (inFlight.current)
+      return { kind: 'failure', error: { code: 'CART_BUSY' } };
+    if (!creation.current)
+      return { kind: 'failure', error: { code: 'NO_PENDING_CREATION' } };
     inFlight.current = true;
     setBusy(true);
     const { selectionVersion: owner, entrance, ...input } = creation.current;

@@ -51,6 +51,7 @@ export function CartPage({ id }: { id?: string }) {
   const [needsReload, setNeedsReload] = useState(false);
   const [saveIssues, setSaveIssues] = useState<CartIssue[]>([]);
   const [expired, setExpired] = useState(false);
+  const [completed, setCompleted] = useState(false);
   const [loading, setLoading] = useState(Boolean(id));
   const dirty = Boolean(
     view &&
@@ -95,6 +96,7 @@ export function CartPage({ id }: { id?: string }) {
     setDraft(draftRef.current);
     setSaveIssues([]);
     setExpired(false);
+    setCompleted(Boolean(cart.orderId));
     setError('');
     setStatus('');
   }, []);
@@ -233,6 +235,11 @@ export function CartPage({ id }: { id?: string }) {
     } else if (result.kind === 'unknown')
       requireReload('保存結果未確認，請重新載入查看服務端的購物車。');
     else {
+      if (result.error.code === 'CART_COMPLETED') {
+        requireReload('此購物車已完成購買。');
+        setCompleted(true);
+        return;
+      }
       if (
         ['CART_BUSY', 'UNSAVED_DRAFT', 'STALE_CONTEXT'].includes(
           result.error.code,
@@ -351,7 +358,7 @@ export function CartPage({ id }: { id?: string }) {
         </p>
       </main>
     );
-  if (view.orderId)
+  if (view.orderId || completed)
     return (
       <main id="main" tabIndex={-1}>
         <h1>購物車</h1>

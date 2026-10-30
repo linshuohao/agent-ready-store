@@ -147,6 +147,57 @@ test('blocks Human and tool conflicts only while an operation is in flight', asy
   await expect(input(page)).toHaveValue('2');
   expect(writes).toBe(1);
 });
+for (const entrance of ['Human', 'tool'])
+  test(`${entrance} completed-cart rejection shows the original order and ends editing`, async ({
+    page,
+  }) => {
+    await tools(page);
+    let writes = 0;
+    await page.route('**/api/v1/**carts/**', (route) => {
+      if (route.request().method() === 'POST') {
+        writes++;
+        return route.fulfill({
+          status: 409,
+          json: failure('CART_COMPLETED'),
+        });
+      }
+      return route.fulfill({ json: success({ ...view(), canCheckout: true }) });
+    });
+    await page.goto(`/cart/${id}`);
+    await expect(
+      page.getByRole('link', { name: '前往結帳', exact: true }),
+    ).toBeVisible();
+    if (entrance === 'Human') {
+      await input(page).fill('2');
+      await input(page).press('Enter');
+    } else {
+      await expect
+        .poll(() =>
+          page.evaluate(() => (window as any).cartTools.has('update_cart')),
+        )
+        .toBe(true);
+      expect(
+        await call(page, {
+          expectedCartVersion: 1,
+          operation: { type: 'set_quantity', productId: 'P001', quantity: 1 },
+        }),
+      ).toMatchObject({ kind: 'failure', error: { code: 'CART_COMPLETED' } });
+    }
+    await expect(
+      page.getByText('此購物車已完成購買。', { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('link', { name: '查看原訂單', exact: true }),
+    ).toHaveAttribute('href', `/orders/${id}`);
+    await expect(input(page)).toHaveCount(0);
+    await expect(
+      page.getByRole('button', { name: '移除 P001', exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole('link', { name: '前往結帳', exact: true }),
+    ).toHaveCount(0);
+    expect(writes).toBe(1);
+  });
 for (const outcome of ['conflict', 'unknown'])
   test(`${outcome} requires an explicit fresh read and never replays the operation`, async ({
     page,

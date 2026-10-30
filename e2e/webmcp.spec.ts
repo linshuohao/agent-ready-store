@@ -205,7 +205,32 @@ test('unconfirmed creation retries the original intent once and survives service
     (await call(page, 'add_to_cart', { productId: 'P003' })).error.code,
   ).toBe('CART_BUSY');
   await page.unroute('**/api/v1/webmcp/carts');
-  const recovered = await call(page, 'retry_cart_creation');
+  let release!: () => void;
+  const barrier = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let retries = 0;
+  await page.route('**/api/v1/webmcp/carts', async (route) => {
+    retries++;
+    await barrier;
+    await route.continue();
+  });
+  await page.evaluate(() => {
+    (window as any).s5Recovery = (window as any).s5Tools
+      .get('retry_cart_creation')
+      .execute({});
+  });
+  await expect.poll(() => retries).toBe(1);
+  try {
+    expect(await call(page, 'retry_cart_creation')).toMatchObject({
+      kind: 'failure',
+      error: { code: 'CART_BUSY' },
+    });
+    expect(retries).toBe(1);
+  } finally {
+    release();
+  }
+  const recovered = await page.evaluate(() => (window as any).s5Recovery);
   expect(recovered).toMatchObject({
     kind: 'success',
     cart: { cartId: original.cartId, origin: 'AGENT', cartVersion: 1 },

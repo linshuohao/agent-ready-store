@@ -108,3 +108,6 @@
 - **最终独立 Review 与修复：** 全新只读 `/root/review_cart_operations_implementation` 核对最终业务范围，发现1项P2：目录/详情加购冲突或unknown后仍能再次发起增量。先用浏览器复现按钮错误保持可用，再补页面级刷新要求、拒绝工具新写入与打开原车核对入口；离页不保留全局锁。修复后桌面/移动4/4通过。其余已审范围无可行动问题；运行由实现者执行，Reviewer未自行重跑。此轮修复用回归重验，不叠加全量复核。
 - **剩余验收：** 6.2～6.6 实施与对应验证已完成，6.7 中独立代码审查及发现修复已执行，但 Human 最终验收、4.2 真实人工接续仍待完成，故6.7/4.2/4.4不勾选；不自动归档、Push、Merge或进入S6。
 - **最终修复后验证：** 六个受影响浏览器套件 `cart-operations/cart-review-fixes/cart/webmcp/checkout/handoff` 桌面/移动 **94/94通过**；同一最终源码的隔离 Docker 生产构建通过。Web/API lint、Web/API typecheck、Prettier 全仓格式检查、OpenSpec strict、Diff 检查通过。宿主 vitest 为39 passed/61 skipped，真实DB47/47、HTTP/MCP分别另行通过，如上记录；无Skipped冒充成功。完整冷刷新仍读取同车P001×2，未执行真实Human购买。
+- **追加 Review 修复（2026-10-30）：** 已复现并修复两项 Findings：Human/工具编辑收到 `CART_COMPLETED` 后转入已有完成车视图、阻止继续编辑/结账并提供原订单入口；创建恢复在途时再次调用明确返回 `CART_BUSY`，不额外请求且保留原创建材料，并收紧返回类型以排除空结果。
+- **定向证据：** 桌面/移动六项反例修复前按预期失败、修复后6/6通过；`WEB_BASE_URL=http://localhost:3000 pnpm exec playwright test e2e/cart-operations.spec.ts e2e/webmcp.spec.ts e2e/cart.spec.ts e2e/cart-review-fixes.spec.ts --max-failures=1` 为84/84通过，Commands单测4/4、Web typecheck/lint、受改文件Prettier与Diff检查通过。仅修改前端及回归，后端不变量复用本 Change 已有证据，未重跑DB或生产构建。
+- **定向复核：** 全新只读 Reviewer Helmholtz 核对四文件修复及相关生命周期，无新增可行动问题；运行验证由实现者执行，Reviewer未自行重跑。4.2/4.4/6.7中的真实人工接续和Human最终验收继续待办，本记录不代表验收、归档或合并授权。
