@@ -95,3 +95,14 @@
 
 
 2026-10-30 第二轮Planning Review修订：按Human“按review建议修复”授权，将基础MCP prepare限定为零表单pending（无协议会话仅报价预览），独立request_purchase_confirmation负责每review一次原生确认请求；补充cancel_purchase只撤销入口、会话丢失的限定撤销权限及批准/提交/新准备竞争规则。当前工具目标由原七+三新增改为原七+五新增，历史三工具目标记录保留当时范围。Proposal/Design/两份受影响Spec及Tasks同步，未修改业务代码或配置、未执行购买，所有实施任务未勾选。候选机制及Host证据仍待验证/批准，本次文档修订不代表新增技术方案已验收。
+
+
+### 实施授权与前置验证 — 2026-10-30
+
+Human本轮明确提交并按当前规划实施，随后明确接受Design §4.3可信Host/浏览器隔离边界及§6短期可转交只读订单权限；正式授权来源已写入D-01与本Change状态。既有CSP修改及S6历史证据提交为97702f2，规划与批准提交为8134791；随后新建codex/agent-confirmed-purchase，隔离后续购买审查单元，无Push/Merge。
+
+Task 1.1/1.2前置验证取得部分新增证据：基础MCP复用无购买原生form探针，本聊天真实get_product仍返回FORM_NOT_NEGOTIATED、hasInitializedClient=false，未出现原生确认、未写批准。Apps采用无车/无购买权限随机标记，经工具结果_meta交付；模型结果keys仅content/structuredContent/isError，hasMeta=false且无标记。Human展开侧栏后，真实组件connected=true、received=true；Agent点击明确的“验证只读回传”按钮，Bridge调用独立探针分支后显示accepted。证明当前Host的模型结果隔离、组件接收及Bridge回传链路；不证明自然人点击、正式签名/跨scope/epoch/取消重放拒绝或购买事务已实现。无消息发送、建车、交接、购买、库存写入或配置切换。
+
+两个实验的ignored编译Adapter及get-product资源均逐字恢复，并分别核对原备份SHA-256；临时脚本仅在/private/tmp/purchase-implementation-preflight，不纳入产品。基础MCP真实Host门槛仍未通过，未把Task 1或其他实现任务勾选。Guard曾以pending验证/Review拒绝阶段转换；首次目录级path另被判为无精确提交路径，后续改用具体文件参数核对，不将参数问题当作业务阻塞。未取得新的独立Review，不冒称已进入完成验证的购买实现。
+
+恢复后本机MCP资源/认证及原查询回归4/4通过；API typecheck/lint、三个Change strict及git diff --check通过。18份变更Markdown的204条本地文件链接通过（检查器剥离URL query后核对，不把wireframe查询参数误作文件名）。权限批准已闭合，仍须先解决基础MCP真实Host确认或由Human明确调整分入口实施顺序。
