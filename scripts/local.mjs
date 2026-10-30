@@ -60,6 +60,13 @@ const commands = {
 };
 if (!Object.hasOwn(commands, mode))
   throw new Error(`Unknown local command: ${mode}`);
+if (mode !== 'build' && !process.env.DATABASE_URL) {
+  console.error(
+    '缺少 DATABASE_URL。请按 README「本机开发」配置根目录 .env；若数据库由 Docker 提供，先运行 pnpm db:up。不要覆盖已有密钥。',
+  );
+  process.exit(1);
+}
+
 const children = [];
 let stopping = false;
 function stop(code) {
