@@ -12,6 +12,12 @@ export interface Actions {
   save(): void;
   reload(discard: boolean): void;
   checkout(): void;
+  share(): void;
+  openOrderDetails(): void;
+  returnToCart(): void;
+  pay(retry?: boolean): void;
+  cancelPurchase(): void;
+  recoverPurchase(): void;
 }
 export function StoreView({
   state,
@@ -33,7 +39,15 @@ export function StoreView({
     <main aria-busy={state.busy}>
       <header className="store-header">
         <p className="eyebrow">AGENT-READY STORE</p>
-        <h1>{cart ? '購物車' : '商品快照'}</h1>
+        <h1>
+          {order
+            ? '購買完成'
+            : state.purchase
+              ? '確認購買'
+              : cart
+                ? '購物車'
+                : '商品快照'}
+        </h1>
         <p className="hint">由 AI 助理準備，由你決定。</p>
       </header>
       <p className="notice" role="status" aria-live="polite">
@@ -61,7 +75,68 @@ export function StoreView({
           ))}
         </section>
       )}
-      {cart && (
+      {order && (
+        <Button
+          disabled={state.busy || state.needsRefresh}
+          onClick={actions.openOrderDetails}
+        >
+          開啟唯讀訂單詳情
+        </Button>
+      )}
+      {state.canRecover && (
+        <Button disabled={state.busy} onClick={actions.recoverPurchase}>
+          恢復原準備（不會支付）
+        </Button>
+      )}
+      {state.purchase && (
+        <section aria-label="購買確認">
+          <PurchaseSummary
+            summary={order?.snapshot ?? state.purchase.summary}
+            completed={!!order}
+          />
+          <p>
+            有效至 {new Date(state.purchase.expiresAt).toLocaleString('zh-TW')}
+          </p>
+          {!order && state.purchase.state !== 'pending' && (
+            <Button disabled={state.busy} onClick={actions.returnToCart}>
+              返回購物車
+            </Button>
+          )}
+          {!order && (
+            <div className="commerce-actions">
+              <Button
+                disabled={state.busy || !state.canPay || state.needsRefresh}
+                onClick={() => actions.pay()}
+              >
+                確認支付
+              </Button>
+              {state.canRetryPay && (
+                <Button
+                  disabled={state.busy || state.needsRefresh}
+                  onClick={() => actions.pay(true)}
+                >
+                  明確重試原購買
+                </Button>
+              )}
+              <Button
+                className="secondary"
+                disabled={state.busy || !state.canCancel || state.needsRefresh}
+                onClick={actions.cancelPurchase}
+              >
+                取消本次購買
+              </Button>
+              <Button
+                className="secondary"
+                disabled={state.busy}
+                onClick={() => actions.reload(false)}
+              >
+                查詢原準備狀態
+              </Button>
+            </div>
+          )}
+        </section>
+      )}
+      {cart && !state.purchase && (
         <>
           <div className="cart-identity">
             <p>
@@ -169,11 +244,18 @@ export function StoreView({
                       disabled={blocked || state.dirty || !cart.canCheckout}
                       onClick={actions.checkout}
                     >
-                      前往商城結帳
+                      核對並準備購買
                     </Button>
                   </div>
+                  <Button
+                    className="secondary"
+                    disabled={blocked || state.dirty || !cart.canCheckout}
+                    onClick={actions.share}
+                  >
+                    分享／交接至商城
+                  </Button>
                   <p className="hint">
-                    結帳前會重新核對。你仍須在商城審閱並明確確認購買；此處不提交訂單。
+                    準備後會顯示完整購買摘要；只有你明確點擊「確認支付」才會提交訂單。
                   </p>
                 </>
               )}

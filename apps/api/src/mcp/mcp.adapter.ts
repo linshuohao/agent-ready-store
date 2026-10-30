@@ -17,12 +17,28 @@ import {
   cartCapabilityInput,
   agentUpdateInput,
   handoffOutput,
+  purchasePrepareInput,
+  purchasePayInput,
+  purchaseCancelInput,
+  type PurchaseMaterials,
 } from '@store/contracts';
 import type { Express } from 'express';
 import type { CartService } from '../cart/cart.service.js';
 import type { CatalogService } from '../catalog/catalog.service.js';
 import { AppError } from '../shared/app-error.js';
 import { result } from '../shared/result.js';
+const purchaseInput = cartCapabilityInput
+  .extend(purchasePrepareInput.shape)
+  .extend({ target: z.enum(['apps', 'basic-mcp']) })
+  .strict();
+const purchaseReadInput = cartCapabilityInput
+  .extend({ reviewId: z.uuid() })
+  .strict();
+const appPayInput = purchaseReadInput.extend(purchasePayInput.shape).strict();
+const appCancelInput = purchaseReadInput
+  .extend(purchaseCancelInput.shape)
+  .strict();
+const appsContext = { channel: 'apps' as const, scope: 'store-mcp-v1' };
 const reviewInput = pageInput.extend({ productId: z.string().min(1).max(64) });
 export function attachMcp(
   app: Express,
@@ -69,6 +85,8 @@ export function attachMcp(
       'get_cart',
       'update_cart',
       'create_handoff',
+      'prepare_checkout',
+      'get_purchase_status',
     ];
     const resources = uiTools.map((tool) => ({
       tool,
@@ -129,6 +147,58 @@ export function attachMcp(
     server.setRequestHandler(ListToolsRequestSchema, async () => ({
       tools: [
         {
+          name: 'prepare_checkout',
+          description:
+            '準備原車完整摘要，不購買。apps目標在App由Human支付；basic-mcp目前缺少已驗證原生確認會話，只能報價預覽。相同意圖重試用原prepareRequestId及版本。',
+          inputSchema: z.toJSONSchema(purchaseInput),
+          _meta: uiMeta('prepare_checkout'),
+          annotations: { ...annotations, readOnlyHint: false },
+        },
+        {
+          name: 'get_purchase_status',
+          description: '只讀原準備/訂單狀態，不批准、不重送支付。',
+          inputSchema: z.toJSONSchema(purchaseReadInput),
+          _meta: uiMeta('get_purchase_status'),
+          annotations,
+        },
+        ...[
+          'request_purchase_confirmation',
+          'submit_order',
+          'cancel_purchase',
+        ].map((name) => ({
+          name,
+          description:
+            '基礎MCP原生確認會話尚未實測通過；本入口明確拒絕，不可搬用Apps/WebMCP準備。',
+          inputSchema: z.toJSONSchema(purchaseReadInput),
+          annotations: { ...annotations, readOnlyHint: false },
+        })),
+        {
+          name: 'pay_purchase',
+          description: '受保護Apps支付；僅Human明確點擊，必須有UI專用材料。',
+          inputSchema: z.toJSONSchema(appPayInput),
+          _meta: { ui: { visibility: ['app'] } },
+          annotations: {
+            ...annotations,
+            readOnlyHint: false,
+            destructiveHint: true,
+          },
+        },
+        {
+          name: 'cancel_app_purchase',
+          description: '撤銷指定Apps準備，不取消已成交訂單。',
+          inputSchema: z.toJSONSchema(appCancelInput),
+          _meta: { ui: { visibility: ['app'] } },
+          annotations: { ...annotations, readOnlyHint: false },
+        },
+        {
+          name: 'get_order_link',
+          description: '已成交原訂單的限時只讀連結；不購買、不自動開啟。',
+          inputSchema: z.toJSONSchema(cartCapabilityInput),
+          _meta: { ui: { visibility: ['app'] } },
+          annotations,
+        },
+
+        {
           name: 'create_cart',
           _meta: uiMeta('create_cart'),
           description:
@@ -161,7 +231,7 @@ export function attachMcp(
           name: 'create_handoff',
           _meta: uiMeta('create_handoff'),
           description:
-            '分享同一車的有限存取能力；首次分享起固定24小時，重試不續期。回傳原車、報價和含秘密的連結；交Human在Hosted Checkout明確確認，勿自行提交購買。',
+            '僅Human明確要求分享/交接時使用，不用於正常購買準備；分享同一車的有限存取能力；首次分享起固定24小時，重試不續期。回傳原車、報價和含秘密的連結；交Human在Hosted Checkout明確確認，勿自行提交購買。',
           inputSchema: z.toJSONSchema(cartCapabilityInput),
           annotations: { ...annotations, readOnlyHint: false },
         },
@@ -189,9 +259,82 @@ export function attachMcp(
       ],
     }));
     server.setRequestHandler(CallToolRequestSchema, async (request) => {
+      let purchaseMaterials: PurchaseMaterials | undefined;
       const r = await result(async () => {
         const input = request.params.arguments ?? {};
         switch (request.params.name) {
+          case 'prepare_checkout': {
+            const p = purchaseInput.safeParse(input);
+            if (!p.success) throw new AppError('VALIDATION_ERROR', 400);
+            const { cartId, cartAccessToken, target, ...prepare } = p.data;
+            if (target === 'basic-mcp')
+              return {
+                state: 'unavailable',
+                confirmationAvailable: false,
+                reason: 'NATIVE_CONFIRMATION_UNAVAILABLE',
+                ...(await carts.agentGet(cartId, cartAccessToken)),
+              };
+            const status = await carts.preparePurchase(
+              cartId,
+              cartAccessToken,
+              appsContext,
+              prepare,
+            );
+            if (status.state === 'pending' && status.reviewId)
+              purchaseMaterials = await carts.purchaseMaterials(
+                cartId,
+                cartAccessToken,
+                appsContext,
+                status.reviewId,
+              );
+            return status;
+          }
+          case 'get_purchase_status': {
+            const p = purchaseReadInput.safeParse(input);
+            if (!p.success) throw new AppError('VALIDATION_ERROR', 400);
+            return carts.purchaseStatus(
+              p.data.cartId,
+              p.data.cartAccessToken,
+              appsContext,
+              p.data.reviewId,
+            );
+          }
+          case 'pay_purchase': {
+            const p = appPayInput.safeParse(input);
+            if (!p.success) throw new AppError('VALIDATION_ERROR', 400);
+            return carts.payPurchase(
+              p.data.cartId,
+              p.data.cartAccessToken,
+              appsContext,
+              p.data.reviewId,
+              { payToken: p.data.payToken },
+            );
+          }
+          case 'cancel_app_purchase': {
+            const p = appCancelInput.safeParse(input);
+            if (!p.success) throw new AppError('VALIDATION_ERROR', 400);
+            return carts.cancelPurchase(
+              p.data.cartId,
+              p.data.cartAccessToken,
+              appsContext,
+              p.data.reviewId,
+              { cancelToken: p.data.cancelToken },
+            );
+          }
+          case 'get_order_link': {
+            const p = cartCapabilityInput.safeParse(input);
+            if (!p.success) throw new AppError('VALIDATION_ERROR', 400);
+            return carts.orderLink(p.data.cartId, p.data.cartAccessToken);
+          }
+          case 'request_purchase_confirmation':
+          case 'submit_order':
+          case 'cancel_purchase': {
+            const p = purchaseReadInput.safeParse(input);
+            if (!p.success) throw new AppError('VALIDATION_ERROR', 400);
+            await carts.agentGet(p.data.cartId, p.data.cartAccessToken);
+            throw new AppError('NATIVE_CONFIRMATION_UNAVAILABLE', 409);
+          }
+
           case 'create_cart':
             return carts.createAgent(input);
           case 'get_cart': {
@@ -242,6 +385,7 @@ export function attachMcp(
         }
       });
       return {
+        ...(r.ok && purchaseMaterials ? { _meta: { purchaseMaterials } } : {}),
         isError: !r.ok,
         structuredContent: r,
         content: [{ type: 'text' as const, text: JSON.stringify(r) }],

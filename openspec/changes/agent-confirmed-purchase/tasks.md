@@ -29,7 +29,7 @@
 
 ## 5. 验证与交付
 
-- [ ] 5.1 执行受影响typecheck/lint/格式、生产构建及旧查询/编辑/普通Web/Handoff兼容回归；真实PG/并发不能用mock替代，按风险复用有效证据，明确skip/环境限制。
+- [x] 5.1 执行受影响typecheck/lint/格式、生产构建及旧查询/编辑/普通Web/Handoff兼容回归；真实PG/并发不能用mock替代，按风险复用有效证据，明确skip/环境限制。
 - [ ] 5.2 分别真实验收基础MCP原生确认后Agent提交、WebMCP/Apps Human支付后UI直接成单，记录Host/浏览器/SDK/应用版本与实际Human确认及订单/库存；后两者验证Agent不活跃/消息不可用仍完成及原地未知恢复。覆盖伪造、未点、变化、并发/重复/丢响应、断连/卸载/过期、成功后链接权限；不以脚本或另一入口代验基础MCP，不宣称百分之百兼容。
 - [ ] 5.3 最终Diff独立Code Review、修复/重验/定向复核，按实际入口交付能力/限制并交Human验收；基础MCP缺口未关闭不标整体完成。Human接受后依授权checkpoint/Guard，严格按Design「规格同步与旧Change收尾」先同步S5非重叠shopping-cart，再同步本Change五份目标规格，核对无旧反向约束；旧S5/S6不重放重叠delta，经Human处置被替代待办后才跳过重复同步归档。历史失败保留，不自动Push/Merge。
 
@@ -108,3 +108,22 @@ Task 1.1/1.2前置验证取得部分新增证据：基础MCP复用无购买原�
 两个实验的ignored编译Adapter及get-product资源均逐字恢复，并分别核对原备份SHA-256；临时脚本仅在/private/tmp/purchase-implementation-preflight，不纳入产品。基础MCP真实Host门槛仍未通过，未把Task 1或其他实现任务勾选。Guard曾以pending验证/Review拒绝阶段转换；首次目录级path另被判为无精确提交路径，后续改用具体文件参数核对，不将参数问题当作业务阻塞。未取得新的独立Review，不冒称已进入完成验证的购买实现。
 
 恢复后本机MCP资源/认证及原查询回归4/4通过；API typecheck/lint、三个Change strict及git diff --check通过。18份变更Markdown的204条本地文件链接通过（检查器剥离URL query后核对，不把wireframe查询参数误作文件名）。权限批准已闭合，仍须先解决基础MCP真实Host确认或由Human明确调整分入口实施顺序。
+
+
+### UI优先实施交付 — 2026-10-30
+
+Human明确授权Apps/WebMCP及共享交易核心先实施，授权提交记录0badd79；独立ui_plan_review在实现前核对当前Design/五份Specs，无UI实施阻塞，按精确规划文件执行Checkpoint Guard通过。沿当前Change执行，未建立平行计划。以下为UI子集完成事实，包含基础MCP或真实Host/Human条件的原任务不整体勾选。
+
+- 2.1/2.2、3.1/3.2的UI部分：PurchaseReview迁移、入口/scope/原请求键幂等、随机Apps scope、完整摘要/版本/hash/epoch/截止；UI pay/cancel用途隔离及同车锁，取消/新准备/支付竞争、旧取消栅栏；复用CartService共享事务。UI不持久化供Agent消费的approved状态，当前最小记录以cancelled及订单事实派生状态；基础MCP持久批准/确认尝试未实施。
+- 2.3、4.2/4.3的实现部分：Web先初始化Cookie往返再准备、Agent模式只读挂载，准备/状态工具不返回材料；Apps材料只在_meta/控制器内存，原键显式恢复、草稿/忙碌/实体代次保护；Human点击UI直下单且原地显示，Agent消息不可用不影响支付。未知写入先只读，明确重试同review；刷新不自动prepare/pay。普通Web/Handoff兼容。
+- 已成交结果新增独立order-read用途链接/fragment兑换/订单专用Cookie及只读页，原车截止、不续期、不补车权限；可转交权限已获Human接受。八资源、原七工具及五个规划工具名称；基础MCP准备只预览，request/submit/cancel明确拒绝，不能称基础MCP实现完成。三项app-only处理器分别支付/取消/读取结果链接，仍校验签名与车能力。
+
+验证（真实命令结果，不是Human验收）：
+
+- 契约先2项失败后通过；UI PG先4项缺失失败后实现。PG advisory lock初版使用queryRaw读取void返回值，真实测试定位反序列化失败，改为executeRaw后重验。新增同总额内容变化、足量库存、取消/准备/支付竞争、整笔回滚及锁后review截止。串行真实PG受影响套件58/58通过；使用专用store_test，不用mock替代事务。
+- `pnpm test`：84通过、76环境依赖跳过；跳过不计通过。另在store_test临时API真实HTTP/MCP购买集成2/2、旧Cart/Checkout/Handoff/WebMCP HTTP8/8通过；恢复业务API后只读资源/发现/认证4/4通过。
+- Apps控制器37/37、Web单元8/8均包含在基础单元结果；官方SDK替身Apps桌面/移动4项与Web全API mock桌面/移动6项通过。另 `PURCHASE_INTEGRATION=1 WEB_BASE_URL=http://localhost:3004 pnpm exec playwright test e2e/purchase-integrated.spec.ts --workers=1` 真实浏览器→页面工具→HTTP→PostgreSQL桌面/移动2/2通过：未点击零订单，显式测试支付后原地结果，刷新零重发，新浏览器只读链接兑换/清除hash/权限隔离。页面注册使用测试shim、点击为隔离自动化，不记为真实Host/Human验收；仅store_test产生测试订单。截图 `/private/tmp/purchase-integrated-completed.png` 为无秘密本地测试证据。
+- 根typecheck/lint通过，API和Apps构建通过（Apps保留既有Base UI use-client打包提示）。本机Next构建因Turbopack内部端口EPERM失败，提权重试仍同环境错误；停Web开发进程后在现有Docker环境执行原Next生产构建通过，无源码fallback或更换依赖。格式/Diff/strict按最终提交前结果核对。
+- 独立ui_plan_review审查后端及两套UI，发现两项P2：已成交后旧review材料过期无法恢复；Apps只读status误设未知支付导致缺材料恢复死路。分别补失败PG回归及控制器回归后修复、重验；Reviewer定向源码复核确认关闭，无剩余阻塞Findings。Reviewer未独立重跑测试，以上运行证据来自实际执行者，不冒称其运行。
+
+运行与边界：本地业务API停写后仅新增PurchaseReview表迁移，未seed/回填批准/改历史订单；业务服务已恢复。临时测试API/Web与正常业务库隔离，测试结束停止、普通Web恢复。未修改Host连接或安装依赖，无Push/Merge/归档。真实三入口Host/Human订单/库存验收5.2、基础MCP原生回执与会话能力、相关完整任务及最终Human接受继续未完成。后续先做实际UI验收；基础MCP按其独立门槛推进，不能借本轮UI验证关闭。

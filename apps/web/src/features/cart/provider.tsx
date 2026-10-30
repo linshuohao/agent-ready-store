@@ -29,7 +29,10 @@ type Creation = {
   entrance?: 'webmcp';
 };
 const creationPendingKey = 'cartCreationPending';
+type PurchaseLease = { current: () => boolean; release: () => void };
 type Context = {
+  isCurrentCart: (id: string) => boolean;
+  acquirePurchase: (id: string) => PurchaseLease | { code: string };
   currentCartId: string | null;
   selectCart: (id: string) => void;
   restart: () => void;
@@ -119,6 +122,40 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       active = false;
     };
   }, []);
+  function acquirePurchase(id: string): PurchaseLease | { code: string } {
+    if (
+      !initialized.current ||
+      inFlight.current ||
+      creation.current ||
+      creationLost
+    )
+      return { code: 'CART_BUSY' };
+    if (currentId.current !== id) return { code: 'STALE_CONTEXT' };
+    if (
+      blockedPage.current === pathname ||
+      (draftGuard.current?.id === id && draftGuard.current.needsReload)
+    )
+      return { code: 'CART_RELOAD_REQUIRED' };
+    if (draftGuard.current?.id === id && draftGuard.current.dirty)
+      return { code: 'UNSAVED_DRAFT' };
+    const owner = selectionVersion.current;
+    inFlight.current = true;
+    setBusy(true);
+    let released = false;
+    return {
+      current: () =>
+        !released &&
+        owner === selectionVersion.current &&
+        currentId.current === id,
+      release: () => {
+        if (!released) {
+          released = true;
+          inFlight.current = false;
+          setBusy(false);
+        }
+      },
+    };
+  }
   async function finishCreation(): Promise<EditResult> {
     if (inFlight.current)
       return { kind: 'failure', error: { code: 'CART_BUSY' } };
@@ -290,6 +327,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     <CartContext.Provider
       value={{
         currentCartId: cartId,
+        acquirePurchase,
+        isCurrentCart: (id) => currentId.current === id,
         selectCart: select,
         restart,
         busy:
@@ -317,48 +356,49 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         save,
       }}
     >
-      {(message ||
-        creationUnknown ||
-        creationLost ||
-        reloadPath === pathname) && (
-        <CartFeedback
-          success={message === '已加入購物車' && !creationUnknown}
-          onDismiss={() => setFeedback(null)}
-        >
-          {message && <p role="status">{message}</p>}
-          {reloadPath === pathname && cartId && (
-            <Link href={`/cart/${cartId}`} prefetch={false}>
-              重新載入購物車
-            </Link>
-          )}
-          {creationLost && (
-            <p role="status">
-              建立結果無法確認，原請求材料已遺失，無法自動找回購物車。
-              重新發起會建立新的購物車，原車可能仍存在。
-            </p>
-          )}
-          {cartId && (
-            <Link href={`/cart/${cartId}`} prefetch={false}>
-              前往購物車
-            </Link>
-          )}
-          {creationUnknown && (
-            <Button
-              type="button"
-              onClick={() => {
-                void finishCreation();
-              }}
-            >
-              重試原建立
-            </Button>
-          )}
-          {(canRestart || creationLost) && (
-            <Button type="button" onClick={restart}>
-              重新發起購物
-            </Button>
-          )}
-        </CartFeedback>
-      )}
+      {!pathname.startsWith('/order-details/') &&
+        (message ||
+          creationUnknown ||
+          creationLost ||
+          reloadPath === pathname) && (
+          <CartFeedback
+            success={message === '已加入購物車' && !creationUnknown}
+            onDismiss={() => setFeedback(null)}
+          >
+            {message && <p role="status">{message}</p>}
+            {reloadPath === pathname && cartId && (
+              <Link href={`/cart/${cartId}`} prefetch={false}>
+                重新載入購物車
+              </Link>
+            )}
+            {creationLost && (
+              <p role="status">
+                建立結果無法確認，原請求材料已遺失，無法自動找回購物車。
+                重新發起會建立新的購物車，原車可能仍存在。
+              </p>
+            )}
+            {cartId && (
+              <Link href={`/cart/${cartId}`} prefetch={false}>
+                前往購物車
+              </Link>
+            )}
+            {creationUnknown && (
+              <Button
+                type="button"
+                onClick={() => {
+                  void finishCreation();
+                }}
+              >
+                重試原建立
+              </Button>
+            )}
+            {(canRestart || creationLost) && (
+              <Button type="button" onClick={restart}>
+                重新發起購物
+              </Button>
+            )}
+          </CartFeedback>
+        )}
       {children}
     </CartContext.Provider>
   );

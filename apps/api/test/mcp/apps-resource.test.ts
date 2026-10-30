@@ -34,9 +34,9 @@ const token = process.env.MCP_SERVICE_TOKEN;
       if (!('text' in html)) throw new Error('Expected a text UI resource');
       expect(html.text).toContain('Agent-Ready Store');
       const resources = (await client.listResources()).resources;
-      expect(resources).toHaveLength(6);
+      expect(resources).toHaveLength(8);
       const tools = (await client.listTools()).tools;
-      expect(tools).toHaveLength(7);
+      expect(tools).toHaveLength(15);
       for (const resource of resources) {
         const entry = tools.find(
           (tool) =>

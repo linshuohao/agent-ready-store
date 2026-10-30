@@ -5,4 +5,6 @@ export const appTools = [
   'get_cart',
   'update_cart',
   'create_handoff',
+  'prepare_checkout',
+  'get_purchase_status',
 ];

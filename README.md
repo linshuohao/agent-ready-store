@@ -1,5 +1,20 @@
 # Agent-Ready Store
 
+## 当前购买增量（2026-10-30）
+
+[agent-confirmed-purchase](openspec/changes/agent-confirmed-purchase/proposal.md) 按Human授权先实现Apps/WebMCP与共享交易核心，基础MCP保持原生确认Host阻塞；本节替代下文S5/S6中正常购买外跳Checkout及“无新增购买工具”的现状描述，旧验收事实保留。实施与验证见[Tasks](openspec/changes/agent-confirmed-purchase/tasks.md)，真实Host/Human最终验收尚未完成，未归档。
+
+- Apps在原卡片核对并准备购买，完整摘要后由Human点击“确认支付”，Bridge直接下单并原地显示结果。WebMCP新增当前车prepare_checkout、确认页get_purchase_status/wait_for_purchase，网页点击确认直接下单。支付均不依赖Agent消息或接续。
+- MCP保留原七工具和原schema/输出，新增五个规划工具名称；基础MCP目标prepare_checkout只给报价预览，不创建review，request_purchase_confirmation/submit_order/cancel_purchase明确返回NATIVE_CONFIRMATION_UNAVAILABLE。get_purchase_status当前只支持Apps准备。app-only的pay_purchase/cancel_app_purchase/get_order_link靠用途绑定材料与车权限鉴权，visibility不是安全边界。不能将工具已发现视为基础MCP购买已实现。
+- Apps的准备/状态新增两个资源，共八个静态资源。确认材料只经工具结果_meta给UI，Web材料只经同源Cookie接口给支付控制器，不进入模型工具输出。信任已授权Host/浏览器隔离，不声称防御恶意Host或证明自然人身份；Agent不得代点支付。
+- 准备与取消绑定原车、入口、scope、内容、版本、epoch及截止；同键恢复不续期、不复活。支付结果未知/刷新仅查询原review，不自动重送或新建车；Human显式重试使用原review。普通Web/Handoff共用原交易核心，同车最多一单。
+- 成交后可显式取得 `/order-details/{orderId}#order-read=…` 只读链接。短期可转交，持链接者在原车截止前能读该订单；fragment先清除再兑换订单专用HttpOnly Cookie，不能编辑车或购买，不自动打开。
+
+迁移新增PurchaseReview表，不回填批准、不seed、不改历史订单。升级先停API写服务，运行 `docker compose run --rm api pnpm --filter @store/api db:migrate` 后重启API/Web；本地已执行。回退应停止新增准备/UI支付入口并保留表、订单和幂等事实，使用兼容数据的代码；不反向扣回已成交库存、不恢复旧批准或删除数据卷。基础MCP后续实施仍须真实原生确认与相应数据扩展，不预建未验证的批准通路。
+
+隔离验证：`apps/api/test/cart/purchase-db.test.ts` 指向 `TEST_DATABASE_URL` 的store_test；真实HTTP/MCP新增 `purchase-http-db.test.ts` 还要求独立 `PURCHASE_TEST_API_URL`（loopback 3001/3003），禁止指向业务库。真实UI集成 `e2e/purchase-integrated.spec.ts` 仅在 `PURCHASE_INTEGRATION=1 WEB_BASE_URL=http://localhost:3004` 启用，测试Web须代理store_test API且其WEB_ORIGIN匹配；普通默认测试跳过它。命令上下文与本轮实际结果见Tasks。
+
+
 面向人类与 AI Agent 的商店作业。目标与交付约束见只读的 [作业原件](references/home-quiz.md) 和 [商品原件](references/products.json)；PM 需求仍是草稿。
 
 本轮产品与技术设计阶段已由 Human 批准结束（2026-10-29，Asia/Shanghai）：Requirements v0.2、Product Design v0.2 与 [Technical Design v0.5](docs/engineering/TECHNICAL_DESIGN.md) 均为 Approved Baseline；产品/技术决策及演进保留。已批准五页结构、三份视觉方向和前端主导的 Next.js/NestJS/Agent 架构；其余 Proposed Implementation Details、P-04 及运行验收缺口继续保留；WebMCP 来源已有 S5 限定补充；L-01 已由 S2 限定补充批准解决，见下方当前规划。基础 MCP、WebMCP、MCP Apps 均属本次完整交付目标，S1 商品发现已实现并记录 Human 验收，Web交易已实现，S4基础MCP闭环已通过Human验收（真实接手链路补证限制见S4 Tasks）；S5 WebMCP 实施中，MCP Apps 实施中（真实 Host 外链及最终验收未完成）。

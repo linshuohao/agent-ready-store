@@ -2,6 +2,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import {
+  purchasePrepareInput,
   cartOperateInput,
   cartOperationSchema,
   productInput,
@@ -13,6 +14,10 @@ import {
   type Result,
 } from '@store/contracts';
 import { useCartOperations } from '@/features/cart/provider';
+import {
+  preparePurchase,
+  readPurchase,
+} from '@/features/checkout/purchase-commands';
 import { getCart, type EditResult } from '@/features/cart/commands';
 
 type Tool = {
@@ -34,6 +39,7 @@ type Props = {
   product?: ProductDetail;
   cartId?: string;
   readonly?: boolean;
+  reviewId?: string;
   onCartChanged?: (result: EditResult) => void;
 };
 const schema = (
@@ -207,6 +213,74 @@ export function PageTools(props: Props) {
         return active ? result : failure('STALE_CONTEXT');
       },
     );
+    if (props.reviewId && cartId) {
+      const reviewId = props.reviewId;
+      for (const name of ['get_purchase_status', 'wait_for_purchase'])
+        register(
+          name,
+          '只讀查詢目前準備與購買結果；pending 表示等待 Human 在網頁確認，不代為支付或重試。',
+          schema(),
+          true,
+          async (input) => {
+            if (
+              !input ||
+              typeof input !== 'object' ||
+              Object.keys(input).length
+            )
+              return failure('VALIDATION_ERROR');
+            const result = await readPurchase(cartId, reviewId);
+            return active &&
+              latest.current.props.reviewId === reviewId &&
+              latest.current.props.cartId === cartId
+              ? result
+              : failure('STALE_CONTEXT');
+          },
+        );
+    }
+    if (!readonly) {
+      register(
+        'prepare_checkout',
+        '準備目前購物車的完整摘要並前往確認頁，等待 Human 明確支付；不批准、不下單。原請求結果未知時僅明確使用同一請求鍵重試。',
+        schema(
+          {
+            prepareRequestId: { type: 'string', format: 'uuid' },
+            expectedCartVersion: { type: 'integer', minimum: 1 },
+          },
+          ['prepareRequestId', 'expectedCartVersion'],
+        ),
+        false,
+        async (input) => {
+          const parsed = purchasePrepareInput.safeParse(input);
+          if (!parsed.success) return failure('VALIDATION_ERROR');
+          const id =
+            latest.current.props.cartId ??
+            latest.current.operations.currentCartId;
+          if (!id) return failure('NO_CURRENT_CART');
+          const lease = latest.current.operations.acquirePurchase(id);
+          if ('code' in lease) return failure(lease.code);
+          const current = () =>
+            active &&
+            lease.current() &&
+            (latest.current.props.cartId ??
+              latest.current.operations.currentCartId) === id;
+          try {
+            const result = await preparePurchase(id, parsed.data, current);
+            if (!current()) return failure('STALE_CONTEXT');
+            if (result.kind === 'success') {
+              if (result.data.reviewId)
+                router.push(
+                  `/checkout/${id}?reviewId=${encodeURIComponent(result.data.reviewId)}`,
+                );
+              else if (result.data.state === 'completed')
+                router.push(`/orders/${id}`);
+            }
+            return result;
+          } finally {
+            lease.release();
+          }
+        },
+      );
+    }
     if (!readonly) {
       if (hasCatalog || productId)
         register(
@@ -289,7 +363,15 @@ export function PageTools(props: Props) {
       }
     };
     // Snapshot changes update `latest` without revoking an in-flight tool. Route identity owns registration.
-  }, [pathname, cartId, productId, hasCatalog, readonly, router]);
+  }, [
+    pathname,
+    cartId,
+    productId,
+    hasCatalog,
+    readonly,
+    router,
+    props.reviewId,
+  ]);
   return unavailable ? (
     <p className="hint">
       此瀏覽器無法使用 WebMCP 工具，可繼續使用一般購物操作。

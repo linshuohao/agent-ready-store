@@ -1,5 +1,10 @@
 import { z } from 'zod';
 import {
+  purchaseStatusOutput,
+  purchaseMaterialsOutput,
+  purchasePrepareInput,
+  type PurchaseStatus,
+  type PurchaseMaterials,
   cartViewOutput,
   orderOutput,
   cartCapabilityInput,
@@ -20,16 +25,31 @@ export type EntryTool =
   | 'create_cart'
   | 'get_cart'
   | 'update_cart'
-  | 'create_handoff';
+  | 'create_handoff'
+  | 'prepare_checkout'
+  | 'get_purchase_status';
 export interface Bridge {
   call(
-    name: 'get_cart' | 'update_cart' | 'create_handoff',
+    name:
+      | 'get_cart'
+      | 'update_cart'
+      | 'create_handoff'
+      | 'prepare_checkout'
+      | 'get_purchase_status'
+      | 'pay_purchase'
+      | 'cancel_app_purchase'
+      | 'get_order_link',
     args: Record<string, unknown>,
   ): Promise<unknown>;
   open(url: string): Promise<{ isError?: boolean }>;
   canOpen(): boolean;
 }
 export interface ViewState {
+  purchase: PurchaseStatus | null;
+  canPay: boolean;
+  canCancel: boolean;
+  canRetryPay: boolean;
+  canRecover: boolean;
   cart: CartView | null;
   order: OrderResult | null;
   products: (ProductSummary | ProductDetail)[];
@@ -129,6 +149,11 @@ export function validateHandoff(
   return u.href;
 }
 const fresh = (): ViewState => ({
+  purchase: null,
+  canPay: false,
+  canCancel: false,
+  canRetryPay: false,
+  canRecover: false,
   cart: null,
   order: null,
   products: [],
@@ -142,6 +167,9 @@ const fresh = (): ViewState => ({
 export class StoreController {
   #state = fresh();
   #cap: z.infer<typeof cartCapabilityInput> | null = null;
+  #materials: PurchaseMaterials | null = null;
+  #prepare: z.infer<typeof purchasePrepareInput> | null = null;
+  #unknownPay = false;
   #listeners = new Set<() => void>();
   #alive = true;
   #generation = 0;
@@ -195,13 +223,34 @@ export class StoreController {
       typeof input === 'object' && input !== null && 'cartId' in input
         ? input.cartId
         : undefined;
+    const currentId =
+      this.#cap?.cartId ??
+      this.#state.purchase?.cartId ??
+      this.#state.cart?.cartId;
+    const incoming = z
+      .object({
+        reviewId: z.string().optional(),
+        prepareRequestId: z.string().optional(),
+      })
+      .passthrough()
+      .safeParse(input);
+    const changedReview =
+      incoming.success &&
+      ((incoming.data.reviewId &&
+        this.#state.purchase &&
+        incoming.data.reviewId !== this.#state.purchase.reviewId) ||
+        (incoming.data.prepareRequestId &&
+          this.#prepare &&
+          incoming.data.prepareRequestId !== this.#prepare.prepareRequestId));
     if (
-      this.#state.cart &&
+      currentId &&
       (this.entry === 'create_cart' ||
-        (typeof id === 'string' && id !== this.#state.cart.cartId))
+        changedReview ||
+        (typeof id === 'string' && id !== currentId))
     ) {
       this.#generation++;
       this.#cap = null;
+      this.#clearPurchase();
       this.#set({ ...fresh(), message: '等待 Agent 的新購物車結果。' });
     }
   }
@@ -211,6 +260,58 @@ export class StoreController {
       if (toolInfoName && toolInfoName !== this.entry)
         throw new ToolFailure('WRONG_TOOL');
       const data = dataOf(raw);
+      if (
+        this.entry === 'prepare_checkout' ||
+        this.entry === 'get_purchase_status'
+      ) {
+        const status = purchaseStatusOutput.parse(data);
+        const args = z
+          .object({ cartId: z.string(), cartAccessToken: z.string() })
+          .passthrough()
+          .safeParse(input);
+        const cap = args.success
+          ? cartCapabilityInput.parse({
+              cartId: args.data.cartId,
+              cartAccessToken: args.data.cartAccessToken,
+            })
+          : null;
+        if (input !== undefined && !cap) throw new ToolFailure('INVALID_INPUT');
+        if (cap && status.cartId !== cap.cartId)
+          throw new ToolFailure('WRONG_CART');
+        if (this.#state.dirty || this.#state.busy || this.#state.needsRefresh) {
+          this.#generation++;
+          this.#set({
+            busy: false,
+            needsRefresh: true,
+            canPay: false,
+            canRetryPay: false,
+            message: '收到其他入口結果；請先只讀重新載入。',
+          });
+          return;
+        }
+        this.#generation++;
+        this.#clearPurchase();
+        this.#cap = cap;
+        this.#set(fresh());
+        if (args.success && this.entry === 'prepare_checkout') {
+          if (args.data.target !== 'apps')
+            throw new ToolFailure('INVALID_INPUT');
+          this.#prepare = purchasePrepareInput.parse({
+            prepareRequestId: args.data.prepareRequestId,
+            expectedCartVersion: args.data.expectedCartVersion,
+          });
+        }
+        if (
+          args.success &&
+          this.entry === 'get_purchase_status' &&
+          args.data.reviewId !== status.reviewId
+        )
+          throw new ToolFailure('WRONG_REVIEW');
+        this.#acceptPurchase(status);
+        if (cap && this.entry === 'prepare_checkout')
+          this.#captureMaterials(raw);
+        return;
+      }
       if (this.entry === 'search_products' || this.entry === 'get_product') {
         if (this.entry === 'search_products') {
           searchInput.parse(input ?? {});
@@ -282,6 +383,7 @@ export class StoreController {
         }
       }
       this.#generation++;
+      this.#clearPurchase();
       this.#cap = cap;
       const previous = this.#state.cart;
       this.#set({
@@ -297,7 +399,12 @@ export class StoreController {
     } catch {
       this.#generation++;
       this.#cap = null;
+      this.#clearPurchase();
       this.#set({
+        canPay: false,
+        canCancel: false,
+        canRetryPay: false,
+        canRecover: false,
         editable: false,
         busy: false,
         needsRefresh: true,
@@ -356,7 +463,8 @@ export class StoreController {
       this.#set({ message: '請明確選擇「放棄調整並重新載入」。' });
       return;
     }
-    await this.#read(true);
+    if (this.#state.purchase) await this.#purchaseAction('status');
+    else await this.#read(true);
   }
   async #read(explicit: boolean) {
     if (!this.#cap) return;
@@ -402,7 +510,12 @@ export class StoreController {
       ].includes(code)
     ) {
       this.#cap = null;
+      this.#clearPurchase();
       this.#set({
+        canPay: false,
+        canCancel: false,
+        canRetryPay: false,
+        canRecover: false,
         editable: false,
         busy: false,
         needsRefresh: true,
@@ -483,7 +596,7 @@ export class StoreController {
       this.#state.cart?.canCheckout === true
     );
   }
-  async checkout() {
+  async share() {
     if (
       !this.#alive ||
       !this.#cap ||
@@ -563,7 +676,300 @@ export class StoreController {
       if (this.#active(g, cap.cartId)) this.#set({ busy: false });
     }
   }
+  #clearPurchase() {
+    this.#materials = null;
+    this.#prepare = null;
+    this.#unknownPay = false;
+  }
+  #acceptPurchase(status: PurchaseStatus) {
+    if (
+      status.channel !== 'apps' ||
+      (!status.reviewId && status.state !== 'completed') ||
+      status.cartId !== status.summary.cartId ||
+      (this.#cap && status.cartId !== this.#cap.cartId) ||
+      (this.#state.purchase &&
+        status.reviewId !== this.#state.purchase.reviewId) ||
+      (status.order &&
+        (status.order.cartId !== status.cartId ||
+          status.order.snapshot.cartId !== status.cartId)) ||
+      (status.state === 'completed') !== !!status.order
+    )
+      throw new ToolFailure('WRONG_REVIEW');
+    const pending =
+      status.state === 'pending' && Date.parse(status.expiresAt) > Date.now();
+    if (!pending) this.#materials = null;
+    this.#set({
+      purchase: status,
+      order: status.order,
+      editable: false,
+      needsRefresh: false,
+      canPay: pending && !!this.#materials && !this.#unknownPay,
+      canRetryPay: pending && !!this.#materials && this.#unknownPay,
+      canCancel: pending && !!this.#materials,
+      canRecover:
+        pending &&
+        !!this.#cap &&
+        !!this.#prepare &&
+        !this.#materials &&
+        !this.#unknownPay,
+      message:
+        status.state === 'completed'
+          ? '購買已完成；以下為原成交內容。'
+          : pending
+            ? '請核對完整摘要，再明確支付或取消。本頁不會自動支付。'
+            : `本次準備狀態：${status.state}；不可支付。`,
+    });
+  }
+  #captureMaterials(raw: unknown) {
+    const meta = z
+      .object({
+        _meta: z
+          .object({ purchaseMaterials: purchaseMaterialsOutput })
+          .passthrough(),
+      })
+      .passthrough()
+      .safeParse(raw);
+    const status = this.#state.purchase;
+    if (
+      !status ||
+      status.state !== 'pending' ||
+      Date.parse(status.expiresAt) <= Date.now()
+    )
+      return;
+    this.#materials = meta.success ? meta.data._meta.purchaseMaterials : null;
+    this.#acceptPurchase(status);
+    if (!this.#materials)
+      this.#set({
+        message:
+          '唯讀：未收到安全支付材料。可明確重試原準備以恢復，或查詢狀態。',
+      });
+  }
+  async checkout() {
+    if (
+      !this.#alive ||
+      !this.#cap ||
+      this.#state.purchase ||
+      this.#prepare ||
+      this.#state.busy ||
+      this.#state.dirty ||
+      this.#state.needsRefresh ||
+      !this.#state.editable ||
+      !this.#usable()
+    )
+      return;
+    const cap = this.#cap,
+      g = ++this.#generation;
+    this.#set({ busy: true, message: '正在核對結算內容…' });
+    try {
+      const d = readOutput.parse(
+        dataOf(await this.bridge.call('get_cart', { ...cap })),
+      );
+      if (!this.#active(g, cap.cartId)) return;
+      this.#accept(d.cart, d.order);
+      if (!this.#checkoutAllowed(g, cap.cartId)) return;
+      this.#prepare = {
+        prepareRequestId: crypto.randomUUID(),
+        expectedCartVersion: d.cart.cartVersion,
+      };
+      const raw = await this.bridge.call('prepare_checkout', {
+        ...cap,
+        ...this.#prepare,
+        target: 'apps',
+      });
+      if (!this.#checkoutAllowed(g, cap.cartId)) return;
+      this.#acceptPurchase(purchaseStatusOutput.parse(dataOf(raw)));
+      this.#captureMaterials(raw);
+    } catch (e) {
+      if (this.#active(g, cap.cartId)) {
+        this.#fail(e, '準備結果未知；只可明確重試原準備，不會自動產生新準備。');
+        this.#set({ canRecover: !!this.#prepare });
+      }
+    } finally {
+      if (this.#active(g, cap.cartId)) this.#set({ busy: false });
+    }
+  }
+  async recoverPurchase() {
+    if (
+      !this.#alive ||
+      !this.#cap ||
+      !this.#prepare ||
+      !this.#state.canRecover ||
+      this.#state.busy ||
+      this.#state.dirty
+    )
+      return;
+    const cap = this.#cap,
+      g = ++this.#generation,
+      reviewId = this.#state.purchase?.reviewId;
+    this.#set({ busy: true, canPay: false, canRecover: false });
+    try {
+      const raw = await this.bridge.call('prepare_checkout', {
+        ...cap,
+        ...this.#prepare,
+        target: 'apps',
+      });
+      if (
+        !this.#active(g, cap.cartId) ||
+        this.#state.purchase?.reviewId !== reviewId
+      )
+        return;
+      this.#acceptPurchase(purchaseStatusOutput.parse(dataOf(raw)));
+      this.#captureMaterials(raw);
+    } catch {
+      if (this.#active(g, cap.cartId))
+        this.#set({
+          canRecover: true,
+          needsRefresh: true,
+          message: '恢復結果未知；未自動支付。',
+        });
+    } finally {
+      if (this.#active(g, cap.cartId)) this.#set({ busy: false });
+    }
+  }
+  async pay(retry = false) {
+    if (retry ? !this.#state.canRetryPay : !this.#state.canPay) return;
+    await this.#purchaseAction('pay');
+  }
+  async cancelPurchase() {
+    if (!this.#state.canCancel) return;
+    await this.#purchaseAction('cancel');
+  }
+  async #purchaseAction(action: 'status' | 'pay' | 'cancel') {
+    const status = this.#state.purchase;
+    if (
+      !this.#alive ||
+      !this.#cap ||
+      !status ||
+      !status.reviewId ||
+      this.#state.busy ||
+      this.#state.dirty ||
+      (action !== 'status' &&
+        (this.#state.needsRefresh ||
+          !this.#materials ||
+          status.state !== 'pending' ||
+          Date.parse(status.expiresAt) <= Date.now()))
+    )
+      return;
+    const cap = this.#cap,
+      reviewId = status.reviewId,
+      g = ++this.#generation;
+    const active = () =>
+      this.#active(g, cap.cartId) &&
+      this.#state.purchase?.reviewId === reviewId;
+    this.#set({
+      busy: true,
+      canPay: false,
+      canRetryPay: false,
+      message:
+        action === 'status' ? '正在查詢原準備狀態…' : '正在處理你的明確操作…',
+    });
+    if (action !== 'status') this.#unknownPay = true;
+    try {
+      const raw = await this.bridge.call(
+        action === 'pay'
+          ? 'pay_purchase'
+          : action === 'cancel'
+            ? 'cancel_app_purchase'
+            : 'get_purchase_status',
+        {
+          ...cap,
+          reviewId,
+          ...(action === 'pay'
+            ? { payToken: this.#materials!.payToken }
+            : action === 'cancel'
+              ? { cancelToken: this.#materials!.cancelToken }
+              : {}),
+        },
+      );
+      if (!active()) return;
+      if (action === 'pay') {
+        const order = orderOutput.parse(dataOf(raw));
+        this.#acceptPurchase({ ...status, state: 'completed', order });
+      } else this.#acceptPurchase(purchaseStatusOutput.parse(dataOf(raw)));
+    } catch {
+      if (active())
+        this.#set({
+          canPay: false,
+          canRetryPay: false,
+          needsRefresh: true,
+          message:
+            '操作結果未知；請只讀查詢原準備。未取得訂單不代表先前操作失敗。',
+        });
+    } finally {
+      if (active()) this.#set({ busy: false });
+    }
+  }
+  async returnToCart() {
+    if (
+      !this.#alive ||
+      !this.#cap ||
+      this.#state.busy ||
+      !this.#state.purchase ||
+      ['pending', 'completed'].includes(this.#state.purchase.state)
+    )
+      return;
+    this.#clearPurchase();
+    this.#set({ ...fresh(), message: '正在讀取購物車…' });
+    await this.#read(true);
+  }
+  async openOrderDetails() {
+    const order = this.#state.order;
+    if (
+      !this.#alive ||
+      !this.#cap ||
+      !order ||
+      this.#state.busy ||
+      this.#state.dirty ||
+      this.#state.needsRefresh
+    )
+      return;
+    if (!this.bridge.canOpen()) {
+      this.#set({
+        message: '此 Host 未宣告外鏈能力；訂單已完成，可在本卡片查看。',
+      });
+      return;
+    }
+    const cap = this.#cap,
+      g = ++this.#generation;
+    const active = () =>
+      this.#active(g, cap.cartId) &&
+      this.#state.order?.orderId === order.orderId;
+    this.#set({ busy: true, message: '正在取得短期唯讀訂單詳情…' });
+    try {
+      const link = z
+        .object({ url: z.string(), expiresAt: z.iso.datetime() })
+        .strict()
+        .parse(dataOf(await this.bridge.call('get_order_link', { ...cap })));
+      if (!active()) return;
+      const url = new URL(link.url);
+      if (
+        url.origin !== this.origin ||
+        url.pathname !== `/order-details/${order.orderId}` ||
+        url.search ||
+        url.username ||
+        url.password ||
+        !/^#order-read=[A-Za-z0-9._~-]+$/.test(url.hash) ||
+        Date.parse(link.expiresAt) <= Date.now()
+      )
+        throw new ToolFailure('UNSAFE_LINK');
+      const result = await this.bridge.open(url.href);
+      if (!active()) return;
+      this.#set({
+        message: result.isError
+          ? 'Host 拒絕開啟；訂單已完成，可在本卡片查看。'
+          : '已請求開啟唯讀訂單詳情。此短期連結可由持有者讀取指定訂單。',
+      });
+    } catch {
+      if (active())
+        this.#set({
+          message: '無法開啟唯讀訂單詳情；訂單已完成，可在本卡片查看。',
+        });
+    } finally {
+      if (active()) this.#set({ busy: false });
+    }
+  }
   dispose() {
+    this.#clearPurchase();
     this.#alive = false;
     this.#generation++;
     this.#cap = null;

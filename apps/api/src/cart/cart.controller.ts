@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { randomBytes } from 'node:crypto';
 import { checkoutReviewInput, cartCapabilityInput } from '@store/contracts';
 import {
@@ -254,6 +255,182 @@ export class CartController {
       if (req.body && Object.keys(req.body).length)
         throw new AppError('VALIDATION_ERROR', 400);
       return this.carts.order(id, this.cookie(req, id));
+    });
+  }
+  private purchaseContext(req: Request) {
+    const scope = this.session(req);
+    if (!scope) throw new AppError('FORBIDDEN', 403);
+    return { channel: 'webmcp' as const, scope };
+  }
+  @Post('webmcp/checkout-session')
+  @HttpCode(200)
+  async initializePurchaseSession(@Req() req: Request, @Res() res: Response) {
+    await this.send(res, async () => {
+      this.checkRequest(req, true);
+      if (!checkoutReviewInput.safeParse(req.body).success)
+        throw new AppError('VALIDATION_ERROR', 400);
+      this.session(req, res);
+      return { ready: true };
+    });
+  }
+  @Post('webmcp/carts/:id/purchases')
+  @HttpCode(200)
+  async preparePurchase(
+    @Param('id') id: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    await this.send(res, async () => {
+      this.checkRequest(req, true);
+      return this.carts.preparePurchase(
+        id,
+        this.cookie(req, id),
+        this.purchaseContext(req),
+        req.body,
+      );
+    });
+  }
+  @Get('webmcp/carts/:id/purchases/:reviewId')
+  async purchaseStatus(
+    @Param('id') id: string,
+    @Param('reviewId') reviewId: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    await this.send(res, async () => {
+      this.checkRequest(req, false);
+      return this.carts.purchaseStatus(
+        id,
+        this.cookie(req, id),
+        this.purchaseContext(req),
+        reviewId,
+      );
+    });
+  }
+  @Post('webmcp/carts/:id/purchases/:reviewId/materials')
+  @HttpCode(200)
+  async purchaseMaterials(
+    @Param('id') id: string,
+    @Param('reviewId') reviewId: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    await this.send(res, async () => {
+      this.checkRequest(req, true);
+      if (!checkoutReviewInput.safeParse(req.body).success)
+        throw new AppError('VALIDATION_ERROR', 400);
+      return this.carts.purchaseMaterials(
+        id,
+        this.cookie(req, id),
+        this.purchaseContext(req),
+        reviewId,
+      );
+    });
+  }
+  @Post('webmcp/carts/:id/purchases/:reviewId/pay')
+  @HttpCode(200)
+  async payPurchase(
+    @Param('id') id: string,
+    @Param('reviewId') reviewId: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    await this.send(res, async () => {
+      this.checkRequest(req, true);
+      return this.carts.payPurchase(
+        id,
+        this.cookie(req, id),
+        this.purchaseContext(req),
+        reviewId,
+        req.body,
+      );
+    });
+  }
+  @Post('webmcp/carts/:id/purchases/:reviewId/cancel')
+  @HttpCode(200)
+  async cancelPurchase(
+    @Param('id') id: string,
+    @Param('reviewId') reviewId: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    await this.send(res, async () => {
+      this.checkRequest(req, true);
+      return this.carts.cancelPurchase(
+        id,
+        this.cookie(req, id),
+        this.purchaseContext(req),
+        reviewId,
+        req.body,
+      );
+    });
+  }
+  @Post('carts/:id/order-link')
+  @HttpCode(200)
+  async orderLink(
+    @Param('id') id: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    await this.send(res, async () => {
+      this.checkRequest(req, true);
+      if (!checkoutReviewInput.safeParse(req.body).success)
+        throw new AppError('VALIDATION_ERROR', 400);
+      return this.carts.orderLink(id, this.cookie(req, id));
+    });
+  }
+  @Post('order-links/exchange')
+  @HttpCode(200)
+  async exchangeOrderLink(@Req() req: Request, @Res() res: Response) {
+    await this.send(res, async () => {
+      this.checkRequest(req, true);
+      const parsed = z
+        .object({
+          orderId: z.uuid(),
+          orderReadToken: z.string().min(1).max(4096),
+        })
+        .strict()
+        .safeParse(req.body);
+      if (!parsed.success) throw new AppError('VALIDATION_ERROR', 400);
+      const { orderId, orderReadToken } = parsed.data;
+      const { order, expiresAt } = await this.carts.readOrderCapability(
+        orderId,
+        orderReadToken,
+      );
+      const origin = new URL(process.env.WEB_ORIGIN!);
+      const local =
+        origin.protocol === 'http:' &&
+        ['localhost', '127.0.0.1', '[::1]'].includes(origin.hostname);
+      res.cookie(`order_read_${orderId}`, orderReadToken, {
+        httpOnly: true,
+        sameSite: 'strict',
+        path: '/api/v1/orders',
+        secure: !(local && process.env.CART_COOKIE_SECURE === 'false'),
+        expires: new Date(expiresAt),
+      });
+      return order;
+    });
+  }
+  @Get('orders/:orderId/read')
+  async readOrderLink(
+    @Param('orderId') orderId: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    await this.send(res, async () => {
+      this.checkRequest(req, false);
+      const prefix = `order_read_${orderId}=`;
+      const entries = (req.headers.cookie ?? '')
+        .split(';')
+        .map((s) => s.trim())
+        .filter((s) => s.startsWith(prefix));
+      if (entries.length !== 1) throw new AppError('FORBIDDEN', 403);
+      return (
+        await this.carts.readOrderCapability(
+          orderId,
+          entries[0].slice(prefix.length),
+        )
+      ).order;
     });
   }
 }

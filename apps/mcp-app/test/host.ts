@@ -3,6 +3,7 @@ import {
   AppBridge,
   PostMessageTransport,
 } from '@modelcontextprotocol/ext-apps/app-bridge';
+import type { OrderResult, PurchaseStatus } from '@store/contracts';
 declare const __APP_HTML__: string;
 const id = '10000000-0000-4000-8000-000000000001',
   token = 'A'.repeat(43);
@@ -56,12 +57,16 @@ let cart = {
   canCheckout: true,
   expiresAt: '2099-01-01T00:00:00.000Z',
 };
+let purchase: PurchaseStatus | null = null;
+let order: OrderResult | null = null;
+const reviewId = '20000000-0000-4000-8000-000000000001';
 const calls: string[] = [],
   opens: string[] = [];
 const ok = (data: unknown) => ({
   content: [{ type: 'text' as const, text: 'test fixture result' }],
   structuredContent: { ok: true, data, requestId: 'fixture' },
 });
+const controls = { failPayOnce: false };
 const bridge = new AppBridge(
   null,
   { name: 'S6 test-only host', version: '1' },
@@ -69,7 +74,7 @@ const bridge = new AppBridge(
 );
 bridge.oncalltool = async ({ name, arguments: args }) => {
   calls.push(name);
-  if (name === 'get_cart') return ok({ cart, order: null });
+  if (name === 'get_cart') return ok({ cart, order });
   if (name === 'update_cart') {
     const items = args!.items as { productId: string; quantity: number }[];
     if (args!.expectedCartVersion !== cart.cartVersion)
@@ -103,6 +108,67 @@ bridge.oncalltool = async ({ name, arguments: args }) => {
     };
     return ok(cart);
   }
+  if (name === 'prepare_checkout') {
+    purchase ??= {
+      reviewId,
+      cartId: id,
+      channel: 'apps',
+      state: 'pending',
+      expiresAt: cart.expiresAt,
+      order: null,
+      summary: {
+        cartId: id,
+        cartVersion: cart.cartVersion,
+        origin: 'AGENT',
+        pricingRuleVersion: 'pricing-v1',
+        quote: { ...cart.quote, currency: 'TWD' },
+        items: cart.quote.items.map((item) => ({
+          ...item,
+          brand: 'Fixture',
+          specs: { 顏色: '黑' },
+        })),
+      },
+    };
+    return {
+      ...ok(purchase),
+      _meta: {
+        purchaseMaterials: {
+          payToken: 'fixture-pay',
+          cancelToken: 'fixture-cancel',
+        },
+      },
+    };
+  }
+  if (name === 'get_purchase_status') return ok(purchase);
+  if (name === 'pay_purchase') {
+    if (controls.failPayOnce) {
+      controls.failPayOnce = false;
+      throw new Error('Fixture lost response');
+    }
+    if (!purchase || args?.payToken !== 'fixture-pay')
+      throw new Error('Missing fixture material');
+    order = {
+      orderId: reviewId,
+      cartId: id,
+      createdAt: '2026-10-30T00:00:00.000Z',
+      purchaseHash: 'a'.repeat(64),
+      catalogRevision: 'fixture',
+      snapshot: purchase.summary,
+    };
+    purchase = { ...purchase, state: 'completed', order };
+    return ok(order);
+  }
+  if (name === 'cancel_app_purchase') {
+    if (!purchase || args?.cancelToken !== 'fixture-cancel')
+      throw new Error('Missing fixture material');
+    purchase = { ...purchase, state: 'cancelled' };
+    return ok(purchase);
+  }
+  if (name === 'get_order_link' && order)
+    return ok({
+      url: `http://localhost:3000/order-details/${order.orderId}#order-read=fixture-order`,
+      expiresAt: cart.expiresAt,
+    });
   if (name === 'create_handoff')
     return ok({
       cart,
@@ -130,4 +196,4 @@ await bridge.connect(
   new PostMessageTransport(iframe.contentWindow!, iframe.contentWindow!),
 );
 iframe.srcdoc = __APP_HTML__;
-Object.assign(window, { fixture: { calls, opens } });
+Object.assign(window, { fixture: { calls, opens, controls } });

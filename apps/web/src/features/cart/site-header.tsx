@@ -20,15 +20,17 @@ export function SiteHeader() {
           AGENT / STORE
         </Link>
         <span className="site-tagline">為人與 AI 助理設計</span>
-        <nav aria-label="購物導覽">
-          <Link
-            className="site-cart-link"
-            href={cartId ? `/cart/${cartId}` : '/cart'}
-            prefetch={false}
-          >
-            購物車
-          </Link>
-        </nav>
+        {path[1] !== 'order-details' && (
+          <nav aria-label="購物導覽">
+            <Link
+              className="site-cart-link"
+              href={cartId ? `/cart/${cartId}` : '/cart'}
+              prefetch={false}
+            >
+              購物車
+            </Link>
+          </nav>
+        )}
       </div>
     </header>
   );

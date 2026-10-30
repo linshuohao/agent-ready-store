@@ -12,6 +12,8 @@ const allowed: EntryTool[] = [
   'get_cart',
   'update_cart',
   'create_handoff',
+  'prepare_checkout',
+  'get_purchase_status',
 ];
 const entry = document.body.dataset.entryTool as EntryTool;
 if (!allowed.includes(entry)) throw new Error('Invalid resource entry');
@@ -57,6 +59,24 @@ const actions = {
   },
   reload: (discard: boolean) => {
     void controller.reload(discard);
+  },
+  returnToCart: () => {
+    void controller.returnToCart();
+  },
+  openOrderDetails: () => {
+    void controller.openOrderDetails();
+  },
+  share: () => {
+    void controller.share();
+  },
+  pay: (retry = false) => {
+    void controller.pay(retry);
+  },
+  cancelPurchase: () => {
+    void controller.cancelPurchase();
+  },
+  recoverPurchase: () => {
+    void controller.recoverPurchase();
   },
   checkout: () => {
     void controller.checkout();

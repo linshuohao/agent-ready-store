@@ -16,11 +16,17 @@ import {
   type CheckoutReview,
   orderOutput,
   orderSubmitInput,
+  purchasePrepareInput,
+  purchasePayInput,
+  purchaseCancelInput,
+  type PurchaseStatus,
+  type PurchaseMaterials,
 } from '@store/contracts';
 import type {
   PrismaClient,
   Prisma,
   Cart,
+  PurchaseReview,
 } from '../infrastructure/database/generated/prisma/client.js';
 import { Catalog } from '../catalog/catalog.js';
 import { AppError } from '../shared/app-error.js';
@@ -31,6 +37,7 @@ import {
 } from './credentials.js';
 import { priceCart } from './pricing.js';
 
+export type PurchaseContext = { channel: 'apps' | 'webmcp'; scope: string };
 type Connection = Prisma.TransactionClient | PrismaClient;
 export class CartService {
   constructor(
@@ -529,51 +536,425 @@ export class CartService {
           throw new AppError('CONFIRMATION_STALE', 409);
         if (proof.cartVersion !== row.version)
           throw new AppError('PURCHASE_CHANGED', 409);
-        const items = row.items as unknown as CartItem[];
-        for (const item of [...items].sort((a, b) =>
-          a.productId < b.productId ? -1 : a.productId > b.productId ? 1 : 0,
-        )) {
-          await tx.$queryRaw`SELECT "productId" FROM "Inventory" WHERE "productId"=${item.productId} FOR UPDATE`;
-        }
-        const view = await this.view(tx, row),
-          summary = await this.summary(tx, row, view),
-          purchaseHash = this.fingerprint(summary);
-        if (purchaseHash !== proof.purchaseHash)
-          throw new AppError('PURCHASE_CHANGED', 409);
-        const now = await this.now(tx);
-        this.authorize(row, token, now);
-        this.credentials.confirmation.verify(
-          parsed.data.confirmation,
-          session,
-          now.getTime(),
+        return this.commitPurchase(
+          tx,
+          row,
+          token,
+          proof.purchaseHash,
+          proof.expiresAt,
         );
-        for (const item of items) {
-          const changed = await tx.inventory.updateMany({
-            where: {
-              productId: item.productId,
-              quantity: { gte: item.quantity },
-            },
-            data: { quantity: { decrement: item.quantity } },
-          });
-          if (changed.count !== 1)
-            throw new AppError('CART_ITEMS_INVALID', 409);
-        }
-        await tx.order.create({
-          data: {
-            id: randomUUID(),
-            cartId: id,
-            createdAt: now,
-            cartVersion: row.version,
-            purchaseHash,
-            catalogRevision: this.catalog.revision,
-            pricingRuleVersion: 'pricing-v1',
-            origin: row.origin,
-            snapshot: summary as unknown as Prisma.InputJsonValue,
-          },
-        });
-        return (await this.saved(tx, id))!;
       },
       { timeout: 10000 },
     );
+  }
+
+  private orderReadSession(orderId: string) {
+    return Buffer.from(
+      this.credentials.scope(`order-read-v1:${orderId}`),
+      'hex',
+    ).toString('base64url');
+  }
+  async orderLink(id: string, token: string) {
+    return this.db.$transaction(
+      async (tx) => {
+        const row = await this.locked(tx, id, token),
+          order = await this.saved(tx, id);
+        if (!order) throw new AppError('ORDER_NOT_FOUND', 404);
+        const expiresAt = cartExpiresAt(row.createdAt, row.handoffIssuedAt);
+        const proof = this.credentials.confirmation.sign(
+          {
+            cartId: id,
+            cartVersion: order.snapshot.cartVersion,
+            purchaseHash: order.purchaseHash,
+            checkoutEpoch: '0',
+            issuedAt: Date.parse(order.createdAt),
+            expiresAt: expiresAt.getTime(),
+          },
+          this.orderReadSession(order.orderId),
+        );
+        const url = new URL(
+          `/order-details/${order.orderId}`,
+          process.env.WEB_ORIGIN!,
+        );
+        url.hash = `order-read=${proof}`;
+        return { url: url.href, expiresAt: expiresAt.toISOString() };
+      },
+      { timeout: 10000 },
+    );
+  }
+  async readOrderCapability(orderId: string, token: string) {
+    if (!cartIdInput.safeParse(orderId).success || typeof token !== 'string')
+      throw new AppError('FORBIDDEN', 403);
+    const proof = this.credentials.confirmation.verify(
+      token,
+      this.orderReadSession(orderId),
+      (await this.now(this.db)).getTime(),
+    );
+    const row = await this.db.order.findUnique({ where: { id: orderId } });
+    if (
+      !row ||
+      row.cartId !== proof.cartId ||
+      row.purchaseHash !== proof.purchaseHash
+    )
+      throw new AppError('FORBIDDEN', 403);
+    return {
+      order: (await this.saved(this.db, row.cartId))!,
+      expiresAt: new Date(proof.expiresAt).toISOString(),
+    };
+  }
+  private prepareScope(context: PurchaseContext) {
+    if (!context.scope) throw new AppError('FORBIDDEN', 403);
+    return this.credentials.scope(
+      JSON.stringify(['purchase-prepare-v1', context.channel, context.scope]),
+    );
+  }
+  private materialSession(review: PurchaseReview, purpose: 'pay' | 'cancel') {
+    return Buffer.from(
+      this.credentials.scope(
+        JSON.stringify([
+          'purchase-ui-v1',
+          review.channel,
+          review.id,
+          review.actorScope,
+          purpose,
+        ]),
+      ),
+      'hex',
+    ).toString('base64url');
+  }
+  private async ownedReview(
+    tx: Connection,
+    id: string,
+    reviewId: string,
+    context: PurchaseContext,
+  ) {
+    if (!cartIdInput.safeParse(reviewId).success)
+      throw new AppError('FORBIDDEN', 403);
+    const review = await tx.purchaseReview.findUnique({
+      where: { id: reviewId },
+    });
+    if (
+      !review ||
+      review.cartId !== id ||
+      review.channel !== context.channel ||
+      review.prepareScope !== this.prepareScope(context)
+    )
+      throw new AppError('FORBIDDEN', 403);
+    return review;
+  }
+  private async purchaseView(
+    tx: Connection,
+    row: Cart,
+    review: PurchaseReview,
+  ): Promise<PurchaseStatus> {
+    const order = await this.saved(tx, row.id);
+    let state: PurchaseStatus['state'] = 'pending';
+    if (order) state = 'completed';
+    else if (review.cancelled) state = 'cancelled';
+    else if ((await this.now(tx)).getTime() >= review.expiresAt.getTime())
+      state = 'expired';
+    else if (
+      review.checkoutEpoch !== row.checkoutEpoch ||
+      review.cartVersion !== row.version
+    )
+      state = 'stale';
+    else {
+      const view = await this.view(tx, row);
+      if (!view.canCheckout) state = 'blocked';
+      else if (
+        this.fingerprint(await this.summary(tx, row, view)) !==
+        review.purchaseHash
+      )
+        state = 'stale';
+    }
+    return {
+      reviewId: review.id,
+      cartId: row.id,
+      channel: review.channel as PurchaseContext['channel'],
+      state,
+      summary: review.summary as unknown as PurchaseSummary,
+      expiresAt: review.expiresAt.toISOString(),
+      order,
+    };
+  }
+  async preparePurchase(
+    id: string,
+    token: string,
+    context: PurchaseContext,
+    input: unknown,
+  ): Promise<PurchaseStatus> {
+    const parsed = purchasePrepareInput.safeParse(input);
+    if (!parsed.success) throw new AppError('VALIDATION_ERROR', 400);
+    const prepareScope = this.prepareScope(context),
+      { prepareRequestId, expectedCartVersion } = parsed.data;
+    const requestHash = createHash('sha256')
+      .update(JSON.stringify([id, expectedCartVersion]))
+      .digest('hex');
+    return this.db.$transaction(
+      async (tx) => {
+        await tx.$executeRaw`SET LOCAL lock_timeout = '3s'`;
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${prepareScope + ':' + prepareRequestId}, 0))`;
+        const row = await this.locked(tx, id, token);
+        const existing = await tx.purchaseReview.findUnique({
+          where: {
+            prepareScope_prepareRequestId: { prepareScope, prepareRequestId },
+          },
+        });
+        if (existing) {
+          if (existing.requestHash !== requestHash)
+            throw new AppError('CREATE_REQUEST_CONFLICT', 409);
+          return this.purchaseView(tx, row, existing);
+        }
+        const order = await this.saved(tx, id);
+        if (order)
+          return {
+            reviewId: null,
+            cartId: id,
+            channel: context.channel,
+            state: 'completed',
+            summary: order.snapshot,
+            expiresAt: cartExpiresAt(
+              row.createdAt,
+              row.handoffIssuedAt,
+            ).toISOString(),
+            order,
+          };
+        if (row.version !== expectedCartVersion)
+          throw new AppError('CART_VERSION_CONFLICT', 409, {
+            currentCartVersion: row.version,
+          });
+        const view = await this.view(tx, row),
+          summary = await this.summary(tx, row, view);
+        const now = await this.now(tx);
+        this.authorize(row, token, now);
+        const updated = await tx.cart.update({
+          where: { id },
+          data: { checkoutEpoch: { increment: 1 } },
+        });
+        const review = await tx.purchaseReview.create({
+          data: {
+            id: randomUUID(),
+            cartId: id,
+            prepareScope,
+            prepareRequestId,
+            requestHash,
+            channel: context.channel,
+            actorScope:
+              context.channel === 'apps'
+                ? randomBytes(32).toString('base64url')
+                : prepareScope,
+            cartVersion: row.version,
+            purchaseHash: this.fingerprint(summary),
+            checkoutEpoch: updated.checkoutEpoch,
+            summary: summary as unknown as Prisma.InputJsonValue,
+            createdAt: now,
+            expiresAt: new Date(view.expiresAt),
+          },
+        });
+        return this.purchaseView(tx, updated, review);
+      },
+      { timeout: 10000 },
+    );
+  }
+  async purchaseStatus(
+    id: string,
+    token: string,
+    context: PurchaseContext,
+    reviewId: string,
+  ): Promise<PurchaseStatus> {
+    return this.db.$transaction(
+      async (tx) => {
+        const row = await this.locked(tx, id, token);
+        return this.purchaseView(
+          tx,
+          row,
+          await this.ownedReview(tx, id, reviewId, context),
+        );
+      },
+      { timeout: 10000 },
+    );
+  }
+  async purchaseMaterials(
+    id: string,
+    token: string,
+    context: PurchaseContext,
+    reviewId: string,
+  ): Promise<PurchaseMaterials> {
+    return this.db.$transaction(
+      async (tx) => {
+        const row = await this.locked(tx, id, token),
+          review = await this.ownedReview(tx, id, reviewId, context);
+        const status = await this.purchaseView(tx, row, review);
+        if (status.state !== 'pending')
+          throw new AppError(
+            status.state === 'expired'
+              ? 'CONFIRMATION_EXPIRED'
+              : 'CONFIRMATION_STALE',
+            409,
+          );
+        const payload = {
+          cartId: id,
+          cartVersion: review.cartVersion,
+          purchaseHash: review.purchaseHash,
+          checkoutEpoch: review.checkoutEpoch.toString(),
+          issuedAt: review.createdAt.getTime(),
+          expiresAt: review.expiresAt.getTime(),
+        };
+        return {
+          payToken: this.credentials.confirmation.sign(
+            payload,
+            this.materialSession(review, 'pay'),
+          ),
+          cancelToken: this.credentials.confirmation.sign(
+            payload,
+            this.materialSession(review, 'cancel'),
+          ),
+        };
+      },
+      { timeout: 10000 },
+    );
+  }
+  private verifyMaterial(
+    value: string,
+    review: PurchaseReview,
+    purpose: 'pay' | 'cancel',
+    now: Date,
+  ) {
+    const proof = this.credentials.confirmation.verify(
+      value,
+      this.materialSession(review, purpose),
+      now.getTime(),
+    );
+    if (
+      proof.cartId !== review.cartId ||
+      proof.cartVersion !== review.cartVersion ||
+      proof.purchaseHash !== review.purchaseHash ||
+      proof.checkoutEpoch !== review.checkoutEpoch.toString() ||
+      proof.expiresAt !== review.expiresAt.getTime()
+    )
+      throw new AppError('CONFIRMATION_INVALID', 403);
+  }
+  async payPurchase(
+    id: string,
+    token: string,
+    context: PurchaseContext,
+    reviewId: string,
+    input: unknown,
+  ): Promise<OrderResult> {
+    const parsed = purchasePayInput.safeParse(input);
+    if (!parsed.success) throw new AppError('VALIDATION_ERROR', 400);
+    return this.db.$transaction(
+      async (tx) => {
+        const row = await this.locked(tx, id, token),
+          review = await this.ownedReview(tx, id, reviewId, context);
+        const order = await this.saved(tx, id);
+        this.verifyMaterial(
+          parsed.data.payToken,
+          review,
+          'pay',
+          order ? review.createdAt : await this.now(tx),
+        );
+        if (order) return order;
+        if (review.cancelled || review.checkoutEpoch !== row.checkoutEpoch)
+          throw new AppError('CONFIRMATION_STALE', 409);
+        if (review.cartVersion !== row.version)
+          throw new AppError('PURCHASE_CHANGED', 409);
+        return this.commitPurchase(
+          tx,
+          row,
+          token,
+          review.purchaseHash,
+          review.expiresAt.getTime(),
+        );
+      },
+      { timeout: 10000 },
+    );
+  }
+  async cancelPurchase(
+    id: string,
+    token: string,
+    context: PurchaseContext,
+    reviewId: string,
+    input: unknown,
+  ): Promise<PurchaseStatus> {
+    const parsed = purchaseCancelInput.safeParse(input);
+    if (!parsed.success) throw new AppError('VALIDATION_ERROR', 400);
+    return this.db.$transaction(
+      async (tx) => {
+        let row = await this.locked(tx, id, token),
+          review = await this.ownedReview(tx, id, reviewId, context);
+        const order = await this.saved(tx, id);
+        this.verifyMaterial(
+          parsed.data.cancelToken,
+          review,
+          'cancel',
+          order ? review.createdAt : await this.now(tx),
+        );
+        if (
+          !order &&
+          !review.cancelled &&
+          review.checkoutEpoch === row.checkoutEpoch
+        ) {
+          review = await tx.purchaseReview.update({
+            where: { id: review.id },
+            data: { cancelled: true },
+          });
+          row = await tx.cart.update({
+            where: { id },
+            data: { checkoutEpoch: { increment: 1 } },
+          });
+        }
+        return this.purchaseView(tx, row, review);
+      },
+      { timeout: 10000 },
+    );
+  }
+  private async commitPurchase(
+    tx: Prisma.TransactionClient,
+    row: Cart,
+    token: string,
+    expectedHash: string,
+    expiresAt: number,
+  ): Promise<OrderResult> {
+    const id = row.id;
+    const items = row.items as unknown as CartItem[];
+    for (const item of [...items].sort((a, b) =>
+      a.productId < b.productId ? -1 : a.productId > b.productId ? 1 : 0,
+    )) {
+      await tx.$queryRaw`SELECT "productId" FROM "Inventory" WHERE "productId"=${item.productId} FOR UPDATE`;
+    }
+    const view = await this.view(tx, row),
+      summary = await this.summary(tx, row, view),
+      purchaseHash = this.fingerprint(summary);
+    if (purchaseHash !== expectedHash)
+      throw new AppError('PURCHASE_CHANGED', 409);
+    const now = await this.now(tx);
+    this.authorize(row, token, now);
+    if (now.getTime() >= expiresAt)
+      throw new AppError('CONFIRMATION_EXPIRED', 409);
+    for (const item of items) {
+      const changed = await tx.inventory.updateMany({
+        where: {
+          productId: item.productId,
+          quantity: { gte: item.quantity },
+        },
+        data: { quantity: { decrement: item.quantity } },
+      });
+      if (changed.count !== 1) throw new AppError('CART_ITEMS_INVALID', 409);
+    }
+    await tx.order.create({
+      data: {
+        id: randomUUID(),
+        cartId: id,
+        createdAt: now,
+        cartVersion: row.version,
+        purchaseHash,
+        catalogRevision: this.catalog.revision,
+        pricingRuleVersion: 'pricing-v1',
+        origin: row.origin,
+        snapshot: summary as unknown as Prisma.InputJsonValue,
+      },
+    });
+    return (await this.saved(tx, id))!;
   }
 }

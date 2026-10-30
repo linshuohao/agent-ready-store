@@ -126,7 +126,7 @@ describe('Apps cart coordination', () => {
     c.change('P001', '3');
     c.remove('P001');
     await c.save();
-    await c.checkout();
+    await c.share();
     await c.reload(true);
     expect(c.getSnapshot().dirty).toBe(false);
     expect(bridge.call).toHaveBeenCalledTimes(2);
@@ -142,7 +142,7 @@ describe('Apps cart coordination', () => {
     expect(c.getSnapshot().needsRefresh).toBe(true);
     expect(c.getSnapshot().message).not.toContain('secret');
     await c.save();
-    await c.checkout();
+    await c.share();
     expect(bridge.call).toHaveBeenCalledTimes(2);
     bridge.call.mockImplementation(async () =>
       ok({ cart: cart(2), order: null }),
@@ -183,7 +183,7 @@ describe('Apps cart coordination', () => {
     bridge.call
       .mockImplementationOnce(() => read.promise)
       .mockImplementationOnce(() => handoff.promise);
-    const p = c.checkout();
+    const p = c.share();
     c.change('P001', '8');
     expect(c.getSnapshot().dirty).toBe(false);
     read.resolve(ok({ cart: cart(2), order: null }));
@@ -213,7 +213,7 @@ describe('Apps cart coordination', () => {
     bridge.call
       .mockImplementationOnce(async () => ok({ cart: cart(2), order: null }))
       .mockImplementationOnce(() => d.promise);
-    const p = c.checkout();
+    const p = c.share();
     await vi.waitFor(() => expect(bridge.call).toHaveBeenCalledTimes(3));
     c.dispose();
     d.resolve(
@@ -246,7 +246,7 @@ describe('Apps cart coordination', () => {
           requiresHumanConfirmation: true,
         }),
       );
-    await c.checkout();
+    await c.share();
     expect(bridge.open).not.toHaveBeenCalled();
     bridge.call.mockImplementation(async () =>
       ok({
@@ -257,7 +257,7 @@ describe('Apps cart coordination', () => {
         order: null,
       }),
     );
-    await c.checkout();
+    await c.share();
     expect(bridge.open).not.toHaveBeenCalled();
   });
 });
@@ -300,7 +300,7 @@ describe('Apps authority and asynchronous boundaries', () => {
   it('handles host refusal and unsupported external links without claiming navigation', async () => {
     const { c, bridge } = await ready();
     bridge.canOpen = () => false;
-    await c.checkout();
+    await c.share();
     expect(bridge.call).toHaveBeenCalledTimes(1);
     bridge.canOpen = () => true;
     bridge.call
@@ -317,7 +317,7 @@ describe('Apps authority and asynchronous boundaries', () => {
         }),
       );
     bridge.open.mockResolvedValue({ isError: true });
-    await c.checkout();
+    await c.share();
     expect(c.getSnapshot().message).toContain('拒絕');
   });
   it('rejects expired authority and completed carts without writes', async () => {
@@ -331,7 +331,7 @@ describe('Apps authority and asynchronous boundaries', () => {
     await c.receive(cap, ok({ cart: cart(), order: null }));
     c.change('P001', '2');
     await c.save();
-    await c.checkout();
+    await c.share();
     expect(c.getSnapshot().editable).toBe(false);
     expect(bridge.call).toHaveBeenCalledTimes(1);
   });
@@ -343,7 +343,7 @@ describe('Apps authority and asynchronous boundaries', () => {
       ok({ cart: c.getSnapshot().cart, order: null }),
     );
     await newView.save();
-    await newView.checkout();
+    await newView.share();
     expect(bridge.call).not.toHaveBeenCalled();
   });
 });
@@ -364,7 +364,7 @@ it.each(['FORBIDDEN', 'CREDENTIAL_EXPIRED'])(
 it('a new cart input clears old authority before its result arrives', async () => {
   const { c, bridge } = await ready();
   c.prepareInput({ ...cap, cartId: '10000000-0000-4000-8000-000000000002' });
-  await c.checkout();
+  await c.share();
   expect(c.getSnapshot().cart).toBeNull();
   expect(bridge.call).toHaveBeenCalledTimes(1);
 });
@@ -419,7 +419,7 @@ it('reports an expired handoff and does not open it', async () => {
         requiresHumanConfirmation: true,
       }),
     );
-  await c.checkout();
+  await c.share();
   expect(bridge.open).not.toHaveBeenCalled();
   expect(c.getSnapshot().message).toContain('到期');
 });
@@ -474,6 +474,300 @@ it('shows the original completed order and never offers another write or checkou
   expect(c.getSnapshot().editable).toBe(false);
   c.change('P001', '2');
   await c.save();
-  await c.checkout();
+  await c.share();
   expect(bridge.call).toHaveBeenCalledTimes(1);
+});
+
+const reviewId = '20000000-0000-4000-8000-000000000001';
+const purchase = (state = 'pending') => ({
+  reviewId,
+  cartId: id,
+  channel: 'apps',
+  state,
+  summary: {
+    cartId: id,
+    cartVersion: 1,
+    origin: 'AGENT',
+    items: [
+      {
+        productId: 'P001',
+        quantity: 1,
+        name: '耳機',
+        brand: 'Brand',
+        specs: {},
+        unitPrice: '10.00',
+        lineSubtotal: '10.00',
+      },
+    ],
+    quote: cart().quote,
+    pricingRuleVersion: 'pricing-v1',
+  },
+  expiresAt: cart().expiresAt,
+  order: null,
+});
+const prepared = () => ({
+  ...ok(purchase()),
+  _meta: {
+    purchaseMaterials: {
+      payToken: 'private-pay',
+      cancelToken: 'private-cancel',
+    },
+  },
+});
+describe('Apps embedded purchase', () => {
+  it('calibrates then prepares without opening checkout; materials remain private until explicit Human pay', async () => {
+    const { c, bridge } = await ready();
+    bridge.call
+      .mockImplementationOnce(async () => ok({ cart: cart(), order: null }))
+      .mockImplementationOnce(async () => prepared());
+    await c.checkout();
+    expect(bridge.call).toHaveBeenLastCalledWith(
+      'prepare_checkout',
+      expect.objectContaining({
+        ...cap,
+        target: 'apps',
+        expectedCartVersion: 1,
+      }),
+    );
+    expect(c.getSnapshot().purchase?.reviewId).toBe(reviewId);
+    expect(c.getSnapshot().canPay).toBe(true);
+    expect(JSON.stringify(c.getSnapshot())).not.toContain('private-');
+    expect(bridge.open).not.toHaveBeenCalled();
+    expect(bridge.call.mock.calls.some((x) => x[0] === 'pay_purchase')).toBe(
+      false,
+    );
+    bridge.call.mockRejectedValueOnce(new Error('lost response'));
+    await c.pay();
+    expect(bridge.call).toHaveBeenLastCalledWith('pay_purchase', {
+      ...cap,
+      reviewId,
+      payToken: 'private-pay',
+    });
+    expect(c.getSnapshot().canPay).toBe(false);
+    bridge.call.mockImplementationOnce(async () => ok(purchase()));
+    await c.reload();
+    expect(bridge.call).toHaveBeenLastCalledWith('get_purchase_status', {
+      ...cap,
+      reviewId,
+    });
+    expect(c.getSnapshot().canPay).toBe(false);
+  });
+  it('initial prepare delivery captures metadata but status delivery never grants payment', async () => {
+    const { bridge } = setup();
+    const c = new StoreController(
+      'prepare_checkout',
+      bridge,
+      'http://localhost:3000',
+    );
+    await c.receive(
+      {
+        ...cap,
+        prepareRequestId: reviewId,
+        expectedCartVersion: 1,
+        target: 'apps',
+      },
+      prepared(),
+    );
+    expect(c.getSnapshot().canPay).toBe(true);
+    expect(bridge.call).not.toHaveBeenCalled();
+    const status = new StoreController(
+      'get_purchase_status',
+      bridge,
+      'http://localhost:3000',
+    );
+    await status.receive({ ...cap, reviewId }, prepared());
+    expect(status.getSnapshot().canPay).toBe(false);
+    expect(JSON.stringify(c.getSnapshot())).not.toContain('private-');
+  });
+  it('cancels only by explicit action and sends separate purpose material', async () => {
+    const { bridge } = setup();
+    const c = new StoreController(
+      'prepare_checkout',
+      bridge,
+      'http://localhost:3000',
+    );
+    await c.receive(
+      {
+        ...cap,
+        prepareRequestId: reviewId,
+        expectedCartVersion: 1,
+        target: 'apps',
+      },
+      prepared(),
+    );
+    bridge.call.mockImplementationOnce(async () => ok(purchase('cancelled')));
+    await c.cancelPurchase();
+    expect(bridge.call).toHaveBeenLastCalledWith('cancel_app_purchase', {
+      ...cap,
+      reviewId,
+      cancelToken: 'private-cancel',
+    });
+    expect(c.getSnapshot().purchase?.state).toBe('cancelled');
+    expect(c.getSnapshot().canPay).toBe(false);
+  });
+});
+
+it('missing prepare metadata recovers with the same request key and never pays automatically', async () => {
+  const { bridge } = setup();
+  const c = new StoreController(
+    'prepare_checkout',
+    bridge,
+    'http://localhost:3000',
+  );
+  const input = {
+    ...cap,
+    prepareRequestId: reviewId,
+    expectedCartVersion: 1,
+    target: 'apps',
+  };
+  await c.receive(input, ok(purchase()));
+  expect(c.getSnapshot().canPay).toBe(false);
+  expect(c.getSnapshot().canRecover).toBe(true);
+  bridge.call.mockImplementationOnce(async () => prepared());
+  await c.recoverPurchase();
+  expect(bridge.call).toHaveBeenCalledExactlyOnceWith(
+    'prepare_checkout',
+    input,
+  );
+  expect(c.getSnapshot().canPay).toBe(true);
+});
+it('unknown preparation retains its key even after a cart reload', async () => {
+  const { c, bridge } = await ready();
+  bridge.call
+    .mockImplementationOnce(async () => ok({ cart: cart(), order: null }))
+    .mockRejectedValueOnce(new Error('lost'));
+  await c.checkout();
+  const args = bridge.call.mock.calls.at(-1)![1];
+  bridge.call.mockImplementationOnce(async () =>
+    ok({ cart: cart(), order: null }),
+  );
+  await c.reload();
+  const count = bridge.call.mock.calls.length;
+  await c.checkout();
+  expect(bridge.call).toHaveBeenCalledTimes(count);
+  bridge.call.mockImplementationOnce(async () => prepared());
+  await c.recoverPurchase();
+  expect(bridge.call).toHaveBeenLastCalledWith('prepare_checkout', args);
+});
+it('a late prepare cannot grant payment after the Host selects another cart', async () => {
+  const { c, bridge } = await ready();
+  const pending = deferred();
+  bridge.call
+    .mockImplementationOnce(async () => ok({ cart: cart(), order: null }))
+    .mockImplementationOnce(() => pending.promise);
+  const work = c.checkout();
+  await vi.waitFor(() =>
+    expect(bridge.call).toHaveBeenLastCalledWith(
+      'prepare_checkout',
+      expect.anything(),
+    ),
+  );
+  c.prepareInput({ ...cap, cartId: '10000000-0000-4000-8000-000000000002' });
+  pending.resolve(prepared());
+  await work;
+  expect(c.getSnapshot().purchase).toBeNull();
+  expect(c.getSnapshot().canPay).toBe(false);
+});
+it('successful payment renders the original order and only explicit safe details opening calls the Host', async () => {
+  const { bridge } = setup();
+  const c = new StoreController(
+    'prepare_checkout',
+    bridge,
+    'http://localhost:3000',
+  );
+  await c.receive(
+    {
+      ...cap,
+      prepareRequestId: reviewId,
+      expectedCartVersion: 1,
+      target: 'apps',
+    },
+    prepared(),
+  );
+  const order = {
+    orderId: reviewId,
+    cartId: id,
+    createdAt: '2026-10-30T00:00:00.000Z',
+    purchaseHash: 'a'.repeat(64),
+    catalogRevision: 'original',
+    snapshot: purchase().summary,
+  };
+  bridge.call.mockImplementationOnce(async () => ok(order));
+  await c.pay();
+  expect(c.getSnapshot().order?.orderId).toBe(reviewId);
+  expect(bridge.open).not.toHaveBeenCalled();
+  await c.pay();
+  expect(bridge.call).toHaveBeenCalledTimes(1);
+  const url = `http://localhost:3000/order-details/${reviewId}#order-read=private-order`;
+  bridge.call.mockImplementationOnce(async () =>
+    ok({ url, expiresAt: cart().expiresAt }),
+  );
+  await c.openOrderDetails();
+  expect(bridge.open).toHaveBeenCalledExactlyOnceWith(url);
+  expect(JSON.stringify(c.getSnapshot())).not.toContain('private-order');
+  bridge.call.mockImplementationOnce(async () =>
+    ok({ url: 'https://evil.example/' + url, expiresAt: cart().expiresAt }),
+  );
+  await c.openOrderDetails();
+  expect(bridge.open).toHaveBeenCalledTimes(1);
+});
+it('initial purchase views invalidate a late pay response as soon as another cart input arrives', async () => {
+  const { bridge } = setup();
+  const c = new StoreController(
+    'prepare_checkout',
+    bridge,
+    'http://localhost:3000',
+  );
+  await c.receive(
+    {
+      ...cap,
+      prepareRequestId: reviewId,
+      expectedCartVersion: 1,
+      target: 'apps',
+    },
+    prepared(),
+  );
+  const pending = deferred();
+  bridge.call.mockImplementationOnce(() => pending.promise);
+  const work = c.pay();
+  c.prepareInput({ ...cap, cartId: '10000000-0000-4000-8000-000000000002' });
+  pending.resolve(
+    ok({
+      orderId: reviewId,
+      cartId: id,
+      createdAt: '2026-10-30T00:00:00.000Z',
+      purchaseHash: 'a'.repeat(64),
+      catalogRevision: 'original',
+      snapshot: purchase().summary,
+    }),
+  );
+  await work;
+  expect(c.getSnapshot().order).toBeNull();
+  expect(c.getSnapshot().purchase).toBeNull();
+  expect(c.getSnapshot().canPay).toBe(false);
+});
+
+it('readonly status preserves missing-material recovery with the original prepare key', async () => {
+  const { bridge } = setup();
+  const c = new StoreController(
+    'prepare_checkout',
+    bridge,
+    'http://localhost:3000',
+  );
+  const input = {
+    ...cap,
+    prepareRequestId: reviewId,
+    expectedCartVersion: 1,
+    target: 'apps',
+  };
+  await c.receive(input, ok(purchase()));
+  expect(c.getSnapshot().canRecover).toBe(true);
+  bridge.call.mockImplementationOnce(async () => ok(purchase()));
+  await c.reload();
+  expect(c.getSnapshot().canRecover).toBe(true);
+  expect(c.getSnapshot().canRetryPay).toBe(false);
+  bridge.call.mockImplementationOnce(async () => prepared());
+  await c.recoverPurchase();
+  expect(bridge.call).toHaveBeenLastCalledWith('prepare_checkout', input);
+  expect(c.getSnapshot().canPay).toBe(true);
 });
