@@ -51,7 +51,11 @@ const deferred = () => {
 };
 function setup() {
   const bridge = {
-    call: vi.fn(async () => ok({ cart: cart(), order: null })),
+    call: vi.fn(async (name?: string) =>
+      name === 'get_purchase_status'
+        ? ok(purchase())
+        : ok({ cart: cart(), order: null }),
+    ),
     open: vi.fn(async () => ({ isError: false })),
     canOpen: () => true,
   };
@@ -552,7 +556,7 @@ describe('Apps embedded purchase', () => {
     });
     expect(c.getSnapshot().canPay).toBe(false);
   });
-  it('initial prepare delivery captures metadata but status delivery never grants payment', async () => {
+  it('initial prepare delivery calibrates before payment but status delivery never grants payment', async () => {
     const { bridge } = setup();
     const c = new StoreController(
       'prepare_checkout',
@@ -569,7 +573,10 @@ describe('Apps embedded purchase', () => {
       prepared(),
     );
     expect(c.getSnapshot().canPay).toBe(true);
-    expect(bridge.call).not.toHaveBeenCalled();
+    expect(bridge.call).toHaveBeenCalledExactlyOnceWith('get_purchase_status', {
+      ...cap,
+      reviewId,
+    });
     const status = new StoreController(
       'get_purchase_status',
       bridge,
@@ -625,10 +632,10 @@ it('missing prepare metadata recovers with the same request key and never pays a
   expect(c.getSnapshot().canRecover).toBe(true);
   bridge.call.mockImplementationOnce(async () => prepared());
   await c.recoverPurchase();
-  expect(bridge.call).toHaveBeenCalledExactlyOnceWith(
-    'prepare_checkout',
-    input,
-  );
+  expect(bridge.call.mock.calls).toEqual([
+    ['get_purchase_status', { ...cap, reviewId }],
+    ['prepare_checkout', input],
+  ]);
   expect(c.getSnapshot().canPay).toBe(true);
 });
 it('unknown preparation retains its key even after a cart reload', async () => {
@@ -697,7 +704,7 @@ it('successful payment renders the original order and only explicit safe details
   expect(c.getSnapshot().order?.orderId).toBe(reviewId);
   expect(bridge.open).not.toHaveBeenCalled();
   await c.pay();
-  expect(bridge.call).toHaveBeenCalledTimes(1);
+  expect(bridge.call).toHaveBeenCalledTimes(2);
   const url = `http://localhost:3000/order-details/${reviewId}#order-read=private-order`;
   bridge.call.mockImplementationOnce(async () =>
     ok({ url, expiresAt: cart().expiresAt }),
@@ -770,4 +777,97 @@ it('readonly status preserves missing-material recovery with the original prepar
   await c.recoverPurchase();
   expect(bridge.call).toHaveBeenLastCalledWith('prepare_checkout', input);
   expect(c.getSnapshot().canPay).toBe(true);
+});
+
+describe('Host purchase result calibration', () => {
+  const input = {
+    ...cap,
+    prepareRequestId: reviewId,
+    expectedCartVersion: 1,
+    target: 'apps',
+  };
+  const order = {
+    orderId: reviewId,
+    cartId: id,
+    createdAt: '2026-10-30T00:00:00.000Z',
+    purchaseHash: 'a'.repeat(64),
+    catalogRevision: 'original',
+    snapshot: purchase().summary,
+  };
+  const completed = () => ok({ ...purchase('completed'), order });
+  it('restores the original order on remount and on repeated historical delivery', async () => {
+    const { bridge } = setup();
+    bridge.call.mockImplementation(async () => completed());
+    const c = new StoreController(
+      'prepare_checkout',
+      bridge,
+      'http://localhost:3000',
+    );
+    for (let delivery = 0; delivery < 2; delivery++) {
+      await c.receive(input, prepared());
+      expect(c.getSnapshot().purchase?.state).toBe('completed');
+      expect(c.getSnapshot().order).toEqual(order);
+      expect(c.getSnapshot().canPay).toBe(false);
+    }
+    expect(bridge.call.mock.calls).toEqual([
+      ['get_purchase_status', { ...cap, reviewId }],
+      ['get_purchase_status', { ...cap, reviewId }],
+    ]);
+  });
+  it('blocks actions while calibrating and keeps failed reads unknown until an explicit read', async () => {
+    const { bridge } = setup();
+    const pending = deferred();
+    bridge.call.mockImplementationOnce(() => pending.promise);
+    const c = new StoreController(
+      'prepare_checkout',
+      bridge,
+      'http://localhost:3000',
+    );
+    const receiving = c.receive(input, prepared());
+    expect(c.getSnapshot().busy).toBe(true);
+    expect(c.getSnapshot().canPay).toBe(false);
+    await c.pay();
+    await c.cancelPurchase();
+    await c.recoverPurchase();
+    pending.resolve({ isError: true });
+    await receiving;
+    expect(c.getSnapshot().needsRefresh).toBe(true);
+    expect(c.getSnapshot().canPay).toBe(false);
+    expect(c.getSnapshot().canRetryPay).toBe(false);
+    await c.pay();
+    await c.cancelPurchase();
+    expect(bridge.call.mock.calls).toEqual([
+      ['get_purchase_status', { ...cap, reviewId }],
+    ]);
+    bridge.call.mockImplementationOnce(async () => completed());
+    await c.reload();
+    expect(c.getSnapshot().order).toEqual(order);
+  });
+  it.each(['cart', 'review', 'dispose'])(
+    'ignores a late calibration after changing %s',
+    async (change) => {
+      const { bridge } = setup();
+      const pending = deferred();
+      bridge.call.mockImplementationOnce(() => pending.promise);
+      const c = new StoreController(
+        'prepare_checkout',
+        bridge,
+        'http://localhost:3000',
+      );
+      const receiving = c.receive(input, prepared());
+      if (change === 'dispose') c.dispose();
+      else
+        c.prepareInput({
+          ...input,
+          ...(change === 'cart'
+            ? { cartId: '10000000-0000-4000-8000-000000000002' }
+            : { prepareRequestId: '20000000-0000-4000-8000-000000000002' }),
+        });
+      pending.resolve(completed());
+      await receiving;
+      expect(c.getSnapshot().purchase).toBeNull();
+      expect(c.getSnapshot().order).toBeNull();
+      expect(c.getSnapshot().canPay).toBe(false);
+    },
+  );
 });

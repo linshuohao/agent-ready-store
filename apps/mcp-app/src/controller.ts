@@ -309,7 +309,10 @@ export class StoreController {
           throw new ToolFailure('WRONG_REVIEW');
         this.#acceptPurchase(status);
         if (cap && this.entry === 'prepare_checkout')
-          this.#captureMaterials(raw);
+          this.#captureMaterials(raw, false);
+        // Host results can be historical (including a remounted purchase card).
+        // Only a fresh read may restore actions or the original completed order.
+        if (cap) await this.#purchaseAction('status');
         return;
       }
       if (this.entry === 'search_products' || this.entry === 'get_product') {
@@ -720,7 +723,7 @@ export class StoreController {
             : `本次準備狀態：${status.state}；不可支付。`,
     });
   }
-  #captureMaterials(raw: unknown) {
+  #captureMaterials(raw: unknown, publish = true) {
     const meta = z
       .object({
         _meta: z
@@ -737,6 +740,7 @@ export class StoreController {
     )
       return;
     this.#materials = meta.success ? meta.data._meta.purchaseMaterials : null;
+    if (!publish) return;
     this.#acceptPurchase(status);
     if (!this.#materials)
       this.#set({
