@@ -3,6 +3,8 @@ services:
     image: agent-ready-store-production
     build:
       target: production
+      args:
+        WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:3000}
     command: pnpm --filter @store/api start
     volumes: !override
       - ./references:/app/references:ro
@@ -10,5 +12,7 @@ services:
     image: agent-ready-store-production
     build:
       target: production
+      args:
+        WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:3000}
     command: pnpm --filter @store/web start --hostname 0.0.0.0
     volumes: !reset []

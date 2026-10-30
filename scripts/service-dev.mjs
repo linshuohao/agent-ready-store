@@ -1,6 +1,9 @@
 import { spawnSync, spawn } from 'node:child_process';
 const app = process.argv[2];
-for (const name of ['contracts', ...(app === 'api' ? ['api'] : [])]) {
+for (const name of [
+  'contracts',
+  ...(app === 'api' ? ['api', 'mcp-app'] : []),
+]) {
   const build = spawnSync('pnpm', ['--filter', `@store/${name}`, 'build'], {
     stdio: 'inherit',
   });

@@ -2,13 +2,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import type { ProductSummary } from '@store/contracts';
 import { AddButton } from '@/features/cart/add-button';
-import { formatMoney } from '@/lib/money';
-export const reasonText = {
-  SOLD_OUT: '已售罄',
-  INVENTORY_ANOMALY: '庫存異常',
-  PRICE_PENDING: '價格待確認',
-  INVENTORY_UNAVAILABLE: '庫存暫不可用',
-};
+import { ProductPresentation } from '@store/commerce-ui';
+export { Availability, reasonText } from '@store/commerce-ui';
 export function illustration(id: string) {
   return ['P001', 'P002'].includes(id)
     ? 'earbuds'
@@ -22,48 +17,38 @@ export function illustration(id: string) {
             ? 'packet'
             : 'object';
 }
-export function Availability({ product }: { product: ProductSummary }) {
-  return (
-    <p className="availability">
-      {product.availability.canPurchase
-        ? '可購買'
-        : product.availability.reasons.map((r) => reasonText[r]).join(' · ')}
-      <span> · 庫存 {product.availability.currentQuantity ?? '暫無資料'}</span>
-    </p>
-  );
-}
 export function ProductCard({ product }: { product: ProductSummary }) {
   return (
-    <article className="product-card">
-      <Link
-        href={`/products/${product.id}`}
-        prefetch={false}
-        className="art"
-        aria-label={`查看 ${product.name}，${product.id}`}
-      >
-        <Image
-          unoptimized
-          src={`/illustrations/${illustration(product.id)}.svg`}
-          alt="商品示意，非實物照片"
-          width={260}
-          height={260}
-        />
-        <span>商品示意 · {product.id}</span>
-      </Link>
-      <p className="eyebrow">
-        {product.brand} · {product.id}
-      </p>
-      <h3>
+    <ProductPresentation
+      product={product}
+      art={
+        <Link
+          href={`/products/${product.id}`}
+          prefetch={false}
+          className="art"
+          aria-label={`查看 ${product.name}，${product.id}`}
+        >
+          <Image
+            unoptimized
+            src={`/illustrations/${illustration(product.id)}.svg`}
+            alt="商品示意，非實物照片"
+            width={260}
+            height={260}
+          />
+          <span>商品示意 · {product.id}</span>
+        </Link>
+      }
+      title={
         <Link href={`/products/${product.id}`} prefetch={false}>
           {product.name}
         </Link>
-      </h3>
-      <p className="price">{formatMoney(product.price)}</p>
-      <Availability product={product} />
-      <AddButton
-        productId={product.id}
-        canPurchase={product.availability.canPurchase}
-      />
-    </article>
+      }
+      actions={
+        <AddButton
+          productId={product.id}
+          canPurchase={product.availability.canPurchase}
+        />
+      }
+    />
   );
 }

@@ -1,9 +1,12 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import {
   ListToolsRequestSchema,
   CallToolRequestSchema,
+  ListResourcesRequestSchema,
+  ReadResourceRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import {
@@ -57,8 +60,61 @@ export function attachMcp(
   app.post('/mcp', async (req, res) => {
     const server = new Server(
       { name: 'agent-ready-store', version: '0.1.0' },
-      { capabilities: { tools: {} } },
+      { capabilities: { tools: {}, resources: {} } },
     );
+    const uiTools = [
+      'search_products',
+      'get_product',
+      'create_cart',
+      'get_cart',
+      'update_cart',
+      'create_handoff',
+    ];
+    const resources = uiTools.map((tool) => ({
+      tool,
+      uri: `ui://store/${tool.replaceAll('_', '-')}-v1.html`,
+      filename: `${tool.replaceAll('_', '-')}-v1.html`,
+    }));
+    const uiMeta = (tool: string) => {
+      const resource = resources.find((entry) => entry.tool === tool)!;
+      return {
+        ui: { resourceUri: resource.uri, visibility: ['model', 'app'] },
+        'ui/resourceUri': resource.uri,
+        'openai/outputTemplate': resource.uri,
+      };
+    };
+    server.setRequestHandler(ListResourcesRequestSchema, async () => ({
+      resources: resources.map(({ uri, tool }) => ({
+        uri,
+        name: `Store · ${tool}`,
+        mimeType: 'text/html;profile=mcp-app',
+      })),
+    }));
+    server.setRequestHandler(ReadResourceRequestSchema, async ({ params }) => {
+      const resource = resources.find((entry) => entry.uri === params.uri);
+      if (!resource) throw new Error('Unknown UI resource');
+      return {
+        contents: [
+          {
+            uri: resource.uri,
+            mimeType: 'text/html;profile=mcp-app',
+            text: await readFile(
+              new URL(`../mcp-app/${resource.filename}`, import.meta.url),
+              'utf8',
+            ),
+            _meta: {
+              ui: {
+                csp: {
+                  connectDomains: [],
+                  resourceDomains: [],
+                  frameDomains: [],
+                },
+              },
+            },
+          },
+        ],
+      };
+    });
     const annotations = {
       readOnlyHint: true,
       destructiveHint: false,
@@ -69,6 +125,7 @@ export function attachMcp(
       tools: [
         {
           name: 'create_cart',
+          _meta: uiMeta('create_cart'),
           description:
             '建立可信 Agent 購物車。使用隨機 UUID 建立請求鍵；結果未明時以相同鍵及原條目重試。回傳秘密憑證，請勿公開。建立不購買、不預留庫存。',
           inputSchema: z.toJSONSchema(agentCreateInput, { io: 'input' }),
@@ -76,6 +133,7 @@ export function attachMcp(
         },
         {
           name: 'get_cart',
+          _meta: uiMeta('get_cart'),
           description:
             '以車憑證讀取原車與完整報價，已完成則另回原訂單；不產生購買確認。',
           inputSchema: z.toJSONSchema(cartCapabilityInput),
@@ -83,6 +141,7 @@ export function attachMcp(
         },
         {
           name: 'update_cart',
+          _meta: uiMeta('update_cart'),
           description:
             '按預期版本整車替換條目。衝突時重讀原車核對意圖，不自動覆蓋；不購買。',
           inputSchema: z.toJSONSchema(agentUpdateInput),
@@ -95,6 +154,7 @@ export function attachMcp(
         },
         {
           name: 'create_handoff',
+          _meta: uiMeta('create_handoff'),
           description:
             '分享同一車的有限存取能力；首次分享起固定24小時，重試不續期。回傳原車、報價和含秘密的連結；交Human在Hosted Checkout明確確認，勿自行提交購買。',
           inputSchema: z.toJSONSchema(cartCapabilityInput),
@@ -103,11 +163,13 @@ export function attachMcp(
         {
           name: 'search_products',
           description: '搜尋商品摘要，推薦分數排序；有界分頁，庫存為當次快照。',
+          _meta: uiMeta('search_products'),
           inputSchema: z.toJSONSchema(searchInput, { io: 'input' }),
           annotations,
         },
         {
           name: 'get_product',
+          _meta: uiMeta('get_product'),
           description: '按 ID 取得商品規格與可購狀態，不含完整評論。',
           inputSchema: z.toJSONSchema(productInput),
           annotations,

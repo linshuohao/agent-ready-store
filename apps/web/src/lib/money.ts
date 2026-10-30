@@ -1,4 +1,1 @@
-export const formatMoney = (amount: string) => {
-  const [whole, fraction] = amount.split('.');
-  return `NT$ ${whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}.${fraction}`;
-};
+export { formatMoney } from '@store/commerce-ui';
