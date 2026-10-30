@@ -126,6 +126,118 @@ const url = process.env.TEST_DATABASE_URL;
       ).toBe('CHECKOUT');
       expect(await db.order.count()).toBe(1);
     });
+    it('rejects malformed JSON and the actual 100KiB limit on every new write entrance', async () => {
+      for (const path of [
+        '/carts',
+        '/webmcp/carts',
+        `/carts/${randomUUID()}/operations`,
+        `/webmcp/carts/${randomUUID()}/orders`,
+      ]) {
+        for (const [body, status] of [
+          ['{', 400],
+          [JSON.stringify({ padding: 'x'.repeat(102400) }), 413],
+        ] as const) {
+          const response = await fetch(base + root + path, {
+            method: 'POST',
+            headers: { origin, 'content-type': 'application/json' },
+            body,
+          });
+          expect(response.status).toBe(status);
+          expect(response.headers.get('cache-control')).toBe('no-store');
+          expect(response.headers.get('set-cookie')).toBeNull();
+          expect(await response.json()).toMatchObject({
+            ok: false,
+            error: { code: 'VALIDATION_ERROR', retryable: false },
+          });
+        }
+      }
+      expect(await db.cart.count()).toBe(0);
+      expect(await db.order.count()).toBe(0);
+    });
+    it('protects each operation and preserves valid set/remove behavior without old capabilities', async () => {
+      const cart = (await call('/carts', initialization())).payload.data;
+      const path = `/carts/${cart.cartId}/operations`;
+      const operation = {
+        operationRequestId: randomUUID(),
+        expectedCartVersion: 1,
+        operation: { type: 'set_quantity', productId: 'P001', quantity: 3 },
+      };
+      const unsafe: Record<string, string>[] = [
+        { origin: 'https://other.example' },
+        { origin: '' },
+        { 'content-type': 'text/plain' },
+      ];
+      for (const headers of unsafe)
+        expect(await call(path, operation, headers)).toMatchObject({
+          status: 403,
+        });
+      for (const fields of [
+        { origin: 'MCP' },
+        { price: '0.01' },
+        { cartAccessToken: 'old' },
+        { items: [] },
+      ])
+        expect(await call(path, { ...operation, ...fields })).toMatchObject({
+          status: 400,
+          payload: { error: { code: 'VALIDATION_ERROR' } },
+        });
+      expect(
+        await call(path, {
+          ...operation,
+          operation: { ...operation.operation, price: '0.01' },
+        }),
+      ).toMatchObject({ status: 400 });
+      expect(await call(path + '?cartToken=old', operation)).toMatchObject({
+        status: 400,
+      });
+      expect(
+        await call(path, operation, { 'x-cart-token': 'old' }),
+      ).toMatchObject({ status: 400 });
+      expect((await call(`/carts/${cart.cartId}`)).payload.data).toMatchObject({
+        cartVersion: 1,
+        agentCreated: false,
+        items: [{ quantity: 1 }],
+      });
+      const set = await call(path, operation);
+      expect(set.payload.data).toMatchObject({
+        cartVersion: 2,
+        agentCreated: false,
+        items: [{ quantity: 3 }],
+      });
+      const removed = await call(path, {
+        operationRequestId: randomUUID(),
+        expectedCartVersion: 2,
+        operation: { type: 'remove_item', productId: 'P001' },
+      });
+      expect(removed.payload.data).toMatchObject({
+        cartVersion: 3,
+        items: [],
+        agentCreated: false,
+      });
+      expect(await db.order.count()).toBe(0);
+    });
+    it('continues one Web cart across entrances without changing creation attribution or reusing a key across channels', async () => {
+      const input = initialization();
+      const cart = (await call('/carts', input)).payload.data;
+      expect(await call('/webmcp/carts', input)).toMatchObject({
+        status: 409,
+        payload: { error: { code: 'REQUEST_CONFLICT' } },
+      });
+      expect(
+        (await call('/webmcp/carts', { cartId: cart.cartId })).payload.data,
+      ).toMatchObject({ cartId: cart.cartId, agentCreated: false });
+      const made = await call(
+        `/webmcp/carts/${cart.cartId}/orders`,
+        creation(cart),
+      );
+      expect(made.payload.data.order).toMatchObject({
+        cartId: cart.cartId,
+        createdByChannel: 'WEBMCP',
+        aiEligible: true,
+      });
+      expect(made.payload.data.cart.agentCreated).toBe(false);
+      expect(await db.cart.count()).toBe(1);
+    });
     it('recovers initialization and operations without duplicating rows, rejects stale/changed payloads', async () => {
       const input = initialization();
       const first = await call('/carts', input);
@@ -344,6 +456,12 @@ const url = process.env.TEST_DATABASE_URL;
         status: 404,
         payload: { error: { code: 'ORDER_NOT_FOUND' } },
       });
+      expect(
+        await call('/carts', {
+          ...initialization(),
+          initialItems: [{ productId: 'P001', quantity: 1, price: '0.01' }],
+        }),
+      ).toMatchObject({ status: 400 });
       const { cart, order } = await setup();
       for (const query of [
         'limit=101',

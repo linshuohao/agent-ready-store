@@ -53,12 +53,12 @@
 
 - [x] 8.1 编写限定目标库的清理/迁移入口和运行说明，先只演练隔离store_test：停止旧写入并排空，核对SKU/种子覆盖，按依赖清理旧交易/幂等/材料、重置受控库存及预留，保留目录/评论和范围外数据。验证：dry-run清单、执行前后对账、故障中断再运行、旧进程/客户端写入拒绝；不删整个数据卷、不把日常重启变seed。
 - [ ] 8.2 准备具体目标环境、数据清单、停写方式及恢复方案，取得对应清理执行授权后才切换实际环境。验证：目标确认、授权、前后数量及库存对账留在本Tasks；新流程产生数据后只能停写并用兼容数据代码前向修复，不能恢复旧写服务或再次清空新单。未授权则保留演练证据及待执行状态。
-- [ ] 8.3 在隔离库/API/Web完成跨层回归及本地/Docker交付构建，更新README与DELIVERY_STATUS的真实结果。验证：相关单测、串行真实DB、HTTP/MCP、浏览器集成及typecheck/lint/build按受影响范围通过；记录环境变量/数据库名/端口，不记录秘密，跳过不计通过，不混用业务库或并行破坏性DB套件。
+- [x] 8.3 在隔离库/API/Web完成跨层回归及本地/Docker交付构建，更新README与DELIVERY_STATUS的真实结果。验证：相关单测、串行真实DB、HTTP/MCP、浏览器集成及typecheck/lint/build按受影响范围通过；记录环境变量/数据库名/端口，不记录秘密，跳过不计通过，不混用业务库或并行破坏性DB套件。
 
 ## 9. 真实入口、审查与交付验收
 
 - [ ] 9.1 分别在真实基础MCP Host、WebMCP浏览器和Apps Host完成生单→Human支付→查同单、多单继续购物、未知恢复与显式分享；记录版本、应用revision和入口特有证据。验证：人工点击与自动化分开，同单金额/预留/支付结果可核对；缺口明确交Human接受，不能互相抵扣。
-- [ ] 9.2 完成独立Code Review，核实修复并针对受影响路径重验；按Git Checkpoint Policy记录真实验证/Review及提交，呈交实现Diff、迁移证据和残余风险。验证：无未裁决阻塞发现，Guard与交付事实一致，不宣称未执行验证通过。
+- [x] 9.2 完成独立Code Review，核实修复并针对受影响路径重验；按Git Checkpoint Policy记录真实验证/Review及提交，呈交实现Diff、迁移证据和残余风险。验证：无未裁决阻塞发现，Guard与交付事实一致，不宣称未执行验证通过。
 - [ ] 9.3 取得Human最终验收及残余风险接受，核对新规范与Decision/Baseline限定传播；完成正式Spec同步前逐项审阅合并预览，并更新旧Purpose/旧阶段说明，防止旧授权模型残留。验证：12项能力无重复要求、无旧契约冲突，批准范围可追溯；不改写原归档历史。
 
 ## Workflow follow-up
@@ -190,3 +190,14 @@ Human明确：“授权之后往下推进，如果没有什么需要我审批的
 - 独立schema故障演练：库存触发器失败回滚全部删除/更新，解除后重试；SKU/FK/其他连接拒绝；原迁移SQL及新数据保护；public前后数量/库存一致。独立Review发现清理提交前忽略after.blockers，真实peer初查后重连等锁复现；仅加blockers仍因统计缓存失败，再加pg_stat_clear_snapshot后通过，提交前拒绝全部复查阻塞。审阅者定向复核通过。
 - 完整Prisma部署演练使用缓存postgres:18.4-alpine新tmpfs容器，loopback62244/store_test，不挂业务卷；真实Prisma建立旧六迁移ledger与1车1单1Review/30SKU/范围外标记，正式CLI默认dry-run再明确execute清理并标准migrate deploy第七条。后验四交易表0、库存30及受控数量一致/预留0/账实差异0，范围外标记保留、七条ledger finished；插新车后再execute预期拒绝且保留新车。临时容器已删除，原5432业务/测试库未被此演练清理。
 - 最终root复跑cutover+local脚本14/14通过（含真实schema子场景），另库存初始化3/3通过；此前独立完整deploy报告事实已核对。没有自动终止其他连接/修改角色权限，持续停写仍需实际操作者控制。实际store仍只读盘点和备份，8.2不标完成。
+
+
+### 集成交付检查与审查收尾（8.3、9.2）
+
+- 完成8.3与9.2，当前27/30；剩余8.2实际环境切换、9.1真实三入口Host/Human、9.3最终接受与正式Spec同步。实现组独立审查覆盖core/http/cart/order/Agent入口/Apps/迁移及最终集成增量，Findings均经核实修复和受影响复验，无未裁决可行动缺陷；复用各组有效证据，不将自查、自动化或静态复核混称Human验收。
+- 清理5份过时API测试，先将JSON/大小边界、Origin/逐行输入/伪造字段、旧GET/PUT/Review/链接退休矩阵及WEB→WEBMCP归因补入新HTTP套件；新真实HTTP11项通过。旧Token/Review/整车只读E2E由新cart/order/webmcp生命周期替代，保留商品发现与toast/键盘/减弱动画/在途锁定/空车入口场景。旧未挂载Web控制器及其类型/局部测试仍保留，不算新入口验收。
+- 集成回归发现导航后购物提示残留，真实红测后以pathname条件重置修复；20项商品/反馈浏览器通过，最终调整状态重置方式后定向2项再过。Catalog改用当前可见ARIA角色，避免Next隐藏旧树的重复定位，全部新增pageerror断言。一次清理生成缓存没有解决全部重复定位，最终按可见页面语义修正；无以隐藏错误换通过。
+- 最终默认单测74通过53环境skip；后续在store_test/API3003串行运行8文件50项真实DB/迁移/HTTP/MCP/资源，再停止API单跑库存3项，覆盖53项环境用例。cutover/local脚本另14/14通过。Web浏览器60项（订单/车/WebMCP）、商品/反馈20项及Apps官方SDK替身4项均有通过证据；末次局部调整仅定向复验，未宣称84项来自同一次完整运行。测试服务均已停止，不碰业务store写入。
+- 全仓typecheck/lint/format、pnpm build及OpenSpec strict validate/diff检查通过。Docker离线首次缺缓存未通过；按现有Dockerfile恢复既定依赖后发现Web未声明其直接使用的Zod，本机旧依赖掩盖。补与现有共享契约一致的zod4.6.7直接声明及lock importer，无新库/版本；最终Docker生产镜像agent-ready-store-production:checkout-lifecycle构建成功，离线容器检查确认无原件/.env/API源码、具API/Web产物及11资源，未部署或推送。
+- Compose去旧Cart密钥/Cookie设置、传入待支付上限；README精简为新流程与运行导航，DELIVERY_STATUS如实区分实现/隔离演练/实际切换/真实Host及Human。独立最终Review发现CI引用已删旧测试与8资源断言，已更新3003/Origin/生命周期环境变量、串行新套件、切换测试及11资源；定向复核通过。仓库CI配置未在远程运行，不宣称平台保护或远程CI通过。
+- 精确范围提交与Guard后交付；没有Push/Merge/发布、实际库清理或正式Spec同步。Human要求后续不查看图片、构建级验证集中在最终交付；本轮已有证据复用，不再扩展重复验证。

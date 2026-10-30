@@ -36,10 +36,9 @@ jobs:
       DATABASE_URL: postgresql://store_test:test_only@localhost:5432/store_test
       TEST_DATABASE_URL: postgresql://store_test:test_only@localhost:5432/store_test
       CATALOG_PATH: references/products.json
-      CART_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
       MCP_SERVICE_TOKEN: ci-integration-token-long-enough
-      MCP_ALLOWED_HOSTS: localhost:3002,127.0.0.1:3002
-      WEB_ORIGIN: http://localhost:3000
+      MCP_ALLOWED_HOSTS: localhost:3003,127.0.0.1:3003
+      WEB_ORIGIN: http://localhost:3004
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -83,11 +82,11 @@ jobs:
 
       - name: Run API integration tests
         run: |
-          PORT=3002 HOST=127.0.0.1 node apps/api/dist/main.js >/tmp/api.log 2>&1 &
+          PORT=3003 HOST=127.0.0.1 node apps/api/dist/main.js >/tmp/api.log 2>&1 &
           api_pid=$!
           trap 'kill "$api_pid" 2>/dev/null || true' EXIT
           for attempt in $(seq 1 30); do
-            if curl --fail --silent http://127.0.0.1:3002/api/v1/health >/dev/null; then
+            if curl --fail --silent http://127.0.0.1:3003/api/v1/health >/dev/null; then
               break
             fi
             if [ "$attempt" -eq 30 ]; then
@@ -96,17 +95,20 @@ jobs:
             fi
             sleep 2
           done
-          API_BASE_URL=http://127.0.0.1:3002 \
-          S2_API_BASE_URL=http://127.0.0.1:3002/api/v1 \
-          S3_API_BASE_URL=http://127.0.0.1:3002/api/v1 \
+          API_BASE_URL=http://127.0.0.1:3003 \
+          CHECKOUT_CORE_API_URL=http://127.0.0.1:3003 \
           pnpm exec vitest run \
             apps/api/test/http/http.test.ts \
             apps/api/test/mcp/mcp.test.ts \
-            apps/api/test/cart/http.test.ts \
-            apps/api/test/cart/checkout-http.test.ts
+            apps/api/test/mcp/lifecycle-mcp.test.ts \
+            apps/api/test/mcp/apps-resource.test.ts \
+            apps/api/test/cart/lifecycle-http.test.ts \
+            apps/api/test/cart/retired-http.test.ts --maxWorkers=1
 
       - name: Run database and unit tests
-        run: pnpm test --no-file-parallelism
+        run: |
+          pnpm test --no-file-parallelism
+          node --test scripts/checkout-cutover.test.mjs scripts/checkout-cutover-db.test.mjs
 
   delivery:
     name: Delivery image
@@ -115,9 +117,7 @@ jobs:
     env:
       COMPOSE_PROJECT_NAME: store-delivery-ci
       POSTGRES_PASSWORD: delivery_test_only
-      CART_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
       MCP_SERVICE_TOKEN: delivery-ci-token-long-enough
-      CART_COOKIE_SECURE: 'false'
       WEB_ORIGIN: http://localhost:3100
       WEB_PORT: 3100
       API_PUBLIC_PORT: 3102
@@ -135,7 +135,7 @@ jobs:
             test ! -e /app/apps/api/src
             test -f /app/apps/api/dist/main.js
             test -f /app/apps/web/.next/BUILD_ID
-            test "$(find /app/apps/api/dist/mcp-app -name "*.html" | wc -l)" -eq 8
+            test "$(find /app/apps/api/dist/mcp-app -name "*.html" | wc -l)" -eq 11
           '
       - name: Initialize isolated delivery database
         run: |

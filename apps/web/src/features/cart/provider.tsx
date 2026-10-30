@@ -79,7 +79,8 @@ const failure = (code: string) => ({
   error: { code },
 });
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const orderPage = usePathname().startsWith('/orders/');
+  const pathname = usePathname();
+  const orderPage = pathname.startsWith('/orders/');
   const current = useRef<string | null>(null),
     snapshot = useRef<ShoppingCartView | null>(null),
     commands = useRef<CartCommands | null>(null),
@@ -94,6 +95,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     [busy, setBusy] = useState(false),
     [pending, setPending] = useState(false),
     [message, setMessage] = useState('');
+  const [messagePath, setMessagePath] = useState(pathname);
+  if (messagePath !== pathname) {
+    setMessagePath(pathname);
+    setMessage('');
+  }
   const refreshPending = useCallback(() => {
     try {
       setPending(
