@@ -1,5 +1,7 @@
 # Proposal
 
+**本次修订状态：Approved Planning — 电商逐项操作与按场景刷新（2026-10-30）。** 聚焦独立规格审查无重要 Finding 后，Human 明确“批准当前修订版，提交之后开始实施”，批准本次 Proposal、Design、两份 Spec 和 Tasks §6 并授权提交规划后实施；不包含 Push、Merge、发布或最终验收。原 S5 批准历史继续保留，§6 新行为以本次修订为准。
+
 ## Why
 
 S1～S4 已验收归档，现有 Web 及基础 MCP 闭环尚不能由浏览器 Agent 通过注册页面工具完成购物准备。S5 补齐本次完整交付内的 WebMCP，复用既有购物车与 Checkout，不复制交易实现。
@@ -10,7 +12,8 @@ S1～S4 已验收归档，现有 Web 及基础 MCP 闭环尚不能由浏览器 A
 
 - 页面注册搜索、详情/评论、加购、当前车读取及编辑能力；按所在页面提供适用工具，不强制复制服务器七工具。
 - WebMCP 新车固定 AGENT；普通车经成功 WebMCP 编辑原子转换为 AGENT，重新计价并使旧确认失效。Human 后续编辑保留 AGENT，不改变完成订单。
-- 共用 Browser Commands、页面协调与服务端用例，处理工具生命周期、脏草稿、并发、未知结果及离页响应。
+- 共用 Browser Commands、页面协调与服务端用例，Web/WebMCP 用单次加购、设定数量、移除表达意图，取消 Web 整车“儲存調整”；同车请求期间短暂互斥，不排队重放。服务端版本裁决保持，冲突或未知提示重新加载，不比较/合并/重放编辑。
+- 购物车重新进入或干净页面返回前台时重新读取；有数量草稿时保护输入并提示刷新。Cart 版本不代表报价/库存仍新鲜，Checkout 保留独立重新计价、库存与 Human 购买确认边界。
 - 保持车级权限、到期、不预留库存及 Human Checkout 确认；工具不提供最终提交。
 - 来源可转换后，统计改为读取不可变的有效 Agent 创建事实，避免普通车接手被误计为 Agent 创建。该口径为沿用正式统计 Spec 的建议，待整份规划审阅。
 - 明确无额外身份认证时 WebMCP HTTP 通道可被模拟的残余边界，来源防伪按 Human 决定后置；不将工具注册当成后端身份认证，不阻塞 S5 规划。
@@ -23,12 +26,15 @@ S1～S4 已验收归档，现有 Web 及基础 MCP 闭环尚不能由浏览器 A
 
 ### Modified Capabilities
 
-- `shopping-cart`: 来源从绝对不可变调整为成功 WebMCP 编辑允许 HUMAN → AGENT；车权限和原子版本规则保持。
+- `shopping-cart`: 来源从绝对不可变调整为成功 WebMCP 编辑允许 HUMAN → AGENT；新增浏览器逐项操作与页面新鲜度契约，车权限和原子版本规则保持。原 HTTP 整车替换和基础 MCP 七工具保持兼容。
 
 ## Impact
 
 - `apps/web` 增加薄 WebMCP Adapter，复用 cart commands/provider、目录与购物车页面协调；不引入统一工具框架。
 - `apps/api` 增加固定 WebMCP 意图的创建/编辑通道，共享 CartService；普通 HTTP 不接受任意来源字段；MCP_SERVICE_TOKEN 不进入浏览器。
 - `packages/contracts` 扩展必要 DTO；数据库为历史创建事实增加最小持久表达，迁移不 seed、不删卷、不从当前可变来源推导未来统计。
+- 本次修订新增普通/WebMCP 操作 HTTP 路径和单操作 DTO，WebMCP `update_cart` 从整车 items 改为单操作参数，须重新发现工具。基础 MCP `update_cart(expectedCartVersion,items)` 与现有 HTTP 整车路径不变。复用 Cart 行锁与服务端用例，不新增状态管理库、操作流水表或本次修订专属数据库迁移。
 - 相关来源不可变规则与 Technical Design §6.3 的 Pending 将由本 Change 表达差异；D-07 与 Requirements SEC-02 已记录 Human 的限定补充；整体规划批准后再传播技术基线，正式 Spec 待验收后同步，不静默覆盖历史。
 - 依据：Requirements v0.2 §6/SEC-02/METRIC-01、Product Design v0.2 Agent UI 边界、Technical Design v0.5 §5.2/6/10.2、D-07/D-22 及本轮 Human 澄清。S6、代提交、登录/支付、公网部署不在范围内。
+
+2026-10-30 Human 追加授权：按服务端单一权威简化 Web/WebMCP 购物车编辑，取代当前 Change 的客户端编辑恢复和冲突比较方案；具体边界见 Design §4。创建幂等、购买恢复与服务端交易保障保持。

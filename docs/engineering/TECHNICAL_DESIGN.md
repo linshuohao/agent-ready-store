@@ -1,5 +1,9 @@
 # Agent-Ready Store — Technical Design
 
+
+**2026-10-30 Human 逐项操作修订：** [D-24](../../DECISIONS.md#d-24--电商逐项操作与购物快照新鲜度) 与 [S5 Design §4](../../openspec/changes/s5-webmcp/design.md) 已获批准，限定替代 Web 整车保存和干净页面仅手动刷新细节：Web/WebMCP 逐项操作、同车短暂互斥、进入/返回校准；旧 HTTP/基础 MCP 兼容，目标行严格校验、旧问题行可逐条修复且未修完不可结算。D-23 的版本权威、禁止重放及交易边界继续有效；实施状态以 Tasks §6 为准。
+**2026-10-30 Human 限定修订：** [D-23](../../DECISIONS.md#d-23--服务端权威与购物车客户端简化) 批准 Web/WebMCP 购物车以服务端为准；编辑冲突或响应未知提示显式重新加载，刷新会放弃全部未保存修改，不逐项比较、合并、重放编辑或长期全局锁定。创建幂等、购买确认/未知结果恢复和服务端交易保障保持。此补充取代下文历史客户端冲突比较/编辑恢复细节，实施与验收见 [S5 Change](../../openspec/changes/s5-webmcp/design.md)。
+
 **2026-10-30限定补充（Human Accepted）：** 确认材料与Cart截止一致、同步生单及成交价格固定的定义和批准来源见[D-21追加确认](../../DECISIONS.md#s3-confirmation-lifetime-20261030)；不另设支付或独立短期确认倒计时，既有绑定/重验与整体实施授权边界保持。
 
 **S3限定补充（Human Accepted，2026-10-29）：** §8.2准入与commit边界、§8.3/§9.2结果访问与保留的相关历史Pending，按[D-21 S3限定补充](../../DECISIONS.md#s3-checkout-boundary-20261029)局部收敛；S3确认绑定与恢复/事务实施方案仍Proposed，不代表完整规划、实施或Git授权。

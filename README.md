@@ -28,11 +28,13 @@ S4测试：专用 `store_test` 库迁移后，设置 `TEST_DATABASE_URL` 串行�
 
 ## S5 WebMCP
 
+**当前已批准修订：** [电商逐项操作与按场景刷新](openspec/changes/s5-webmcp/design.md#4-电商逐项操作服务端权威与按场景刷新本次拟议修订) 已获 Human 批准并授权提交后实施；[Tasks §6](openspec/changes/s5-webmcp/tasks.md#6-电商逐项操作与按场景刷新本次修订) 记录进度。下文现有运行说明将在对应功能落地时更新，不提前宣称新操作接口、即时保存和返回前台刷新已经可用。
+
 [S5 Change](openspec/changes/s5-webmcp/proposal.md) 已由 Human 批准规划并授权实施，当前实现与验证进度见 [Tasks](openspec/changes/s5-webmcp/tasks.md)，尚未获得最终验收；S6 未实施。以下是本轮新增运行契约，不将基础 MCP 成功当作 WebMCP 验收。
 
-支持 `document.modelContext` 的浏览器按页面提供工具：目录页 `search_products`、`add_to_cart`；详情页 `get_product`、`list_product_reviews`、`add_to_cart`；活动购物车页 `update_cart`。上述页面还提供 `get_cart` 和明确恢复原意图的 `retry_cart_operation`；Checkout 仅 `get_cart`，无购买确认/提交工具。Host 发现名称可能带本次注册后缀，必须使用当前发现结果，不能缓存旧句柄。
+支持 `document.modelContext` 的浏览器按页面提供工具：目录页 `search_products`、`add_to_cart`；详情页 `get_product`、`list_product_reviews`、`add_to_cart`；活动购物车页 `update_cart`。上述页面还提供 `get_cart`；目录/详情另提供仅用于原创建重试的 `retry_cart_creation`，购物车编辑无恢复工具；Checkout 仅 `get_cart`，无购买确认/提交工具。Host 发现名称可能带本次注册后缀，必须使用当前发现结果，不能缓存旧句柄。
 
-商品详情/评论为当前页商品，不接受任意 `productId`；评论分页沿用 offset/limit/catalogRevision。搜索参数沿用目录契约，更新 URL 后返回同一次页面查询的结构化结果；导航未确认不声称已取得新结果。工具加购传 productId；编辑传 expectedCartVersion/items，操作当前车，不接收车 Token 或客户端来源/报价。返回完整服务端 CartView/报价或明确错误。脏草稿、同页忙碌、版本冲突、未知结果均不自动覆盖；恢复使用原入口、原材料和原版本，离页后旧结果不更新新车。
+商品详情/评论为当前页商品，不接受任意 `productId`；评论分页沿用 offset/limit/catalogRevision。搜索参数沿用目录契约，更新 URL 后返回同一次页面查询的结构化结果；导航未确认不声称已取得新结果。工具加购传 productId；编辑传 expectedCartVersion/items，操作当前车，不接收车 Token 或客户端来源/报价。返回完整服务端 CartView/报价或明确错误。未保存草稿时拒绝工具写入，响应期间新输入不被覆盖。编辑冲突或响应未知提示重新加载服务端数据，不比较差异、不合并、不重放，不长期锁住全局编辑；仅创建重试保留原入口、请求键和材料。离页后旧结果不更新新车。
 
 新车及成功接手编辑的普通车享 AGENT 优惠；来源升级不延长车权限，不代表购买确认。来源防伪按 Human 决定后置，本轮不额外认证，不能防止模拟 WebMCP 的 HTTP 请求；车 Cookie、同源防护、服务端计价及 Human Checkout 确认保持。无 WebMCP 时显示限制并可继续普通 Web 购物。
 
@@ -74,7 +76,7 @@ Web 默认 http://localhost:3000，API 为 http://localhost:3002/api/v1；API_PU
 
 `POST /api/v1/carts`、`GET /api/v1/carts/:id`、`PUT /api/v1/carts/:id/items`提供创建/读取/整车替换。写请求必须为JSON且Origin精确匹配`WEB_ORIGIN`；本地打开Web时也须使用该配置中的同一origin。车ID只定位，访问通过每车HttpOnly Cookie；来源、价格不能由请求伪造。输入/DTO细则见Change与`packages/contracts`。
 
-未交接Cart创建起固定24小时，到期不续期。服务端重验权限和版本；保存冲突展示完整可编辑草稿与最新已保存内容，可明确以草稿保存或放弃草稿载入最新。结果未明时显式重试原版本/原完整条目，避免覆盖其他编辑。创建响应丢失时复用原材料恢复；刷新丢失内存材料后，标签页仅保留非敏感待确认标记，提示结果无法确认，须明确重新发起才允许新建。内存材料与Cookie均丢失时无法自动恢复，不凭ID补发；重新发起可能留下无法访问的旧车。首次分享后完整24小时已由S4实现，分享通过MCP工具提供，普通Web不另增分享操作。
+未交接Cart创建起固定24小时，到期不续期。服务端重验权限和版本；按 [D-23](DECISIONS.md#d-23--服务端权威与购物车客户端简化)，保存冲突或结果未明提示“重新载入购物车（放弃未保存修改）”，刷新后以完整服务端数据替换；不比较差异、合并或重放编辑。当前请求结束即解除提交状态，服务端继续校验版本。创建响应丢失时复用原材料恢复；刷新丢失内存材料后，标签页仅保留非敏感待确认标记，提示结果无法确认，须明确重新发起才允许新建。内存材料与Cookie均丢失时无法自动恢复，不凭ID补发；重新发起可能留下无法访问的旧车。首次分享后完整24小时已由S4实现，分享通过MCP工具提供，普通Web不另增分享操作。
 
 现有数据库升级仅新增Cart表，执行`docker compose run --rm api pnpm db:migrate`，保留Inventory，不重新seed或删卷。`CART_ENCRYPTION_KEY`仅存本机安全环境，备份并跨重启保留；丢失或替换会使既有Cart凭证无法恢复。`.env.example`只含空占位。`CART_COOKIE_SECURE=false`只允许显式的本机HTTP例外，HTTPS使用true。加密实现与精确计价依赖均已锁定，运行证据以Tasks为准。
 
