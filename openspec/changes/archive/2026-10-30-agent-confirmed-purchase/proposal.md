@@ -33,7 +33,7 @@ Agent应完成选购和结算准备，Human审阅具体内容后一次点击支�
 
 ## Impact
 
-- 依据：[D-01最新直接支付决定](../../../DECISIONS.md#d01-direct-payment-20261030)、[Requirements §3.3](../../../docs/product/REQUIREMENTS.md)；本轮替代Apps/WebMCP必须批准后由Agent提交的先前规划，保留T-07基础MCP方向与历史验证事实。
+- 依据：[D-01最新直接支付决定](../../../../DECISIONS.md#d01-direct-payment-20261030)、[Requirements §3.3](../../../../docs/product/REQUIREMENTS.md)；本轮替代Apps/WebMCP必须批准后由Agent提交的先前规划，保留T-07基础MCP方向与历史验证事实。
 - 复用CartService、计价、checkoutEpoch、锁后准入、唯一订单和库存事务；准备记录及确认Adapter仍待实施，不新增独立订单/支付服务。
 - Apps/WebMCP需完成受保护支付请求、原地结果与未知恢复；准备阶段消息仍可选，支付阶段不发送购买接续消息，不把“没有Agent接续依赖”写成无Host兼容要求或百分之百保证。
 - 基础MCP限制见[Design §4](design.md#4-确认边界与基础mcp限制)。HTTPS不自动修复会话关联；STDIO只完成隔离协议测试，尚未批准配置切换或通过桌面UI验收。

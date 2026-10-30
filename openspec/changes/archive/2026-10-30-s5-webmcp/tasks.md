@@ -1,8 +1,10 @@
 # Tasks
 
+> 2026-10-30 归档收尾：Human 已授权保留已披露缺口归档并本地合入；详见末尾记录。历史任务勾选不改写。
+
 **本次修订：Approved Planning — 电商逐项操作与按场景刷新，见 §6。** 2026-10-30 Human 明确“批准当前修订版，提交之后开始实施”，批准具体修订版并授权提交规划后实施。原 §1～5 勾选与运行结果仅对应当时实施，不能视为 §6 已实现。
 
-状态：规划已批准，已授权提交及实施（2026-10-30）；直接依据为 Human“OK，批准，然后提交并且开始实施”。来源边界见 [D-07 S5 补充](../../../DECISIONS.md#s5-webmcp-source-20261030)。不包含 Push、Merge、发布或最终验收授权。
+状态：规划已批准，已授权提交及实施（2026-10-30）；直接依据为 Human“OK，批准，然后提交并且开始实施”。来源边界见 [D-07 S5 补充](../../../../DECISIONS.md#s5-webmcp-source-20261030)。不包含 Push、Merge、发布或最终验收授权。
 
 ## 1. 规划批准与运行能力预检
 
@@ -111,3 +113,8 @@
 - **追加 Review 修复（2026-10-30）：** 已复现并修复两项 Findings：Human/工具编辑收到 `CART_COMPLETED` 后转入已有完成车视图、阻止继续编辑/结账并提供原订单入口；创建恢复在途时再次调用明确返回 `CART_BUSY`，不额外请求且保留原创建材料，并收紧返回类型以排除空结果。
 - **定向证据：** 桌面/移动六项反例修复前按预期失败、修复后6/6通过；`WEB_BASE_URL=http://localhost:3000 pnpm exec playwright test e2e/cart-operations.spec.ts e2e/webmcp.spec.ts e2e/cart.spec.ts e2e/cart-review-fixes.spec.ts --max-failures=1` 为84/84通过，Commands单测4/4、Web typecheck/lint、受改文件Prettier与Diff检查通过。仅修改前端及回归，后端不变量复用本 Change 已有证据，未重跑DB或生产构建。
 - **定向复核：** 全新只读 Reviewer Helmholtz 核对四文件修复及相关生命周期，无新增可行动问题；运行验证由实现者执行，Reviewer未自行重跑。4.2/4.4/6.7中的真实人工接续和Human最终验收继续待办，本记录不代表验收、归档或合并授权。
+
+
+## 本轮归档与剩余工作 — 2026-10-30
+
+随当前 agent-confirmed-purchase 的 Human 归档合入授权收尾。保留功能与 UI 优先购买增量一并接受代码交付；4.2/4.4/6.7中缺少的真实Host/人工接续证据保留为未通过事实，不补勾。原普通Checkout接续目标由 agent-confirmed-purchase 的网页直接支付/只读恢复替代，后续实际验收按新契约执行。非重叠 shopping-cart delta 已单独同步，webmcp-shopping 由新Change完整规格接管；归档跳过旧重叠delta，避免反向覆盖。

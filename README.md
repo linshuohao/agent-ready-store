@@ -2,7 +2,9 @@
 
 ## 当前购买增量（2026-10-30）
 
-[agent-confirmed-purchase](openspec/changes/agent-confirmed-purchase/proposal.md) 按Human授权先实现Apps/WebMCP与共享交易核心，基础MCP保持原生确认Host阻塞；本节替代下文S5/S6中正常购买外跳Checkout及“无新增购买工具”的现状描述，旧验收事实保留。实施与验证见[Tasks](openspec/changes/agent-confirmed-purchase/tasks.md)，真实Host/Human最终验收尚未完成，未归档。
+本轮收尾：`agent-confirmed-purchase`、S5、S6已于2026-10-30按Human授权归档，六份正式规格已同步；下文旧阶段描述保留历史语境，当前状态以本节及归档Tasks末尾为准。Apps历史准备重挂载P2已修复并独立复核；最终完整Review无新增发现，本地测试89通过、76环境依赖跳过。未完成的基础MCP原生确认/实施、真实Host/Human购买与显式分享验收仍为后续工作，归档不代表三入口全部交付。
+
+[agent-confirmed-purchase](openspec/changes/archive/2026-10-30-agent-confirmed-purchase/proposal.md) 按Human授权先实现Apps/WebMCP与共享交易核心，基础MCP保持原生确认Host阻塞；本节替代下文S5/S6中正常购买外跳Checkout及“无新增购买工具”的现状描述，旧验收事实保留。实施与验证见[Tasks](openspec/changes/archive/2026-10-30-agent-confirmed-purchase/tasks.md)，Human已授权保留已披露缺口归档并本地合入；真实Host/Human最终验收及基础MCP原生确认仍未完成。
 
 - Apps在原卡片核对并准备购买，完整摘要后由Human点击“确认支付”，Bridge直接下单并原地显示结果。WebMCP新增当前车prepare_checkout、确认页get_purchase_status/wait_for_purchase，网页点击确认直接下单。支付均不依赖Agent消息或接续。
 - MCP保留原七工具和原schema/输出，新增五个规划工具名称；基础MCP目标prepare_checkout只给报价预览，不创建review，request_purchase_confirmation/submit_order/cancel_purchase明确返回NATIVE_CONFIRMATION_UNAVAILABLE。get_purchase_status当前只支持Apps准备。app-only的pay_purchase/cancel_app_purchase/get_order_link靠用途绑定材料与车权限鉴权，visibility不是安全边界。不能将工具已发现视为基础MCP购买已实现。
@@ -43,9 +45,9 @@ S4测试：专用 `store_test` 库迁移后，设置 `TEST_DATABASE_URL` 串行�
 
 ## S5 WebMCP
 
-**当前已批准修订：** [电商逐项操作与按场景刷新](openspec/changes/s5-webmcp/design.md#4-电商逐项操作服务端权威与按场景刷新本次拟议修订) 已在本地实施；[Tasks §6](openspec/changes/s5-webmcp/tasks.md#6-电商逐项操作与按场景刷新本次修订) 记录实际验证和剩余验收。
+**当前已批准修订：** [电商逐项操作与按场景刷新](openspec/changes/archive/2026-10-30-s5-webmcp/design.md#4-电商逐项操作服务端权威与按场景刷新本次拟议修订) 已在本地实施；[Tasks §6](openspec/changes/archive/2026-10-30-s5-webmcp/tasks.md#6-电商逐项操作与按场景刷新本次修订) 记录实际验证和剩余验收。
 
-[S5 Change](openspec/changes/s5-webmcp/proposal.md) 已由 Human 批准规划并授权实施，当前实现与验证进度见 [Tasks](openspec/changes/s5-webmcp/tasks.md)，尚未获得最终验收；S6 实施中，状态见下方 MCP Apps。以下是本轮新增运行契约，不将基础 MCP 成功当作 WebMCP 验收。
+[S5 Change](openspec/changes/archive/2026-10-30-s5-webmcp/proposal.md) 已由 Human 批准规划并授权实施，当前实现与验证进度见 [Tasks](openspec/changes/archive/2026-10-30-s5-webmcp/tasks.md)，尚未获得最终验收；S6 实施中，状态见下方 MCP Apps。以下是本轮新增运行契约，不将基础 MCP 成功当作 WebMCP 验收。
 
 支持 `document.modelContext` 的浏览器按页面提供工具：目录页 `search_products`、`add_to_cart`；详情页 `get_product`、`list_product_reviews`、`add_to_cart`；活动购物车页 `update_cart`。上述页面还提供 `get_cart`；目录/详情另提供仅用于原创建重试的 `retry_cart_creation`，购物车编辑无恢复工具；Checkout 仅 `get_cart`，无购买确认/提交工具。Host 发现名称可能带本次注册后缀，必须使用当前发现结果，不能缓存旧句柄。
 
@@ -62,7 +64,7 @@ S5 隔离 DB 测试为 `apps/api/test/cart/webmcp-db.test.ts`，及 `apps/api/te
 
 ## S6 MCP Apps
 
-[S6 Change](openspec/changes/s6-mcp-apps/proposal.md) 已获实施授权，进度与真实 Host 限制见 [Tasks](openspec/changes/s6-mcp-apps/tasks.md)。当前 Host 的 UI、输入/结果和 Bridge 查询已实测；localhost 外链虽返回成功但未实际打开，Human 授权先实施、交付前补验，不能视为完整验收。
+[S6 Change](openspec/changes/archive/2026-10-30-s6-mcp-apps/proposal.md) 已获实施授权，进度与真实 Host 限制见 [Tasks](openspec/changes/archive/2026-10-30-s6-mcp-apps/tasks.md)。当前 Host 的 UI、输入/结果和 Bridge 查询已实测；localhost 外链虽返回成功但未实际打开，Human 授权先实施、交付前补验，不能视为完整验收。
 
 六个资源为 `ui://store/{search-products,get-product,create-cart,get-cart,update-cart,create-handoff}-v1.html`，均为 `text/html;profile=mcp-app`。它们共用 React 单文件代码，各自内置入口工具名；原七工具 schema、报价、权限和订单逻辑保持。基础 MCP 不支持 Apps 时仍返回原文本与结构化结果；评论工具不关联视图。
 

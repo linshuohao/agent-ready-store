@@ -6,7 +6,7 @@
 
 ## Context
 
-依据[最新D-01](../../../DECISIONS.md#d01-direct-payment-20261030)及Proposal。既有CartService.review/submit已提供浏览器绑定确认、checkoutEpoch、报价重验与订单/库存事务；复用其能力，不复制业务核心。Apps卡片展示/直接切页/Bridge只读调用和准备消息接续已有部分Host证据；真实购买尚无实现。基础MCP form能力声明与后续工具会话关联尚未接通，相关实验保留于§4.1/§4.2。
+依据[最新D-01](../../../../DECISIONS.md#d01-direct-payment-20261030)及Proposal。既有CartService.review/submit已提供浏览器绑定确认、checkoutEpoch、报价重验与订单/库存事务；复用其能力，不复制业务核心。Apps卡片展示/直接切页/Bridge只读调用和准备消息接续已有部分Host证据；真实购买尚无实现。基础MCP form能力声明与后续工具会话关联尚未接通，相关实验保留于§4.1/§4.2。
 
 ## Goals / Non-Goals
 
@@ -63,7 +63,7 @@ WebMCP准备前无审阅副作用地建立checkout_session HttpOnly Cookie并完
 
 **已获Human方向批准的方案（T-07，2026-10-30）：** 基础MCP采用Host原生form elicitation承载完整结算摘要与Human明确支付确认，不使用外部页面或Apps；为此改造现有MCP传输以保存能力协商和确认请求/响应关联（会话/SSE等具体最小实现须经隔离验证）。[官方App Server文档](https://learn.chatgpt.com/docs/app-server#mcp-server-elicitation-requests)有该交互协议，但不证明当前实际连接已支持，不能只凭文档勾选真实Host验收。引入原生确认不授予模型批准工具，拒绝/取消/断连不批准；会话只持协议上下文，Cart期限和数据库授权/订单事实不由它延长或替代。
 
-Human已在本聊天回复“同意”，接受上述原生表单及必要会话/传输支持方向，见[T-07](../../../docs/engineering/ENGINEERING_DECISIONS.md#t-07--基础mcp原生确认与协议会话)；不能为满足有条件实施而自行将Apps卡片当成基础MCP、退回外部Checkout或只信模型的“已确认”。按该方向先做无购买副作用的原生确认探针，核对当前Host能否显示完整摘要并送回接受/拒绝/取消及上下文，再收敛schema/会话恢复、完成Review/checkpoint后进入正式业务实施。不再重复请求本方向批准；实际Host尚未通过时仍不得宣称集中验证全部通过。
+Human已在本聊天回复“同意”，接受上述原生表单及必要会话/传输支持方向，见[T-07](../../../../docs/engineering/ENGINEERING_DECISIONS.md#t-07--基础mcp原生确认与协议会话)；不能为满足有条件实施而自行将Apps卡片当成基础MCP、退回外部Checkout或只信模型的“已确认”。按该方向先做无购买副作用的原生确认探针，核对当前Host能否显示完整摘要并送回接受/拒绝/取消及上下文，再收敛schema/会话恢复、完成Review/checkpoint后进入正式业务实施。不再重复请求本方向批准；实际Host尚未通过时仍不得宣称集中验证全部通过。
 
 实际Host补证（2026-10-30）：重连时Codex客户端0.166.0-alpha.5.1已声明form/url elicitation；但本聊天随后的tools/call与resources/read均未携带Mcp-Session-Id（协议头2025-06-18），未关联到新初始化的Server，原生确认探针因此明确拒绝发起。脚本客户端的会话/SSE、accept/decline/cancel、缺能力及并发响应隔离通过，不能代替实际Host表单验收。当前无法区分旧连接复用与Host会话转发问题；保留T-07批准、不重复要求Human重连，不改用外部页面/Apps或按服务Token猜测确认会话。临时编译探针已按备份哈希恢复，未改业务源码/数据库。真实Host确认仍为基础MCP购买能力的阻塞，不再作为Apps/WebMCP支付后下单的Agent接续依赖。
 

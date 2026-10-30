@@ -40,4 +40,4 @@ enabled_tools = ["search_products", "get_product", "list_product_reviews", "crea
 
 若連線失敗，先確認 Docker API 健康、URL 埠號、Token 環境設定及 Host 是否可連到同一台機器的 loopback；不要移除伺服器端身份或 Host 檢查作為繞過方式。
 
-支持 MCP Apps 的 Host 可加载六个固定版本资源；初次连接或 UI 元数据更改后须刷新连接，卡片可展开到侧边栏。Host 无 Apps 支持时保留七工具。UI、Bridge 和 localhost 外链须分别验证，不以卡片出现或 openLink 返回成功推断外部页面实际打开。当前实测限制见 [S6 Tasks](../../openspec/changes/s6-mcp-apps/tasks.md)。
+支持 MCP Apps 的 Host 可加载六个固定版本资源；初次连接或 UI 元数据更改后须刷新连接，卡片可展开到侧边栏。Host 无 Apps 支持时保留七工具。UI、Bridge 和 localhost 外链须分别验证，不以卡片出现或 openLink 返回成功推断外部页面实际打开。当前实测限制见 [S6 Tasks](../../openspec/changes/archive/2026-10-30-s6-mcp-apps/tasks.md)。

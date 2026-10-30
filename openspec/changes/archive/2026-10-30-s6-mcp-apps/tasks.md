@@ -1,5 +1,7 @@
 # Tasks
 
+> 2026-10-30 归档收尾：Human 已授权保留已披露缺口归档并本地合入；详见末尾记录。历史任务勾选不改写。
+
 状态：Approved Planning / S6 实施已授权（2026-10-30）。Human 要求提交当前规划后开始实施；进度以以下勾选和实际证据为准。先按 Git Checkpoint Policy 完成本 Change 精确路径的规划提交与 Guard，再执行兼容性前置任务；Push、Merge、发布及最终验收仍须对应授权。
 
 ## 1. 兼容性与真实 Host 验证
@@ -93,10 +95,15 @@ Host 刷新后再次查询成功，原生资源发现列出 S6 Host Probe；但 
 
 2026-10-30 需求调整：Human确认两步购买并明确扩展至WebMCP和基础MCP，已同步D-01/Requirements与设计、工程、S5/S6范围提示。仅需求获确认；跨入口购买授权/提交机制仍待统一OpenSpec规划，旧11/14仅代表原S6实现进度，不能代表新增需求完成，不勾销外链与人工验收缺口。现有白名单修改保留，未追加业务代码或提交。
 
-统一两步购买的Proposal/Design/三份delta Spec/Tasks草稿已建立于[agent-confirmed-purchase](../agent-confirmed-purchase/proposal.md)，等待规划Review与Human批准；原S6进度和未通过事实不变。
+统一两步购买的Proposal/Design/三份delta Spec/Tasks草稿已建立于[agent-confirmed-purchase](../2026-10-30-agent-confirmed-purchase/proposal.md)，等待规划Review与Human批准；原S6进度和未通过事实不变。
 
 ## Workflow follow-up
 验收车重启恢复材料（非车能力）：原 createRequestId 为 000a6265-c6ff-482e-a90b-f58cb89510fc，原 items 为 P005×1、P022×1；仅可在同一已认证服务命名空间用完全相同原材料幂等重取原车，不能新建请求键替代。车Token与交接URL不落盘。
 
 - Human 验收及对应授权后同步正式 `mcp-app-shopping` Spec、归档当前 Change；Git 提交/Push/Merge按独立授权，不把文件齐全当成批准。
 - S5 的真实人工接续、最终验收与归档沿原 Change 处理；完整交付前核对 S4/S5/S6 真实证据及保留限制，最终 Showcase 另按授权开展。
+
+
+## 本轮归档与剩余工作 — 2026-10-30
+
+随当前 agent-confirmed-purchase 的 Human 归档合入授权收尾。保留展示/编辑/Bridge能力与 UI 优先购买增量一并接受代码交付；1.2/5.2中真实Host外链失败及未完成购买证据保留，不记为成功。原正常外部Checkout旅程由新Change内嵌支付替代；显式分享外链与真实Host/Human购买验收仍保留限制，5.4的归档合入授权不等于这些运行检查已执行。mcp-app-shopping正式同步由新Change负责，归档不重放旧delta。
