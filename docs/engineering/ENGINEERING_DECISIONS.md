@@ -350,7 +350,7 @@ Human 已通过整体架构，授权收敛 [Technical Design v0.2（历史记录
 | T-10 | T-05按整车确认与支付幂等的具体载体 | 后端权威、短事务、幂等、并发校验 |
 | T-11 | 无部署选型替换；收敛各端复用范围 | T-01薄模块化单体、T-04 Monorepo/contracts、T-06最小闭环 |
 
-旧条目不整体标Superseded，因为其余范围仍有效。产品规则D-01/D-04～07/D-21～24的未来限定传播由当前Change追踪，不能用本技术记录静默覆盖原批准历史。
+旧条目不整体标Superseded，因为其余范围仍有效。产品规则D-01/D-03～07/D-21～24的限定传播现见[2026-10-31记录](../../DECISIONS.md#checkout-lifecycle-20261031)与Requirements/Product Design v0.3 Draft；审批及审查由当前Change追踪，不用技术记录静默覆盖原批准历史。2026-10-31 Human确认本轮不新增停售/禁售功能，关闭仅CANCELLED/EXPIRED；SALE_BLOCKED保留未来条件性讨论。
 
 ### T-08 — Cart持续选购，Order承载独立交易生命周期
 

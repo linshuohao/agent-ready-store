@@ -1,10 +1,10 @@
 # Proposal
 
-状态：**Draft v0.12 / 下一里程碑设计草案，未批准实施**。2026-10-30，Asia/Shanghai。
+状态：**Planning Draft v0.13 / 下一里程碑规划，未批准实施**。2026-10-31，Asia/Shanghai。
 
 Human授权本轮整理设计，不开发。完整目标方案见[Technical Design](../../../docs/engineering/TECHNICAL_DESIGN.md)，变更级细节见[Design](design.md)：持久单车、一车多订单、整行选择、Agent生单后Human模拟支付；生单固定金额并预留库存15分钟，单车待支付上限env默认10。车和订单不设查看期限。
 
-本Change只包含Proposal/Design草案。目录名用于追踪，不表示存在Checkout实体；Delta Specs/Tasks尚未编写，不使用skip_specs绕过规格。权限、凭证、Review、独立Session实体、Redis、真实支付和旧流程兼容均不在本轮实现范围内。
+本Change包含Proposal/Design、12份Delta Specs及Tasks规划草案。目录名用于追踪，不表示存在Checkout实体；产物齐全不代表独立Planning Review、Human批准或实施授权完成，不使用skip_specs绕过规格。权限、凭证、Review、独立Session实体、Redis、真实支付和旧流程兼容均不在本轮实现范围内。
 
 ## Why
 
@@ -23,13 +23,13 @@ Human授权本轮整理设计，不开发。完整目标方案见[Technical Desi
 
 取消整车结算占用、车级确认失效链和全局交互互斥；必要一致性收敛到生单短事务、单订单状态转移与共享库存。锁的删减与保留边界见 Design §6.1；不把库存预留解释为持有15分钟数据库锁。
 
-本轮补齐四个一致性要求：车操作幂等；多工具准备完整目标后才能生单；车操作与订单操作显式定位目标；按cartId/version处理迟到响应。删除purchaseHash和独立get_order_link工具，保留创建请求载荷校验，订单响应直接提供入口。商品停售仅适配既有状态，不扩建管理系统。
+本轮补齐四个一致性要求：车操作幂等；多工具准备完整目标后才能生单；车操作与订单操作显式定位目标；按cartId/version处理迟到响应。删除purchaseHash和独立get_order_link工具，保留创建请求载荷校验，订单响应直接提供入口。本轮不新增停售/禁售状态及更新入口；相关设想仅保留为未来条件性设计。
 
 生单只接收一份selectedItems，expectedQuantity仅断言车内完整数量。订单迟到响应不能覆盖已提交终态，本地倒计时不代表已关闭；取消与到期按服务端锁后时间统一判定，既有终态和关闭原因不改写。接口、事务及验收场景见Design §6、§8、§12。
 
 ## Capabilities
 
-以下为拟影响范围，尚未生成 Delta Specs。支付前已有订单是新业务含义，不能只改命名而保留“支付时创建 Order”的旧契约。
+以下能力均已在本Change生成Delta Specs，等待审查与批准；未同步正式Spec。支付前已有订单是新业务含义，不能只改命名而保留“支付时创建 Order”的旧契约。
 
 ### New Capabilities
 
@@ -53,8 +53,9 @@ Human授权本轮整理设计，不开发。完整目标方案见[Technical Desi
 
 ## Impact
 
-- 基线：独立分支 `codex/checkout-lifecycle-design`，从 `main@0ece77a` 开始；原始工作区的 `66b2e0a` 仅到 S5，不能描述当前 Apps/UI 支付现状。
+- 本轮规划基于 `main@436ac33`，隔离分支 `codex/checkout-lifecycle-planning`；旧设计起点保留在Git历史，本轮代码观察以当前主线为准。
 - 范围：Prisma Order/Inventory/Review 模型及迁移、CartService/Controller、Catalog 可售投影、共享 contracts、MCP adapter、Web 购物车/支付页、WebMCP 页面工具、Apps controller/view 和相关验证。见 Design §2。
 - 复用 Next.js/NestJS/PostgreSQL 与共享计价；不预建消息队列、库存服务、账户系统或新状态管理框架。释放任务采用现有服务内的数据库协调短事务。
-- 涉及 D-01、D-04～D-07、D-21～D-24、T-05/T-07 及基线的限定变更。已采用目标与后续验证工作分别记录，正式生效前完成对应 Decision/Baseline/Delta Specs，保留历史批准与归档原文。
-- 当前只交付设计文档；技术方案与T-08～T-11已整合，产品基线传播及Delta Specs/Tasks仍待完成。无业务代码、迁移执行、运行购买或发布。上一轮v0.11的Git授权保留历史范围；Human于2026-10-31另行授权本次文档整体检查无阻塞后提交并合并，不包含Push；不启动实施或将Change标记完成。基础MCP网页接手与真实Human验收仍需未来实测。
+- 涉及 D-01、D-04～D-07、D-21～D-24、T-05/T-07 及基线的限定变更。已采用目标与后续验证工作分别记录，Decision/Baseline限定传播及Delta Specs已成稿，正式生效前完成相应审查/批准，保留历史批准与归档原文。
+- 本轮仅交付规划；[Tasks](tasks.md)列出基线传播、独立审查、实施、验证和清理切换顺序，不授权开发、真实库清理或发布。Human于2026-10-31明确“那就提交”，授权提交本次规划与基线文档；不包含合并、推送或实施，不继承上一轮文档整理的其他授权。基础MCP网页接手与真实Human验收仍待实测。
+- 2026-10-31 Human确认本轮不新增停售/禁售功能；`SALE_BLOCKED`仅为未来条件性规则，不进入本轮字段或功能实现。现有售罄/异常库存/零价不能自动解释为禁售。
