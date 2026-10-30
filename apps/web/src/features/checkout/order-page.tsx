@@ -1,5 +1,7 @@
 'use client';
 import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { MoneyBreakdown } from '@/features/cart/money-breakdown';
 import { CartOrders } from '@/features/cart/cart-orders';
@@ -15,6 +17,16 @@ export function OrderPage({
   const page = useOrderPage(id),
     cart = useCartOperations();
   const { order } = page;
+  const router = useRouter();
+  const [confirmation, setConfirmation] = useState<{
+    currentId: string | null;
+  } | null>(null);
+  const [resumeError, setResumeError] = useState('');
+  const { ready, currentCartId, selectCart } = cart;
+  const sourceCart = order?.cartId;
+  useEffect(() => {
+    if (!share && ready && !currentCartId && sourceCart) selectCart(sourceCart);
+  }, [share, ready, currentCartId, sourceCart, selectCart]);
   if (page.missing)
     return (
       <main id="main" tabIndex={-1} className="commerce-page">
@@ -25,7 +37,7 @@ export function OrderPage({
         <Button disabled={page.loading} onClick={() => void page.load()}>
           重新查詢訂單
         </Button>
-        <Link href="/cart">前往購物車</Link>
+        {!share && <Link href="/cart">前往購物車</Link>}
       </main>
     );
   if (!order)
@@ -179,10 +191,61 @@ export function OrderPage({
                 繼續購物
               </Link>
             )}
-            {!share && !sameCart && <Link href="/cart">返回目前購物車</Link>}
+            {!share && !sameCart && (
+              <>
+                <Button
+                  disabled={!cart.ready || cart.busy}
+                  onClick={() =>
+                    setConfirmation({ currentId: cart.currentCartId })
+                  }
+                >
+                  接續這次購物
+                </Button>
+                <Link href="/cart">返回目前購物車</Link>
+              </>
+            )}
+            {!share && (
+              <Link href={`/orders/${id}?view=share`} prefetch={false}>
+                分享這筆訂單
+              </Link>
+            )}
           </div>
         </aside>
       </section>
+      {!share && confirmation && (
+        <section
+          aria-label="接續確認"
+          aria-labelledby="resume-heading"
+          className="notice"
+        >
+          <h2 id="resume-heading">接續訂單的購物車？</h2>
+          <p>
+            將接續這筆訂單的來源購物車。目前的購物車資料會保留，不會合併或刪除。
+          </p>
+          <Button
+            onClick={() => {
+              if (cart.resumeCart(order.cartId, confirmation.currentId)) {
+                setConfirmation(null);
+                router.push(`/cart/${order.cartId}`);
+              } else
+                setResumeError(
+                  '目前購物車或操作已改變，請先完成原操作後再確認。',
+                );
+            }}
+          >
+            確認接續原購物車
+          </Button>
+          <Button
+            onClick={() => {
+              setConfirmation(null);
+              setResumeError('');
+            }}
+          >
+            保留目前購物車
+          </Button>
+          {resumeError && <p role="alert">{resumeError}</p>}
+        </section>
+      )}
       {!share && sameCart && (
         <CartOrders
           key={order.cartId}

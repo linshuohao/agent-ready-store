@@ -187,6 +187,7 @@ export class CartCommands {
     }
   }
 }
+export const lastCreatedOrderKey = (id: string) => `store.order.created.${id}`;
 export const pendingOrderKey = (id: string) => `store.order.create.${id}`;
 export async function createCartOrder(
   storage: Storage,
@@ -217,6 +218,8 @@ export async function createCartOrder(
   );
   if (response.kind !== 'unknown')
     try {
+      if (response.kind === 'success')
+        storage.setItem(lastCreatedOrderKey(id), response.data.order.orderId);
       storage.removeItem(key);
     } catch {
       return fail('LOCAL_STORAGE_UNAVAILABLE');

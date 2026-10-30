@@ -8,6 +8,7 @@ import {
   useCallback,
 } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import {
   cartIdInput,
   type ShoppingCartView,
@@ -17,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { CartFeedback } from './feedback';
 import {
   CartCommands,
+  createCartOrder,
   currentCartKey,
   readCart,
   acceptCart,
@@ -25,12 +27,18 @@ import {
 } from './lifecycle-commands';
 import type { EditResult, OperationIntent } from './commands';
 type Context = {
+  orderRevision: number;
+  createOrder: (
+    id: string,
+    input?: Parameters<typeof createCartOrder>[2],
+  ) => ReturnType<typeof createCartOrder>;
   currentCartId: string | null;
   view: ShoppingCartView | null;
   ready: boolean;
   busy: boolean;
   pending: boolean;
   selectCart: (id: string) => boolean;
+  resumeCart: (id: string, expectedCurrent: string | null) => boolean;
   isCurrentCart: (id: string) => boolean;
   install: (cart: ShoppingCartView) => void;
   setDraftGuard: (id: string, dirty: boolean, needsReload?: boolean) => void;
@@ -63,6 +71,7 @@ const failure = (code: string) => ({
   error: { code },
 });
 export function CartProvider({ children }: { children: React.ReactNode }) {
+  const orderPage = usePathname().startsWith('/orders/');
   const current = useRef<string | null>(null),
     snapshot = useRef<ShoppingCartView | null>(null),
     commands = useRef<CartCommands | null>(null),
@@ -70,6 +79,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     draft = useRef<{ id: string; dirty: boolean; reload: boolean } | null>(
       null,
     );
+  const [orderRevision, setOrderRevision] = useState(0);
   const [currentCartId, setId] = useState<string | null>(null),
     [view, setView] = useState<ShoppingCartView | null>(null),
     [ready, setReady] = useState(false),
@@ -102,6 +112,34 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
       current.current = id;
       setId(id);
+      refreshPending();
+      return true;
+    },
+    [refreshPending],
+  );
+  const resumeCart = useCallback(
+    (id: string, expectedCurrent: string | null) => {
+      if (
+        !cartIdInput.safeParse(id).success ||
+        current.current !== expectedCurrent ||
+        active.current ||
+        (draft.current?.id === current.current && draft.current.dirty)
+      )
+        return false;
+      try {
+        if (localStorage.getItem(currentCartKey) !== expectedCurrent)
+          return false;
+        localStorage.setItem(currentCartKey, id);
+      } catch {
+        setMessage(cartFailure('LOCAL_STORAGE_UNAVAILABLE'));
+        return false;
+      }
+      current.current = id;
+      snapshot.current = null;
+      draft.current = null;
+      setId(id);
+      setView(null);
+      setMessage('');
       refreshPending();
       return true;
     },
@@ -213,6 +251,28 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }),
     );
   }
+  async function createOrder(
+    id: string,
+    input?: Parameters<typeof createCartOrder>[2],
+  ) {
+    if (!ready || active.current) return failure('CART_BUSY');
+    if (current.current !== id) return failure('STALE_CONTEXT');
+    if (
+      input &&
+      draft.current?.id === id &&
+      (draft.current.dirty || draft.current.reload)
+    )
+      return failure('UNSAVED_DRAFT');
+    active.current = true;
+    setBusy(true);
+    try {
+      return await createCartOrder(localStorage, id, input);
+    } finally {
+      active.current = false;
+      setBusy(false);
+      setOrderRevision((n) => n + 1);
+    }
+  }
   const retry = () =>
     run(() =>
       commands.current!.retry(
@@ -224,12 +284,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   return (
     <CartContext.Provider
       value={{
+        orderRevision,
+        createOrder,
         currentCartId,
         view,
         ready,
         busy,
         pending,
         selectCart,
+        resumeCart,
         install,
         isCurrentCart: (id) => current.current === id,
         setDraftGuard,
@@ -242,7 +305,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         retryTool: async () => failure('CHECKOUT_FLOW_REPLACED'),
       }}
     >
-      {message && (
+      {!orderPage && message && (
         <CartFeedback
           success={message === '已儲存購物車'}
           onDismiss={() => setMessage('')}
@@ -255,7 +318,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           )}
         </CartFeedback>
       )}
-      {pending && (
+      {!orderPage && pending && (
         <section className="notice" aria-label="購物車恢復">
           <p>上次購物車操作結果未確認，請使用原請求恢復。</p>
           <Button disabled={busy} onClick={() => void retry()}>

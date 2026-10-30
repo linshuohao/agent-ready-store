@@ -11,8 +11,8 @@ import {
   quoteCart,
   acceptCart,
   cartFailure,
-  createCartOrder,
   pendingOrderKey,
+  lastCreatedOrderKey,
 } from './lifecycle-commands';
 export function useCartPage(id?: string) {
   const operations = useCartOperations();
@@ -116,6 +116,21 @@ export function useCartPage(id?: string) {
     [id, accept, setDraftGuard],
   );
   useEffect(() => {
+    let live = true;
+    queueMicrotask(() => {
+      if (!live || !id) return;
+      try {
+        setUnknownOrder(localStorage.getItem(pendingOrderKey(id)) !== null);
+        setCreatedId(localStorage.getItem(lastCreatedOrderKey(id)));
+      } catch {
+        setError(cartFailure('LOCAL_STORAGE_UNAVAILABLE'));
+      }
+    });
+    return () => {
+      live = false;
+    };
+  }, [id, operations.orderRevision]);
+  useEffect(() => {
     alive.current = true;
     let active = true;
     queueMicrotask(() => {
@@ -124,6 +139,7 @@ export function useCartPage(id?: string) {
       void load(true);
       try {
         setUnknownOrder(localStorage.getItem(pendingOrderKey(id)) !== null);
+        setCreatedId(localStorage.getItem(lastCreatedOrderKey(id)));
       } catch {
         setError(cartFailure('LOCAL_STORAGE_UNAVAILABLE'));
       }
@@ -289,8 +305,7 @@ export function useCartPage(id?: string) {
     setWorking(true);
     sequence.current++;
     try {
-      const result = await createCartOrder(
-        localStorage,
+      const result = await operations.createOrder(
         id,
         retry
           ? undefined

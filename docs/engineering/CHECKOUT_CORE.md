@@ -78,3 +78,12 @@ OrderView 保存唯一明细/金额快照，状态为 CHECKOUT / PAID，关闭�
 - 旧`/checkout/{cartId}`及`/order-details/{orderId}`只显示退出提示，不兑换fragment、不加载旧购买控制器。`/orders`动态参数仅作orderId查询，不按cartId映射；不存在时提供新流程提示及重查。旧控制器文件仍供后续迁移清理核对，不再由这些路由挂载。
 
 浏览器回归：`CHECKOUT_INTEGRATION=1 WEB_BASE_URL=http://127.0.0.1:3004 pnpm exec playwright test e2e/order-lifecycle.spec.ts e2e/cart-lifecycle.spec.ts --workers=1`；环境同上，仅store_test。订单用例包含真实HTTP生单、UI支付/取消、同ID固定摘要、继续购物/多单、旧路由无写入、丢响应刷新、技术故障/存储失败、本地到期，以及取消未知/已支付后404两项回归。浏览器故障注入不替代共享核心已执行的真实PostgreSQL事务与竞态验证，也不代表真实Human点击验收。
+
+
+## 订单恢复与上下文接续（Tasks 5.4～5.5）
+
+`OrderMemory`的浏览器Provider持有按orderId隔离的`OrderCommands`查询副本与订阅，SSR无模块级交易状态。页面卸载只停止观察，不丢弃已发动作结果；晚到支付仍写入原单，不抢新页面。读取序号拒绝旧查询，已提交终态不回退，矛盾终态保留已知结果、停用动作并至多自动重查一次；派生/本地到期不是提交终态。刷新从原单与`store.order.pending.{orderId}`恢复，未知只查、重试限原操作。
+
+创建请求由CartProvider协调同车在途状态；完成后通知当前车页重读恢复材料，`store.order.created.{cartId}`保留原单入口，包含离开后提前返回的顺序。通知不把旧Cart快照装进新草稿、不覆盖当前车、不导航。输入/创建请求键仍在写前保存。
+
+本人订单无当前车时接续原车；同车继续购物；跨车先看单，点击接续再明确确认，确认时核对原指针和在途/草稿，保留另一车数据。单订单分享由显式链接打开，支付仍需点击；分享无车/兄弟单/取消入口、不自动采用原车，并隐藏全局车提示，刷新亦不改变指针。这是Demo展示约定，不是权限隔离。
