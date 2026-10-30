@@ -1,266 +1,263 @@
 import { Button } from '@base-ui/react/button';
 import { Input } from '@base-ui/react/input';
-import {
-  MoneyBreakdown,
-  PurchaseSummary,
-  ProductPresentation,
-} from '@store/commerce-ui';
+import { MoneyBreakdown, ProductPresentation } from '@store/commerce-ui';
 import type { ViewState } from './controller';
 export interface Actions {
   change(id: string, value: string): void;
+  save(id: string): void;
   remove(id: string): void;
-  save(): void;
-  reload(discard: boolean): void;
+  add(id: string): void;
+  select(id: string, value: boolean): void;
+  selectAll(value: boolean): void;
+  reload(discard?: boolean): void;
   checkout(): void;
+  pay(): void;
+  cancel(): void;
+  retry(): void;
   share(): void;
-  openOrderDetails(): void;
-  returnToCart(): void;
-  pay(retry?: boolean): void;
-  cancelPurchase(): void;
-  recoverPurchase(): void;
+  openOrder(id: string): void;
+  listOrders(offset?: number): void;
+  continueShopping(confirm?: boolean): void;
+  dismissContinue(): void;
 }
 export function StoreView({
-  state,
-  actions,
+  state: s,
+  actions: a,
 }: {
   state: ViewState;
   actions: Actions;
 }) {
-  const { cart, order } = state;
-  const blocked = state.busy || !state.editable || state.needsRefresh;
-  const lines =
-    state.draft ??
-    cart?.items.map((x) => ({
-      productId: x.productId,
-      quantity: String(x.quantity),
-    })) ??
-    [];
+  const blocked = s.busy || s.needsRefresh || !!s.pending;
+  const o = s.order,
+    c = s.cart;
   return (
-    <main aria-busy={state.busy}>
+    <main aria-busy={s.busy}>
       <header className="store-header">
         <p className="eyebrow">AGENT-READY STORE</p>
         <h1>
-          {order
-            ? '購買完成'
-            : state.purchase
-              ? '確認購買'
-              : cart
-                ? '購物車'
-                : '商品快照'}
+          {o
+            ? o.effectiveStatus === 'PAID'
+              ? '購買完成'
+              : o.effectiveStatus === 'CHECKOUT'
+                ? '待支付訂單'
+                : o.closedAt
+                  ? '訂單已關閉'
+                  : '預留期限已到，待核對狀態'
+            : c
+              ? '購物車'
+              : '商品快照'}
         </h1>
-        <p className="hint">由 AI 助理準備，由你決定。</p>
+        <p className="hint">由 AI 助理協助選購，由你決定支付。</p>
       </header>
       <p className="notice" role="status" aria-live="polite">
-        {state.message}
+        {s.message}
       </p>
-      {state.products.length > 0 && (
+      {s.pending && (
+        <Button disabled={s.busy || s.dirty} onClick={a.retry}>
+          明確重試原操作（
+          {s.pending.name === 'cancel_order'
+            ? '取消'
+            : s.pending.name === 'apps_pay_order'
+              ? '支付'
+              : '購物'}
+          ）
+        </Button>
+      )}
+      <Button
+        className="secondary"
+        disabled={s.busy}
+        onClick={() => a.reload(s.dirty)}
+      >
+        {s.dirty ? '放棄調整並重新載入' : '只讀重新載入'}
+      </Button>
+      {!o && !c && (
         <section className="products" aria-label="商品結果">
-          {state.products.map((product) => (
-            <div key={product.id}>
-              <ProductPresentation product={product} />
-              {'description' in product && (
-                <section className="product-detail">
-                  <p>{product.description}</p>
+          {s.products.map((p) => (
+            <div key={p.id}>
+              <ProductPresentation product={p} />
+              {'description' in p && (
+                <>
+                  <p>{p.description}</p>
                   <dl>
-                    {Object.entries(product.specs).map(([key, value]) => (
-                      <div key={key}>
-                        <dt>{key}</dt>
-                        <dd>{String(value)}</dd>
+                    {Object.entries(p.specs).map(([k, v]) => (
+                      <div key={k}>
+                        <dt>{k}</dt>
+                        <dd>{String(v)}</dd>
                       </div>
                     ))}
                   </dl>
-                </section>
+                </>
               )}
+              <Button
+                disabled={blocked || !p.availability.canPurchase}
+                onClick={() => a.add(p.id)}
+              >
+                加入購物車 · {p.id}
+              </Button>
             </div>
           ))}
         </section>
       )}
-      {order && (
-        <Button
-          disabled={state.busy || state.needsRefresh}
-          onClick={actions.openOrderDetails}
-        >
-          開啟唯讀訂單詳情
-        </Button>
-      )}
-      {state.canRecover && (
-        <Button disabled={state.busy} onClick={actions.recoverPurchase}>
-          恢復原準備（不會支付）
-        </Button>
-      )}
-      {state.purchase && (
-        <section aria-label="購買確認">
-          <PurchaseSummary
-            summary={order?.snapshot ?? state.purchase.summary}
-            completed={!!order}
-          />
+      {o && (
+        <section aria-label="訂單固定摘要">
+          <p>訂單 {o.orderId}</p>
           <p>
-            有效至 {new Date(state.purchase.expiresAt).toLocaleString('zh-TW')}
+            來源 {o.createdByChannel} ·{' '}
+            {o.aiEligible ? '本單適用 AI 優惠' : '一般選購'}
           </p>
-          {!order && state.purchase.state !== 'pending' && (
-            <Button disabled={state.busy} onClick={actions.returnToCart}>
-              返回購物車
-            </Button>
-          )}
-          {!order && (
-            <div className="commerce-actions">
+          <p>
+            預留截止 {new Date(o.reservationExpiresAt).toLocaleString('zh-TW')}
+          </p>
+          <ul className="cart-lines">
+            {o.summary.items.map((i) => (
+              <li key={i.productId}>
+                <div>
+                  <h2>{i.name}</h2>
+                  <p>
+                    {i.productId} · {i.brand}
+                  </p>
+                  {Object.entries(i.specs).map(([k, v]) => (
+                    <p key={k}>
+                      {k}：{String(v)}
+                    </p>
+                  ))}
+                  <p>
+                    數量 {i.quantity} · 單價 NT$ {i.unitPrice} · 小計 NT${' '}
+                    {i.lineSubtotal}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <MoneyBreakdown quote={o.summary} />
+          <div className="commerce-actions">
+            {o.allowedActions.canPay && (
               <Button
-                disabled={state.busy || !state.canPay || state.needsRefresh}
-                onClick={() => actions.pay()}
+                disabled={
+                  blocked || Date.parse(o.reservationExpiresAt) <= Date.now()
+                }
+                onClick={a.pay}
               >
-                確認支付
+                確認模擬支付
               </Button>
-              {state.canRetryPay && (
-                <Button
-                  disabled={state.busy || state.needsRefresh}
-                  onClick={() => actions.pay(true)}
-                >
-                  明確重試原購買
-                </Button>
-              )}
-              <Button
-                className="secondary"
-                disabled={state.busy || !state.canCancel || state.needsRefresh}
-                onClick={actions.cancelPurchase}
-              >
-                取消本次購買
+            )}
+            {o.allowedActions.canCancel && (
+              <Button disabled={blocked} onClick={a.cancel}>
+                取消原訂單
               </Button>
-              <Button
-                className="secondary"
-                disabled={state.busy}
-                onClick={() => actions.reload(false)}
-              >
-                查詢原準備狀態
+            )}
+            <Button onClick={() => a.continueShopping()}>繼續原車購物</Button>
+            <Button onClick={a.share}>分享此訂單</Button>
+          </div>
+          {s.confirmCartId && (
+            <section aria-label="接續確認">
+              <p>已有不同購物車；接續此訂單原車不會合併商品。</p>
+              <Button onClick={() => a.continueShopping(true)}>
+                確認接續原車
               </Button>
-            </div>
+              <Button onClick={a.dismissContinue}>保留目前購物車</Button>
+            </section>
           )}
         </section>
       )}
-      {cart && !state.purchase && (
+      {c && !o && (
         <>
-          <div className="cart-identity">
-            <p>
-              {cart.origin === 'AGENT' ? 'AI 助理準備' : '自行選購'} · 版本{' '}
-              {cart.cartVersion}
-            </p>
-            <p className="hint">購物車 {cart.cartId}</p>
-            <p className="hint">
-              有效至 {new Date(cart.expiresAt).toLocaleString('zh-TW')}
-            </p>
-          </div>
-          {order ? (
-            <PurchaseSummary summary={order.snapshot} completed />
-          ) : (
-            <>
-              {cart.orderId ? (
-                <p>購物已完成；請讓 Agent 重新呼叫 get_cart 取得原成交內容。</p>
-              ) : (
-                <>
-                  <section aria-label="購物車條目">
-                    {lines.length === 0 ? (
-                      <p className="empty">
-                        {state.dirty
-                          ? '已移除所有商品，儲存後購物車將為空。'
-                          : '購物車目前是空的。'}
-                      </p>
-                    ) : (
-                      <ul className="cart-lines">
-                        {lines.map((line) => {
-                          const item = cart.items.find(
-                            (x) => x.productId === line.productId,
-                          )!;
-                          return (
-                            <li key={line.productId}>
-                              <div>
-                                <h2>{item.name ?? '商品暫不可用'}</h2>
-                                <p className="hint">{line.productId}</p>
-                              </div>
-                              <div className="line-actions">
-                                <label>
-                                  數量 · {line.productId}
-                                  <Input
-                                    type="text"
-                                    inputMode="numeric"
-                                    value={line.quantity}
-                                    disabled={blocked}
-                                    onChange={(e) =>
-                                      actions.change(
-                                        line.productId,
-                                        e.target.value,
-                                      )
-                                    }
-                                  />
-                                </label>
-                                <Button
-                                  className="secondary"
-                                  disabled={blocked}
-                                  onClick={() => actions.remove(line.productId)}
-                                  aria-label={`移除 ${item.name ?? line.productId}，${line.productId}`}
-                                >
-                                  移除
-                                </Button>
-                              </div>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    )}
-                  </section>
-                  {cart.issues.length > 0 && (
-                    <section className="notice" aria-label="購物車問題">
-                      <h2>請先處理商品問題</h2>
-                      <ul>
-                        {cart.issues.map((issue, i) => (
-                          <li key={`${issue.productId}-${i}`}>
-                            {issue.productId} · {issue.code}
-                          </li>
-                        ))}
-                      </ul>
-                      <p>整車儲存會重新檢查所有條目；可移除問題商品後儲存。</p>
-                    </section>
-                  )}
-                  {cart.quote ? (
-                    <MoneyBreakdown quote={cart.quote} />
-                  ) : (
-                    <p>目前無可用報價，尚不可結帳。</p>
-                  )}
-                  <div className="commerce-actions">
-                    <Button
-                      disabled={blocked || !state.dirty}
-                      onClick={actions.save}
-                    >
-                      儲存調整
-                    </Button>
-                    <Button
-                      className="secondary"
-                      disabled={
-                        state.busy || (!state.editable && !state.needsRefresh)
-                      }
-                      onClick={() => actions.reload(state.dirty)}
-                    >
-                      {state.dirty ? '放棄調整並重新載入' : '重新載入'}
-                    </Button>
-                    <Button
-                      disabled={blocked || state.dirty || !cart.canCheckout}
-                      onClick={actions.checkout}
-                    >
-                      核對並準備購買
-                    </Button>
-                  </div>
-                  <Button
-                    className="secondary"
-                    disabled={blocked || state.dirty || !cart.canCheckout}
-                    onClick={actions.share}
-                  >
-                    分享／交接至商城
-                  </Button>
-                  <p className="hint">
-                    準備後會顯示完整購買摘要；只有你明確點擊「確認支付」才會提交訂單。
+          <p>
+            購物車 {c.cartId} · 版本 {c.cartVersion}
+          </p>
+          <label>
+            <input
+              type="checkbox"
+              checked={
+                c.items.length > 0 && s.selected.length === c.items.length
+              }
+              disabled={blocked || s.dirty}
+              onChange={(e) => a.selectAll(e.target.checked)}
+            />
+            全選整行商品
+          </label>
+          <ul className="cart-lines">
+            {c.items.map((i) => (
+              <li key={i.productId}>
+                <div>
+                  <h2>{i.name ?? '商品暫不可用'}</h2>
+                  <p>
+                    {i.productId} · 單價 {i.unitPrice ?? '待確認'}
                   </p>
-                </>
-              )}
-            </>
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={s.selected.includes(i.productId)}
+                      disabled={blocked || s.dirty}
+                      onChange={(e) => a.select(i.productId, e.target.checked)}
+                    />
+                    選購 {i.productId} 整行
+                  </label>
+                </div>
+                <div className="line-actions">
+                  <label>
+                    數量 · {i.productId}
+                    <Input
+                      inputMode="numeric"
+                      value={s.draft[i.productId] ?? String(i.quantity)}
+                      disabled={blocked}
+                      onChange={(e) => a.change(i.productId, e.target.value)}
+                      onBlur={() => a.save(i.productId)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') a.save(i.productId);
+                      }}
+                    />
+                  </label>
+                  <Button
+                    disabled={blocked || s.dirty}
+                    onClick={() => a.remove(i.productId)}
+                  >
+                    移除 {i.productId}
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+          {!c.items.length && <p>購物車目前是空的，原訂單仍可查看。</p>}
+          {c.issues.map((i, n) => (
+            <p key={n}>
+              {i.productId} · {i.code}
+            </p>
+          ))}
+          {s.quote ? (
+            <section aria-label="選中預估">
+              <h2>選中商品預估</h2>
+              <MoneyBreakdown quote={s.quote} />
+            </section>
+          ) : (
+            <p>請選擇整行商品；預估以服務端結果為準。</p>
           )}
+          <Button
+            disabled={blocked || s.dirty || !s.selected.length}
+            onClick={a.checkout}
+          >
+            建立待支付訂單
+          </Button>
+          <p>生單會固定摘要並預留 15 分鐘；只有明確支付成功才完成購買。</p>
+          <section aria-label="原車訂單">
+            <h2>待支付及歷史訂單</h2>
+            {c.pendingOrders.map((p) => (
+              <Button key={p.orderId} onClick={() => a.openOrder(p.orderId)}>
+                待支付 {p.orderId}
+              </Button>
+            ))}
+            <Button onClick={() => a.listOrders()}>查詢全部訂單</Button>
+            {s.orders.map((p) => (
+              <Button key={p.orderId} onClick={() => a.openOrder(p.orderId)}>
+                {p.effectiveStatus} · {p.orderId}
+              </Button>
+            ))}
+            {s.nextOffset !== null && (
+              <Button onClick={() => a.listOrders(s.nextOffset!)}>
+                更多訂單
+              </Button>
+            )}
+          </section>
         </>
       )}
     </main>

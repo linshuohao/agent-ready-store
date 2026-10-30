@@ -294,6 +294,54 @@ const url = process.env.TEST_DATABASE_URL;
           .data.items,
       ).toMatchObject([{ orderId: second.orderId }]);
     });
+    it('uses APPS attribution for UI Bridge creation and pays only the original order once', async () => {
+      const init = initialize();
+      const cart = (await call('apps_get_or_create_cart', init)).data;
+      expect(cart.agentCreated).toBe(true);
+      expect((await call('apps_get_or_create_cart', init)).data.cartId).toBe(
+        cart.cartId,
+      );
+      const input = creation(cart);
+      const order = (await call('apps_create_order', input)).data.order;
+      expect(order).toMatchObject({
+        createdByChannel: 'APPS',
+        aiEligible: true,
+        status: 'CHECKOUT',
+      });
+      expect((await call('apps_create_order', input)).data.order.orderId).toBe(
+        order.orderId,
+      );
+      const inventory = await db.inventory.findUniqueOrThrow({
+        where: { productId: 'P001' },
+      });
+      expect(
+        await call('apps_pay_order', {
+          orderId: order.orderId,
+          cartId: randomUUID(),
+        }),
+      ).toMatchObject({ ok: false });
+      for (let n = 0; n < 2; n++)
+        expect(
+          (
+            await call('apps_pay_order', {
+              orderId: order.orderId,
+              cartId: cart.cartId,
+            })
+          ).data,
+        ).toMatchObject({ orderId: order.orderId, status: 'PAID' });
+      const after = await db.inventory.findUniqueOrThrow({
+        where: { productId: 'P001' },
+      });
+      expect(after.quantity).toBe(inventory.quantity - 1);
+      expect(after.reservedQuantity).toBe(inventory.reservedQuantity - 1);
+      expect(await db.order.count()).toBe(1);
+      expect(
+        await call('apps_pay_order', {
+          orderId: order.orderId,
+          approved: true,
+        }),
+      ).toMatchObject({ ok: false, error: { code: 'VALIDATION_ERROR' } });
+    });
     it('maps named updates/removals and refuses schema bypass or invented payment calls', async () => {
       const cart = (await call('get_or_create_cart', initialize())).data;
       const context = {

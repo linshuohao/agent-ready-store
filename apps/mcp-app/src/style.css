@@ -218,3 +218,18 @@ dd {
     padding: 16px;
   }
 }
+label:has(input[type='checkbox']) {
+  flex-direction: row;
+  align-items: center;
+  min-height: 44px;
+  gap: 10px;
+  font-size: 14px;
+}
+input[type='checkbox'] {
+  width: 20px;
+  height: 20px;
+  min-height: 20px;
+  padding: 0;
+  margin: 0;
+  accent-color: #171717;
+}

@@ -34,7 +34,7 @@ test.beforeAll(async () => {
     code +
     '</script></body></html>';
 });
-test('official SDK fixture renders and edits the same cart in narrow and wide containers', async ({
+test('official Bridge fixture supports row selection, fixed order, direct UI payment and explicit share', async ({
   page,
 }, info) => {
   const errors: string[] = [];
@@ -43,133 +43,106 @@ test('official SDK fixture renders and edits the same cart in narrow and wide co
     route.fulfill({ contentType: 'text/html; charset=utf-8', body: hostHtml }),
   );
   await page.goto('http://localhost:3999/');
-  const frame = page.frameLocator('iframe');
-  await expect(frame.getByRole('status')).toContainText('最新報價');
+  const f = page.frameLocator('iframe');
+  await expect(f.getByRole('status')).toContainText('最新購物車');
   await expect(
-    frame.getByRole('heading', { name: '同名耳機', exact: true }),
+    f.getByRole('heading', { name: '同名耳機', exact: true }),
   ).toHaveCount(2);
-  await frame.getByLabel('數量 · P001', { exact: true }).fill('2');
-  await expect(
-    frame.getByRole('button', { name: '核對並準備購買' }),
-  ).toBeDisabled();
-  await frame.getByRole('button', { name: '儲存調整' }).focus();
-  await page.keyboard.press('Enter');
-  await expect(frame.getByRole('status')).toContainText('已儲存');
-  await expect(
-    frame.getByText('AI 助理準備 · 版本 2', { exact: true }),
-  ).toBeVisible();
-  await expect(frame.getByText('NT$ 30.00', { exact: true })).toHaveCount(2);
-  await frame.getByRole('button', { name: '核對並準備購買' }).click();
-  await expect(
-    frame.getByRole('heading', { name: '確認購買', exact: true }),
-  ).toBeVisible();
-  await expect(
-    frame.getByRole('button', { name: '確認支付', exact: true }),
-  ).toBeEnabled();
-  const body = await frame.locator('body').innerText();
-  expect(body).not.toContain('A'.repeat(43));
-  const dom = await frame.locator('#root').evaluate((el) => el.innerHTML);
-  expect(dom.includes('A'.repeat(43))).toBe(false);
-  expect(dom).not.toContain('#handoff=');
-  expect(dom).not.toContain('fixture-pay');
-  expect(dom).not.toContain('fixture-cancel');
-  expect(
-    await page.evaluate(() => {
-      const f = (
-        window as unknown as { fixture: { calls: string[]; opens: string[] } }
-      ).fixture;
-      return { calls: f.calls, opens: f.opens.length };
-    }),
-  ).toEqual({
-    calls: ['get_cart', 'update_cart', 'get_cart', 'prepare_checkout'],
-    opens: 0,
-  });
-  const overflow = await frame
-    .locator('body')
-    .evaluate((el) => el.scrollWidth > window.innerWidth);
-  expect(overflow).toBe(false);
-  await frame.getByRole('button', { name: '確認支付', exact: true }).focus();
+  await f.getByLabel('數量 · P001', { exact: true }).fill('2');
   await page.keyboard.press('Enter');
   await expect(
-    frame.getByRole('heading', { name: '購買完成', exact: true }),
+    f.getByText('購物車 10000000-0000-4000-8000-000000000001 · 版本 2'),
+  ).toBeVisible();
+  await f.getByLabel('選購 P001 整行').check();
+  await expect(f.getByRole('region', { name: '選中預估' })).toBeVisible();
+  await f.getByRole('button', { name: '建立待支付訂單', exact: true }).click();
+  await expect(
+    f.getByRole('heading', { name: '待支付訂單', exact: true }),
   ).toBeVisible();
   await expect(
-    frame.getByRole('button', { name: '確認支付', exact: true }),
-  ).toHaveCount(0);
+    f.getByText('數量 2 · 單價 NT$ 10.00 · 小計 NT$ 20.00'),
+  ).toBeVisible();
+  await f.getByRole('button', { name: '確認模擬支付', exact: true }).click();
+  await expect(
+    f.getByRole('heading', { name: '購買完成', exact: true }),
+  ).toBeVisible();
   expect(
     await page.evaluate(
       () =>
-        (window as unknown as { fixture: { opens: string[] } }).fixture.opens
-          .length,
+        (window as unknown as { fixture: { opens: string[] } }).fixture.opens,
     ),
-  ).toBe(0);
-  await frame.getByRole('button', { name: '開啟唯讀訂單詳情' }).click();
-  await expect(frame.getByRole('status')).toContainText('已請求開啟唯讀');
-  expect(
-    await page.evaluate(
-      () =>
-        (window as unknown as { fixture: { opens: string[] } }).fixture.opens
-          .length,
-    ),
-  ).toBe(1);
-  expect(await frame.locator('#root').innerHTML()).not.toContain(
-    'fixture-order',
+  ).toEqual([]);
+  await page.evaluate(() =>
+    (
+      window as unknown as { fixture: { remount: () => void } }
+    ).fixture.remount(),
   );
+  await expect(
+    f.getByRole('heading', { name: '購買完成', exact: true }),
+  ).toBeVisible();
+
+  await f.getByRole('button', { name: '分享此訂單' }).click();
+  await expect(f.getByRole('status')).toContainText('單訂單分享頁');
+  expect(
+    await page.evaluate(
+      () =>
+        (window as unknown as { fixture: { opens: string[] } }).fixture.opens,
+    ),
+  ).toEqual([
+    'http://localhost:3000/orders/20000000-0000-4000-8000-000000000001?view=share',
+  ]);
+  await f.getByRole('button', { name: '繼續原車購物' }).click();
+  await expect(f.getByLabel('選購 P002 整行')).toBeVisible();
+  await expect(f.getByLabel('選購 P001 整行')).toHaveCount(0);
+  await f.getByRole('button', { name: '查詢全部訂單' }).click();
+  await expect(f.getByRole('button', { name: /PAID · 200/ })).toBeVisible();
+  expect(
+    await f
+      .locator('body')
+      .evaluate((el) => el.scrollWidth > window.innerWidth),
+  ).toBe(false);
   expect(errors).toEqual([]);
   await page.screenshot({
-    path: info.outputPath('mcp-app-fixture.png'),
+    path: info.outputPath('apps-lifecycle.png'),
     fullPage: true,
   });
 });
-
-test('unknown fixture payment requires readonly status and explicit original-review retry', async ({
-  page,
-}) => {
+test('unknown payment only permits original action retry', async ({ page }) => {
   await page.route('http://localhost:3999/', (route) =>
     route.fulfill({ contentType: 'text/html; charset=utf-8', body: hostHtml }),
   );
   await page.goto('http://localhost:3999/');
-  const frame = page.frameLocator('iframe');
-  await expect(frame.getByRole('status')).toContainText('最新報價');
-  await frame.getByRole('button', { name: '核對並準備購買' }).click();
+  const f = page.frameLocator('iframe');
+  await expect(f.getByRole('status')).toContainText('最新購物車');
+  await f.getByLabel('選購 P001 整行').check();
+  await f.getByRole('button', { name: '建立待支付訂單', exact: true }).click();
   await expect(
-    frame.getByRole('button', { name: '確認支付', exact: true }),
-  ).toBeEnabled();
+    f.getByRole('heading', { name: '待支付訂單', exact: true }),
+  ).toBeVisible();
   await page.evaluate(() => {
     (
       window as unknown as { fixture: { controls: { failPayOnce: boolean } } }
     ).fixture.controls.failPayOnce = true;
   });
-  await frame.getByRole('button', { name: '確認支付', exact: true }).click();
-  await expect(frame.getByRole('status')).toContainText('操作結果未知');
+  await f.getByRole('button', { name: '確認模擬支付', exact: true }).click();
+  await expect(f.getByRole('status')).toContainText('操作結果未知');
   await expect(
-    frame.getByRole('button', { name: '確認支付', exact: true }),
+    f.getByRole('button', { name: '確認模擬支付', exact: true }),
   ).toBeDisabled();
-  await frame.getByRole('button', { name: '查詢原準備狀態' }).click();
+  await f.getByRole('button', { name: '只讀重新載入' }).click();
   await expect(
-    frame.getByRole('button', { name: '明確重試原購買' }),
-  ).toBeEnabled();
-  await expect(
-    frame.getByRole('button', { name: '確認支付', exact: true }),
+    f.getByRole('button', { name: '確認模擬支付', exact: true }),
   ).toBeDisabled();
-  expect(
-    await page.evaluate(
-      () =>
-        (
-          window as unknown as { fixture: { calls: string[] } }
-        ).fixture.calls.filter((x) => x === 'pay_purchase').length,
-    ),
-  ).toBe(1);
-  await frame.getByRole('button', { name: '明確重試原購買' }).click();
+  await f.getByRole('button', { name: '明確重試原操作（支付）' }).click();
   await expect(
-    frame.getByRole('heading', { name: '購買完成', exact: true }),
+    f.getByRole('heading', { name: '購買完成', exact: true }),
   ).toBeVisible();
+  const calls = await page.evaluate(
+    () => (window as unknown as { fixture: { calls: string[] } }).fixture.calls,
+  );
+  expect(calls.filter((n) => n === 'apps_create_order')).toHaveLength(1);
+  expect(calls.filter((n) => n === 'apps_pay_order')).toHaveLength(2);
   expect(
-    await page.evaluate(
-      () =>
-        (
-          window as unknown as { fixture: { calls: string[] } }
-        ).fixture.calls.filter((x) => x === 'prepare_checkout').length,
-    ),
-  ).toBe(1);
+    calls.some((n) => n.includes('purchase') || n.includes('prepare')),
+  ).toBe(false);
 });

@@ -18,6 +18,9 @@ const token = process.env.MCP_SERVICE_TOKEN;
         const tools = await client.listTools();
         expect(tools.tools.map((t) => t.name).sort()).toEqual([
           'add_cart_item',
+          'apps_create_order',
+          'apps_get_or_create_cart',
+          'apps_pay_order',
           'cancel_order',
           'create_order',
           'get_cart',
@@ -63,7 +66,17 @@ const token = process.env.MCP_SERVICE_TOKEN;
           tools.tools.find((tool) => tool.name === 'create_order')?.annotations
             ?.readOnlyHint,
         ).toBe(false);
-        expect(tools.tools.every((tool) => !tool._meta)).toBe(true);
+        const uiOnly = tools.tools.filter((tool) =>
+          tool.name.startsWith('apps_'),
+        );
+        expect(uiOnly).toHaveLength(3);
+        for (const tool of uiOnly)
+          expect(tool._meta?.ui).toEqual({ visibility: ['app'] });
+        expect(
+          tools.tools
+            .filter((tool) => !tool.name.startsWith('apps_'))
+            .some((tool) => /pay/.test(tool.name)),
+        ).toBe(false);
         expect(
           tools.tools
             .filter((t) =>

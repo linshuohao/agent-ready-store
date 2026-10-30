@@ -1,9 +1,12 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import {
   ListToolsRequestSchema,
   CallToolRequestSchema,
+  ListResourcesRequestSchema,
+  ReadResourceRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
 import {
@@ -86,8 +89,71 @@ export function attachMcp(
   app.post('/mcp', async (req, res) => {
     const server = new Server(
       { name: 'agent-ready-store', version: '0.1.0' },
-      { capabilities: { tools: {} } },
+      { capabilities: { tools: {}, resources: {} } },
     );
+    const uiTools = [
+      'search_products',
+      'get_product',
+      'get_or_create_cart',
+      'get_cart',
+      'add_cart_item',
+      'update_cart_item',
+      'remove_cart_item',
+      'create_order',
+      'get_order',
+      'list_orders',
+      'cancel_order',
+    ];
+    const resources = uiTools.map((tool) => ({
+      tool,
+      uri: `ui://store/${tool.replaceAll('_', '-')}-v1.html`,
+      filename: `${tool.replaceAll('_', '-')}-v1.html`,
+    }));
+    const uiMeta = (tool: string) => {
+      const resource = resources.find((entry) => entry.tool === tool)!;
+      return {
+        ui: { resourceUri: resource.uri, visibility: ['model', 'app'] },
+        'ui/resourceUri': resource.uri,
+        'openai/outputTemplate': resource.uri,
+      };
+    };
+    server.setRequestHandler(ListResourcesRequestSchema, async () => ({
+      resources: resources.map(({ uri, tool }) => ({
+        uri,
+        name: `Store · ${tool}`,
+        mimeType: 'text/html;profile=mcp-app',
+      })),
+    }));
+    server.setRequestHandler(ReadResourceRequestSchema, async ({ params }) => {
+      const resource = resources.find((entry) => entry.uri === params.uri);
+      if (!resource) throw new Error('Unknown UI resource');
+      return {
+        contents: [
+          {
+            uri: resource.uri,
+            mimeType: 'text/html;profile=mcp-app',
+            text: await readFile(
+              new URL(`../mcp-app/${resource.filename}`, import.meta.url),
+              'utf8',
+            ),
+            _meta: {
+              'openai/widgetCSP': {
+                connect_domains: [],
+                resource_domains: [],
+                redirect_domains: [origin],
+              },
+              ui: {
+                csp: {
+                  connectDomains: [],
+                  resourceDomains: [],
+                  frameDomains: [],
+                },
+              },
+            },
+          },
+        ],
+      };
+    });
     const annotations = {
       readOnlyHint: true,
       destructiveHint: false,
@@ -98,12 +164,14 @@ export function attachMcp(
       tools: [
         {
           name: 'search_products',
+          _meta: uiMeta('search_products'),
           description: '搜尋商品摘要，推薦分數排序；有界分頁，庫存為當次快照。',
           inputSchema: z.toJSONSchema(searchInput, { io: 'input' }),
           annotations,
         },
         {
           name: 'get_product',
+          _meta: uiMeta('get_product'),
           description: '按 ID 取得商品規格與可購狀態，不含完整評論。',
           inputSchema: z.toJSONSchema(productInput),
           annotations,
@@ -189,6 +257,7 @@ export function attachMcp(
         ].map(({ name, schema, readOnly, description }) => ({
           name,
           description,
+          ...(uiTools.includes(name) ? { _meta: uiMeta(name) } : {}),
           inputSchema: {
             ...z.toJSONSchema(schema, { io: 'input' }),
             type: 'object' as const,
@@ -198,6 +267,38 @@ export function attachMcp(
             readOnlyHint: readOnly,
             destructiveHint:
               name === 'cancel_order' || name === 'remove_cart_item',
+          },
+        })),
+        ...[
+          {
+            name: 'apps_get_or_create_cart',
+            schema: agentCartInput,
+            description:
+              'UI Bridge明确加购时初始化或恢复原车；未知沿原键，不自动另建。',
+          },
+          {
+            name: 'apps_create_order',
+            schema: orderCreation,
+            description: 'UI Bridge整行生单，完整选择及限制，不支付。',
+          },
+          {
+            name: 'apps_pay_order',
+            schema: orderTargetInput,
+            description:
+              '仅供Apps UI在Human查看完整原单后点击模拟支付；不通过模型调用。',
+          },
+        ].map(({ name, schema, description }) => ({
+          name,
+          description,
+          inputSchema: {
+            ...z.toJSONSchema(schema, { io: 'input' }),
+            type: 'object' as const,
+          },
+          _meta: { ui: { visibility: ['app'] } },
+          annotations: {
+            ...annotations,
+            readOnlyHint: false,
+            destructiveHint: name === 'apps_pay_order',
           },
         })),
       ],
@@ -218,6 +319,16 @@ export function attachMcp(
           case 'update_cart':
           case 'create_handoff':
             throw new AppError('CHECKOUT_FLOW_REPLACED', 410);
+          case 'apps_get_or_create_cart':
+            return carts.getOrCreate(parse(agentCartInput, input), 'APPS');
+          case 'apps_create_order': {
+            const { cartId, ...body } = parse(orderCreation, input);
+            return carts.createOrder(cartId, body, 'APPS');
+          }
+          case 'apps_pay_order': {
+            const { orderId, cartId } = parse(orderTargetInput, input);
+            return carts.payOrder(orderId, cartId);
+          }
           case 'get_or_create_cart':
             return carts.getOrCreate(parse(agentCartInput, input), 'MCP');
           case 'get_cart':

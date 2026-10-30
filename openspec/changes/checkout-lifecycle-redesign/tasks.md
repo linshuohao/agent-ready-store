@@ -46,8 +46,8 @@
 
 ## 7. MCP Apps
 
-- [ ] 7.1 更新apps/mcp-app的controller/view及资源映射，实例绑定cartId/orderId，按新操作契约编辑及整行生单；保持Host适配与Next分离。验证：controller.test.ts和资源测试覆盖静态数据隔离、旧卡片、草稿、错实体/乱序、直接导航、未知初始化及Bridge失败，不索取服务Token。
-- [ ] 7.2 实现内嵌原单摘要和UI专用Bridge模拟支付、多单/旧卡片恢复、单订单显式分享；Agent无支付工具。验证：替身Bridge和mcp-app E2E覆盖Agent已结束、支付响应丢失/重挂载、倒计时与迟到PAID、分享可信路径及Host拒绝；同步资源/通道说明，替身证据单列。
+- [x] 7.1 更新apps/mcp-app的controller/view及资源映射，实例绑定cartId/orderId，按新操作契约编辑及整行生单；保持Host适配与Next分离。验证：controller.test.ts和资源测试覆盖静态数据隔离、旧卡片、草稿、错实体/乱序、直接导航、未知初始化及Bridge失败，不索取服务Token。
+- [x] 7.2 实现内嵌原单摘要和UI专用Bridge模拟支付、多单/旧卡片恢复、单订单显式分享；Agent无支付工具。验证：替身Bridge和mcp-app E2E覆盖Agent已结束、支付响应丢失/重挂载、倒计时与迟到PAID、分享可信路径及Host拒绝；同步资源/通道说明，替身证据单列。
 
 ## 8. 受控切换演练与集成回归
 
@@ -164,3 +164,21 @@ Human明确：“授权之后往下推进，如果没有什么需要我审批的
 - 前端新增原通道初始化测试，默认pnpm test95通过56环境跳过；Web typecheck/lint/build、OpenSpec strict validate和diff检查通过。最终Chrome桌面/移动真实集成60/60通过（购物车18、订单30、WebMCP12），API127.0.0.1:3003/Web3004同Origin，仅store_test，测试前恢复受控库存，测试后停止服务。WebMCP使用注册替身；UI点击自动化不算Human验收。
 - 独立只读`/root/order_review`发现同目录query变化未撤销写句柄、迟到生单抢导航P2。新增真实回归复现，注册增加queryKey依赖；初次修复暴露passive cleanup先清搜索Promise，改layout阶段消费匹配目录结果后通过。定向2/2及最终60项覆盖，审阅者重新读最终代码后定向复核通过，无未决发现。审阅者未跑写库/浏览器。
 - 其他初次浏览器失败来自测试错误草稿恢复按钮与未等导航完成，按实际UI和导航完成条件修正，不当产品通过证据。保持同一worktree/分支，无Push/Merge/发布/实际库切换，正式Spec与最终验收仍待后续。高风险入口交接按精确路径执行Checkpoint；本组短摘要与原契约足以审阅，不新增可视化。
+
+
+### 实际环境切换准备（8.2，待单独执行授权）
+
+- 2026-10-31只读核对候选本机目标：`agent-ready-store-local-db-1`，loopback5432的`store/public`，开发卷由compose.local.yaml管理。六条旧迁移均finished，旧Cart1、Order0、PurchaseReview0、Inventory30；SKU/数量与受控种子一致（保留P008=-1异常样本），当时无其他store会话。只读事务已回滚，无业务写入；此快照在正式执行前须重新核对。
+- 拟执行范围：停止原Web/API/扫描任务及Host写入口并排空，明确连接目标；删除上述旧交易/幂等材料，定向恢复30SKU受控库存并迁移新结构/预留0，保留商品/评论只读原件、其他表和数据卷。先对账，确认新服务兼容后恢复写入。不得删整个卷，不得将日常启动变成seed。
+- 已以只读pg_dump准备权限0600的本地备份`/private/tmp/checkout-store-before-cutover-20261031.dump`，SHA256=`a949967ba6bcd8a214bb47cb9a2b580ba35be837e4002add9c6468f81a6a93e0`，未上传/加入Git。实际执行窗口须刷新备份和数量；临时目录备份不代表长期备份策略。
+- 失败时保持写服务停止，检查Prisma ledger并以前向兼容修复恢复；新流程产生数据后不恢复旧写服务、不重清新单。备份用于隔离核对与必要数据修复，不授权覆盖新数据。当前脚本硬限制store_test，真实store执行需在Human确认具体目标/清理范围后审阅扩展目标准入，不能绕过限制自行执行。
+- 8.2尚未完成：实际目标执行/停写与恢复未授权也未运行；此处准备不代表批准。8.3及9.2的独立工作继续，9.1真实Host/Human验收与9.3最终接受仍待Human参与。
+
+
+### Apps内嵌购物与原单支付（2026-10-31）
+
+- 第6组提交`2ddf6f2`，精确18路径Guard PASS。完成7.1/7.2，当前24/30。Apps Controller/View/Main迁移共享生命周期契约，11静态资源关联步骤工具，3个app-only Bridge入口；后端可信APPS生单、原ID支付和共享查单/取消。操作及信任边界见MCP_CONNECT。无新依赖，无Token/Cookie索取，未在模型目录开放支付。
+- `apps_lifecycle`实施前端，root实施API资源/Bridge。21项Controller测试通过，Apps typecheck/lint/build通过；真实MCP/HTTP定向9项（含UI原单支付一次/错车/来源/严格输入）与资源/目录4项通过，store_test/API3003，不混业务库。资源测试先在旧适配器因无metadata失败，再实施。全仓默认74通过53环境skip、typecheck/lint通过；skip不计通过。
+- 官方SDK AppBridge替身Chrome桌面/移动4/4通过，覆盖实际iframe重挂载PAID、原未知支付恢复、完整选行/内嵌摘要/同ID支付/显式分享、pageerror及溢出。Host替身的connect前context导致Not connected和初次focus误刷新已定位修正；未把中间失败当通过。检查移动截图并调整checkbox继承样式。替身不是实际Host或Human验收。
+- 独立只读`order_review`发现跨卡片覆盖未知材料、损坏材料被重新解锁、派生EXPIRED误称关闭、UI生单重挂载不恢复原单四项P2；实施者补失败回归并修复。恢复按入口+Host toolInfo.id+原目标区分，目标/原载荷严格校验，前台在途完成后校准，有界终态冲突重查。最后补返回位置存储失败的红测，先保存位置再清匹配pending；21项全绿，审阅者逐项及最终定向复核通过，无未决可行动发现。
+- 稳定卡片恢复依赖Host保留同sessionStorage和稳定toolInfo.id，缺ID只保留原实体查询/订单列表，不假称支持跨Host恢复；存储不可用零写，未知损坏阻写。真实Host版本/隔离/iframe支付/人工动作仍待9.1，未改变Demo信任契约。高风险交接按本组精确路径提交和Guard，不Push/Merge/发布。
