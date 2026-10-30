@@ -1,6 +1,6 @@
 # 结算交易核心（实施分支）
 
-本文件说明本轮已实现的共享用例及隔离验证方式。权威契约仍为 [checkout-lifecycle-redesign](../../openspec/changes/checkout-lifecycle-redesign/design.md)，进度和运行证据见同一 Change 的 [Tasks](../../openspec/changes/checkout-lifecycle-redesign/tasks.md)。这是不兼容旧购买 schema 的重构；Tasks 5.1 的普通 Web HTTP 适配已完成，页面及其余入口仍待 Tasks 5.2～7。旧交易 HTTP 返回 410 / CHECKOUT_FLOW_REPLACED，MCP 仅发现三个目录查询工具，旧交易调用同样拒绝。不要将本分支作为完整可购物交付部署。
+本文件说明本轮已实现的共享用例及隔离验证方式。权威契约仍为 [checkout-lifecycle-redesign](../../openspec/changes/checkout-lifecycle-redesign/design.md)，进度和运行证据见同一 Change 的 [Tasks](../../openspec/changes/checkout-lifecycle-redesign/tasks.md)。这是不兼容旧购买 schema 的重构；Tasks 5.1 的普通 Web HTTP 与5.2的持久购物车页面已完成，订单支付页及其余入口仍待 Tasks 5.3～7。旧交易 HTTP 返回 410 / CHECKOUT_FLOW_REPLACED，MCP 仅发现三个目录查询工具，旧交易调用同样拒绝。不要将本分支作为完整可购物交付部署。
 
 ## 普通 Web HTTP 与 Next 代理
 
@@ -52,3 +52,17 @@ OrderView 保存唯一明细/金额快照，状态为 CHECKOUT / PAID，关闭�
 只读运维入口：`pnpm --filter @store/api metrics:checkout`。在同一只读可重复读事务中返回 Agent 建车、创建订单、有效待支付、物化关闭、PAID/收入、过期未关闭积压和最老超时，以及预留账实差异；不自动修复。`metrics:agent-carts` 保留独立创建事实口径，后续删空或普通车 AI 生单不修改归因。
 
 隔离验证仅用 `TEST_DATABASE_URL` 指向 `/store_test`，串行运行 `pnpm test apps/api/test/cart/lifecycle-db.test.ts apps/api/test/inventory/inventory.test.ts --no-file-parallelism`。测试会删除该库交易和库存，禁止指向业务库。HTTP 退役验证另需指向测试库的 API，`CHECKOUT_CORE_API_URL=http://127.0.0.1:3003`，与该 API 匹配的 WEB_ORIGIN/MCP_SERVICE_TOKEN。跳过环境依赖测试不算通过。
+
+
+## 普通 Web 购物车（Task 5.2）
+
+`features/cart/lifecycle-commands.ts`提供无React请求/原键恢复，Provider仅维护跨页面车指针、车副本及车操作；`use-cart-page.ts`管理页面草稿、选择、请求代次与选中预估，`cart-orders.tsx`提供有界分页历史。沿用已有React/Context、共享展示组件与Next代理，无新状态库/依赖。
+
+- localStorage的`store.currentCartId`定位持久车；`store.cart.initialize`和`store.cart.pending.{cartId}`在初始化/逐项写请求前保存原键、载荷和目标。未知保留，显式恢复沿原键；存储失败不发新写入，旧版本冲突不自动换版本重送。旧cartToken/Cookie及旧sessionStorage指针不导入新流程。
+- 首次加购才建车，纯浏览/空车页零创建；原车存在订单后仍可继续加购。URL显示另一辆车不会覆盖已有当前指针，编辑受当前目标核对；完整本人跨入口确认接续仍属5.5。
+- 车页首次全不选，提供全选和逐行选择；保存/移除按单行提交，Enter或失焦保存数量，非法草稿可恢复已保存量。连续单版本快照保留仍存在且数量相同的选择；跨越多个版本可能隐藏移出/重加，因此保守要求重新选择。显式重载也清空选择，新行不自动勾选。
+- 前台刷新保护未保存草稿；在途返回先记录待校准，写入完成后再查询。车结果核对ID/version，报价核对完整选择与版本，不用迟到响应覆盖新状态。未知逐项操作用全局可见的原请求恢复入口，不由GET猜测写入是否执行。
+- 生单使用5.1接口并提供原订单链接，空车仍显示待支付及所有历史订单。原创建请求在`store.order.create.{cartId}`发送前保存，未知恢复不会把另一份草稿清掉；完整订单终态协调/导航仍属5.3～5.5，当前订单详情旧页尚未接入新流程，不能当作完整购买交付。
+- 旧WebMCP的准备/编辑调用在Provider明确拒绝，专用新通道与PageTools迁移仍属6.3；旧Commands仅供尚未迁移的旧入口，不参与普通Web新车操作。
+
+浏览器集成：`CHECKOUT_INTEGRATION=1 WEB_BASE_URL=http://127.0.0.1:3004 pnpm exec playwright test e2e/cart-lifecycle.spec.ts --workers=1`，测试Web必须代理store_test API3003且API的WEB_ORIGIN同为`http://127.0.0.1:3004`。这是自动化Chrome桌面/移动视口，不是真实Host/Human验收；测试以代理HTTP准备车、注入响应丢失/延迟，再通过真实核心验证结果。测试前可按已有测试重置方式只初始化store_test，严禁业务库。

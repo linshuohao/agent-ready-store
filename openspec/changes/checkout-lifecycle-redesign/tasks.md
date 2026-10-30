@@ -33,7 +33,7 @@
 ## 5. 普通Web最小完整闭环
 
 - [x] 5.1 替换HTTP和Next代理中的旧车Token/Review/提交路径，提供新购物/订单接口及UI专用支付调用，保留适用同源和MCP服务入口保护。验证：真实HTTP在隔离测试API上覆盖新输入、ID关联、错误映射和重复请求；旧写入口不能购买，不将UI专用宣称为身份证明。
-- [ ] 5.2 更新features/cart的Provider/Commands/Hook和车页：持久currentCartId、逐项操作、默认全不选/全选、页面内有效选择、新商品不自动选、未保存数量不得生单、所选预估及待支付列表。验证：Commands测试与cart相关E2E覆盖初始化并发、草稿保护、前台刷新、版本乱序、同SKU重加和未知原键恢复；空车仍可找到原订单。
+- [x] 5.2 更新features/cart的Provider/Commands/Hook和车页：持久currentCartId、逐项操作、默认全不选/全选、页面内有效选择、新商品不自动选、未保存数量不得生单、所选预估及待支付列表。验证：Commands测试与cart相关E2E覆盖初始化并发、草稿保护、前台刷新、版本乱序、同SKU重加和未知原键恢复；空车仍可找到原订单。
 - [ ] 5.3 将features/checkout和路由改为/orders/{orderId}统一页，直接UI支付、取消、固定摘要、已支付/关闭反馈和多单导航，旧地址仅提示新流程。验证：checkout相关桌面/移动E2E完成真实测试API生单→支付/取消→继续购物；成功是同orderId，旧cartId路由不能误查或写单。
 - [ ] 5.4 实现创建/支付/取消未知材料在请求前保存，Order按ID/查询顺序/已提交终态协调；区分本地到期、派生到期与物化关闭。验证：Commands与E2E注入丢响应、刷新、A/B切页、迟到创建/支付成功、旧查询及矛盾终态，不抢导航、不覆盖新车、不自动重付/重建。
 - [ ] 5.5 实现本人接续与分享入口：无当前车/同车接续，跨车先看单再确认继续购物；分享不改变指针、不提供车/其他单/取消入口，有效待支付可模拟支付。验证：有无指针、A/B冲突、分享刷新、支付未知和关闭单；同步页面提示、键盘/辅助状态及Demo边界说明。
@@ -113,3 +113,17 @@
 - 独立只读Code Review：全新上下文`/root/http_review`核对5.1未提交controller/test、原Change契约、核心及Next代理，未发现可行动缺陷；自行diff检查通过，未声称执行DB/HTTP测试。ID定位无身份隔离、Origin不证明自然人是已批准demo边界，UI/分享/WebMCP属于后续任务。短接口说明足以审阅，无需新增可视化。
 - 此HTTP写入/支付适配增量作为下一组前端接入的交接基线，涉及服务来源与交易入口边界，按Git Checkpoint Policy使用Guard；本轮新增5.1增量尚未获提交授权。下一项5.2待此增量Checkpoint后继续，旧核心提交授权不扩展为自动提交后续增量。
 - 本轮对上述4个精确成果路径实际执行implementation-http-adapter Guard，verification=pass、review=pass、approval=approved（实施授权），返回BLOCKED（exit 1），唯一缺项为本增量checkpoint commit；不是验证或业务批准失败。5.1成果保留未提交，未开始5.2修改。
+
+
+### 持久购物车Web接入（2026-10-31）
+
+- Human在上一轮5.1提交请求后回复“授权”；据此提交四文件增量为`f3727d9 feat: expose checkout lifecycle HTTP endpoints`，精确路径Guard PASS。未Push/Merge/切换实际库。本段追加后续事实，不覆盖此前待提交历史。
+- 完成5.2，当前16/30：Provider持久当前车/原请求恢复，新增无React lifecycle-commands、页面Hook及分页历史组件；车页默认全不选、逐行选择/全选、Enter/失焦设量/移除、有效选择保留、选中预估、空车可查原待支付及历史订单。普通Web新车已接入5.1，完整订单页仍待5.3，未将5.4/5.5提前标完；生单未知存前及草稿保护为本次车页必需的有限接线。使用说明见CHECKOUT_CORE。
+- 独立只读审查`/root/cart_review`发现硬加载覆盖当前车指针、未知生单恢复清掉草稿、生单冲突缺重载、失焦保存遗漏；核实后修复并补回归。另补在途前台延迟校准及空车已支付历史入口。定向复核再发现跨版本移出/同SKU同量重加仍被勾选，真实浏览器复现后采用跨多版本保守清空选择，连续单版本保留有效选择；最终定向复核通过，无未决可行动发现。审阅者只读静态复核，未执行DB/E2E；其尝试替身浏览器受环境阻止，不作为运行证据。
+- Commands新增4项通过，覆盖存前、未知跨实例原键恢复、存储不可用零写、目标/版本保护及冲突不重放；默认`pnpm test`90通过、50环境依赖跳过。工作区typecheck/lint通过；最后选择修复后Web typecheck/lint再次通过。按React best practices聚焦核对Hook/派生状态/请求归属，无新增依赖或额外平行Review。
+- 最终稳定代码的真实浏览器集成`cart-lifecycle.spec.ts --workers=1`共18项通过（Chrome桌面9、移动视口9），全部无pageerror；覆盖初始化重复点击/丢响应刷新、操作原键恢复、草稿保护、Enter/失焦、冲突重载、旧响应、在途前台刷新、新行/跨版本同SKU重加、空车历史及当前指针不被URL覆盖。API127.0.0.1:3003、Next127.0.0.1:3004、WEB_ORIGIN=http://127.0.0.1:3004，仅store_test；测试前仅重置该库交易/库存并按受控种子初始化，未迁移或触碰业务store。测试服务已停止。
+- 首轮浏览器失败因测试WEB_ORIGIN使用localhost而浏览器使用127.0.0.1，正确触发同源拒绝；统一测试来源后通过。中途修复误替换产生的临时TS/浏览器错误已修正，热更新期间14项不作为最终证据；最终另以18项和pageerror断言完整重跑。运行仍有现有商品图LCP优化提示及终端颜色提示，无业务失败。
+- 旧cart/checkout/handoff/WebMCP等E2E仍按旧schema/页面契约，未作为新流程通过证据；它们随剩余入口迁移及8.3集成清理，不把本轮18项等同全仓E2E、真实Host、Human支付或最终验收。服务核心/HTTP未改变，复用7151fdb/f3727d9对应有效证据。
+- Web生产构建通过。首轮sandbox中Turbopack CSS进程无法绑定端口，获工具许可后缓存仍重复错误；保留并移开生成的.next缓存，再干净构建成功（未改源码或切换打包器）。OpenSpec strict validate与git diff --check通过。
+- 本轮5.2的请求持久化、UI生单与响应协调形成下一订单页接入的可审查基线；按高风险交接检查Checkpoint。当前提交授权仅覆盖已提交的5.1，5.2新增/修改保持未提交，下一项5.3等待本增量本地提交授权。没有改正式Spec、归档或实际环境；不新增可视化，现有设计图、交互用例及Diff足以审阅。
+- 对上述9个精确成果路径实际运行implementation-web-cart Guard：verification=pass、review=pass、approval=approved（实施授权），结果BLOCKED（exit 1），仅缺本增量checkpoint commit。未开始5.3修改。

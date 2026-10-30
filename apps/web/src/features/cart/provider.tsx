@@ -8,397 +8,261 @@ import {
   useCallback,
 } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { CartFeedback } from './feedback';
-import { cartIdInput, type CartItem } from '@store/contracts';
-import { Button } from '@/components/ui/button';
 import {
-  createCart,
-  getCart,
-  operateCart,
-  failureText,
-  type OperationIntent,
-  type EditResult,
-} from './commands';
-
-type Creation = {
-  selectionVersion: number;
-  createRequestId: string;
-  cartToken: string;
-  items: CartItem[];
-  entrance?: 'webmcp';
-};
-const creationPendingKey = 'cartCreationPending';
-type PurchaseLease = { current: () => boolean; release: () => void };
+  cartIdInput,
+  type ShoppingCartView,
+  type CartOperation,
+} from '@store/contracts';
+import { Button } from '@/components/ui/button';
+import { CartFeedback } from './feedback';
+import {
+  CartCommands,
+  currentCartKey,
+  readCart,
+  acceptCart,
+  cartFailure,
+  type Call,
+} from './lifecycle-commands';
+import type { EditResult, OperationIntent } from './commands';
 type Context = {
-  isCurrentCart: (id: string) => boolean;
-  acquirePurchase: (id: string) => PurchaseLease | { code: string };
   currentCartId: string | null;
-  selectCart: (id: string) => void;
-  restart: () => void;
+  view: ShoppingCartView | null;
+  ready: boolean;
   busy: boolean;
+  pending: boolean;
+  selectCart: (id: string) => boolean;
+  isCurrentCart: (id: string) => boolean;
+  install: (cart: ShoppingCartView) => void;
+  setDraftGuard: (id: string, dirty: boolean, needsReload?: boolean) => void;
   add: (
     productId: string,
     entrance?: 'webmcp',
-  ) => Promise<EditResult | undefined>;
-  toolSave: (intent: OperationIntent) => Promise<EditResult | undefined>;
-  retryTool: (cartId?: string) => Promise<EditResult>;
-  setDraftGuard: (id: string, dirty: boolean, needsReload?: boolean) => void;
-  save: (intent: OperationIntent) => Promise<EditResult | undefined>;
+  ) => Promise<Call<ShoppingCartView>>;
+  save: (intent: {
+    cartId: string;
+    expectedCartVersion: number;
+    operation: CartOperation;
+  }) => Promise<Call<ShoppingCartView>>;
+  retry: () => Promise<Call<ShoppingCartView>>;
+  // Retired callers remain blocked until the dedicated WebMCP/order migration tasks.
+  restart: () => void;
+  acquirePurchase: (
+    id: string,
+  ) => { code: string } | { current: () => boolean; release: () => void };
+  toolSave: (intent: OperationIntent) => Promise<EditResult>;
+  retryTool: (id?: string) => Promise<EditResult>;
 };
 const CartContext = createContext<Context | null>(null);
 export const useCartOperations = () => {
   const context = useContext(CartContext);
-  if (!context) throw new Error('CartProvider required');
+  if (!context) throw Error('CartProvider required');
   return context;
 };
+const failure = (code: string) => ({
+  kind: 'failure' as const,
+  error: { code },
+});
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  const currentId = useRef<string | null>(null);
-  const selectionVersion = useRef(0);
-  const creation = useRef<Creation | null>(null);
-  const initialized = useRef(false);
-  const inFlight = useRef(false);
-  const draftGuard = useRef<{
-    id: string;
-    dirty: boolean;
-    needsReload: boolean;
-  } | null>(null);
+  const current = useRef<string | null>(null),
+    snapshot = useRef<ShoppingCartView | null>(null),
+    commands = useRef<CartCommands | null>(null),
+    active = useRef(false),
+    draft = useRef<{ id: string; dirty: boolean; reload: boolean } | null>(
+      null,
+    );
+  const [currentCartId, setId] = useState<string | null>(null),
+    [view, setView] = useState<ShoppingCartView | null>(null),
+    [ready, setReady] = useState(false),
+    [busy, setBusy] = useState(false),
+    [pending, setPending] = useState(false),
+    [message, setMessage] = useState('');
+  const refreshPending = useCallback(() => {
+    try {
+      setPending(
+        Boolean(
+          commands.current?.hasPending() ||
+          (current.current && commands.current?.hasPending(current.current)),
+        ),
+      );
+    } catch {
+      setMessage(cartFailure('LOCAL_STORAGE_UNAVAILABLE'));
+    }
+  }, []);
+  const selectCart = useCallback(
+    (id: string) => {
+      if (!cartIdInput.safeParse(id).success) return false;
+      if (current.current && current.current !== id) return false;
+      try {
+        const stored = localStorage.getItem(currentCartKey);
+        if (stored && stored !== id) return false;
+        localStorage.setItem(currentCartKey, id);
+      } catch {
+        setMessage(cartFailure('LOCAL_STORAGE_UNAVAILABLE'));
+        return false;
+      }
+      current.current = id;
+      setId(id);
+      refreshPending();
+      return true;
+    },
+    [refreshPending],
+  );
+  const install = useCallback((cart: ShoppingCartView) => {
+    if (current.current !== cart.cartId) return;
+    const next = acceptCart(snapshot.current, cart, cart.cartId);
+    snapshot.current = next;
+    setView(next);
+  }, []);
+  useEffect(() => {
+    let live = true;
+    queueMicrotask(() => {
+      if (!live) return;
+      try {
+        commands.current = new CartCommands(localStorage);
+        const id = localStorage.getItem(currentCartKey);
+        if (id) {
+          if (!cartIdInput.safeParse(id).success) {
+            setMessage(cartFailure('LOCAL_RECOVERY_INVALID'));
+            return;
+          }
+          current.current = id;
+          setId(id);
+        }
+        setReady(true);
+        refreshPending();
+      } catch {
+        setMessage(cartFailure('LOCAL_STORAGE_UNAVAILABLE'));
+      }
+    });
+    return () => {
+      live = false;
+    };
+  }, [refreshPending]);
   const setDraftGuard = useCallback(
     (id: string, dirty: boolean, needsReload = false) => {
-      draftGuard.current = { id, dirty, needsReload };
+      draft.current = { id, dirty, reload: needsReload };
     },
     [],
   );
-  // Storage holds only navigation and a non-sensitive pending-creation marker.
-  const [busy, setBusy] = useState(false);
-  const [creationUnknown, setCreationUnknown] = useState(false);
-  const [creationLost, setCreationLost] = useState(false);
-  const pathname = usePathname();
-  const blockedPage = useRef<string | null>(null);
-  const [reloadPath, setReloadPath] = useState<string | null>(null);
-  useEffect(() => {
-    let active = true;
-    blockedPage.current = null;
-    void Promise.resolve().then(() => {
-      if (active) setReloadPath(null);
-    });
-    return () => {
-      active = false;
-    };
-  }, [pathname]);
-  const [feedback, setFeedback] = useState<{
-    text: string;
-    path: string;
-  } | null>(null);
-  const message = feedback?.text ?? '';
-  const setMessage = (text: string) =>
-    setFeedback(text ? { text, path: pathname } : null);
-  // Navigation ends feedback; only creation materials survive page navigation.
-  if (feedback && feedback.path !== pathname) setFeedback(null);
-  const [cartId, setCartId] = useState<string | null>(null);
-  const [canRestart, setCanRestart] = useState(false);
-  const select = useCallback((id: string | null) => {
-    selectionVersion.current++;
-    currentId.current = id;
-    setCartId(id);
-    if (id) sessionStorage.setItem('currentCartId', id);
-    else sessionStorage.removeItem('currentCartId');
-  }, []);
-  useEffect(() => {
-    // Defer browser-only navigation state until after hydration, without persisting secrets.
-    let active = true;
-    Promise.resolve().then(() => {
-      if (!active) return;
-      const lost = sessionStorage.getItem(creationPendingKey) === '1';
-      initialized.current = true;
-      setCreationLost(lost);
-      const id = sessionStorage.getItem('currentCartId');
-      if (id && cartIdInput.safeParse(id).success && !currentId.current) {
-        currentId.current = id;
-        setCartId(id);
-      }
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
-  function acquirePurchase(id: string): PurchaseLease | { code: string } {
-    if (
-      !initialized.current ||
-      inFlight.current ||
-      creation.current ||
-      creationLost
-    )
-      return { code: 'CART_BUSY' };
-    if (currentId.current !== id) return { code: 'STALE_CONTEXT' };
-    if (
-      blockedPage.current === pathname ||
-      (draftGuard.current?.id === id && draftGuard.current.needsReload)
-    )
-      return { code: 'CART_RELOAD_REQUIRED' };
-    if (draftGuard.current?.id === id && draftGuard.current.dirty)
-      return { code: 'UNSAVED_DRAFT' };
-    const owner = selectionVersion.current;
-    inFlight.current = true;
+  async function run(work: () => Promise<Call<ShoppingCartView>>) {
+    if (!commands.current || !ready || active.current)
+      return failure('CART_BUSY');
+    active.current = true;
     setBusy(true);
-    let released = false;
-    return {
-      current: () =>
-        !released &&
-        owner === selectionVersion.current &&
-        currentId.current === id,
-      release: () => {
-        if (!released) {
-          released = true;
-          inFlight.current = false;
-          setBusy(false);
-        }
-      },
-    };
-  }
-  async function finishCreation(): Promise<EditResult> {
-    if (inFlight.current)
-      return { kind: 'failure', error: { code: 'CART_BUSY' } };
-    if (!creation.current)
-      return { kind: 'failure', error: { code: 'NO_PENDING_CREATION' } };
-    inFlight.current = true;
-    setBusy(true);
-    const { selectionVersion: owner, entrance, ...input } = creation.current;
-    const result = await createCart(input, entrance);
-    inFlight.current = false;
-    setBusy(false);
-    if (result.kind === 'unknown') {
-      setCreationUnknown(true);
-      setMessage('建立結果未明，請使用原請求重試。');
-      return result;
-    }
-    setCreationUnknown(false);
-    creation.current = null;
-    // A later URL selection owns navigation, including across creation retries.
-    if (selectionVersion.current === owner) {
+    try {
+      const result = await work();
       if (result.kind === 'success') {
-        select(result.cart.cartId);
-        setMessage('已加入購物車');
-      } else {
-        setMessage(failureText(result.error));
-        setCanRestart(
-          ['FORBIDDEN', 'CREDENTIAL_EXPIRED'].includes(result.error.code),
-        );
-      }
-    }
-    sessionStorage.removeItem(creationPendingKey);
-    return result;
-  }
-  async function add(
-    productId: string,
-    entrance?: 'webmcp',
-  ): Promise<EditResult | undefined> {
-    if (blockedPage.current === pathname)
-      return { kind: 'failure', error: { code: 'CART_RELOAD_REQUIRED' } };
-    if (entrance && draftGuard.current?.dirty)
-      return { kind: 'failure', error: { code: 'UNSAVED_DRAFT' } };
-    if (
-      !initialized.current ||
-      inFlight.current ||
-      creation.current ||
-      creationLost
-    )
-      return { kind: 'failure', error: { code: 'CART_BUSY' } };
-    setMessage('');
-    setCanRestart(false);
-    const stored = sessionStorage.getItem('currentCartId');
-    const id =
-      currentId.current ??
-      (stored && cartIdInput.safeParse(stored).success ? stored : null);
-    if (!id) {
-      const bytes = crypto.getRandomValues(new Uint8Array(32));
-      const token = btoa(String.fromCharCode(...bytes))
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=+$/, '');
-      creation.current = {
-        selectionVersion: selectionVersion.current,
-        createRequestId: crypto.randomUUID(),
-        cartToken: token,
-        items: [{ productId, quantity: 1 }],
-        entrance,
-      };
-      // Persist only uncertainty, never the capability or request materials.
-      sessionStorage.setItem(creationPendingKey, '1');
-      return finishCreation();
-    }
-    select(id);
-    const owner = selectionVersion.current;
-    inFlight.current = true;
-    setBusy(true);
-    try {
-      const latest = await getCart(id);
-      if (selectionVersion.current !== owner) {
-        return { kind: 'failure', error: { code: 'STALE_CONTEXT' } };
-      }
-      if (latest.kind !== 'success') {
+        if (!current.current) selectCart(result.data.cartId);
+        install(result.data);
+        setMessage('已儲存購物車');
+      } else
         setMessage(
-          latest.kind === 'failure'
-            ? failureText(latest.error)
-            : '暫時無法讀取購物車，請重試。',
+          result.kind === 'unknown'
+            ? '保存結果未確認，請重試原請求。'
+            : cartFailure(result.error.code),
         );
-        setCanRestart(
-          latest.kind === 'failure' &&
-            ['FORBIDDEN', 'CREDENTIAL_EXPIRED'].includes(latest.error.code),
-        );
-        return latest;
-      }
-      if (latest.cart.orderId) {
-        setMessage('此購物車已完成購買，請明確開始新的購物。');
-        setCanRestart(true);
-        return { kind: 'failure', error: { code: 'CART_COMPLETED' } };
-      }
-      const result = await operateCart({
-        cartId: id,
-        expectedCartVersion: latest.cart.cartVersion,
-        operation: { type: 'add_item', productId, quantity: 1 },
-        entrance,
-      });
-      if (selectionVersion.current !== owner)
-        return { kind: 'failure', error: { code: 'STALE_CONTEXT' } };
-      if (
-        result.kind === 'unknown' ||
-        (result.kind === 'failure' &&
-          [
-            'CART_VERSION_CONFLICT',
-            'CART_ITEM_NOT_FOUND',
-            'CART_COMPLETED',
-          ].includes(result.error.code))
-      ) {
-        blockedPage.current = pathname;
-        setReloadPath(pathname);
-      }
-      if (result?.kind === 'success') setMessage('已加入購物車');
-      else if (result?.kind === 'failure')
-        setMessage(failureText(result.error));
-      else setMessage('保存結果未確認，請開啟購物車重新載入查看。');
       return result;
     } finally {
-      inFlight.current = false;
+      active.current = false;
       setBusy(false);
+      refreshPending();
     }
   }
-  async function save(
-    intent: OperationIntent,
-    tool = false,
-  ): Promise<EditResult> {
-    if (inFlight.current || creation.current || creationLost)
-      return { kind: 'failure', error: { code: 'CART_BUSY' } };
-    if (currentId.current !== intent.cartId)
-      return { kind: 'failure', error: { code: 'STALE_CONTEXT' } };
-    if (draftGuard.current?.id === intent.cartId) {
-      if (draftGuard.current.needsReload)
-        return { kind: 'failure', error: { code: 'CART_RELOAD_REQUIRED' } };
-      if (tool && draftGuard.current.dirty)
-        return { kind: 'failure', error: { code: 'UNSAVED_DRAFT' } };
-    }
-    const owner = selectionVersion.current;
-    inFlight.current = true;
-    setBusy(true);
-    try {
-      const result = await operateCart({
-        ...intent,
-        ...(tool ? { entrance: 'webmcp' as const } : {}),
+  async function add(productId: string, entrance?: 'webmcp') {
+    if (entrance) return failure('CHECKOUT_FLOW_REPLACED');
+    if (
+      draft.current?.id === current.current &&
+      (draft.current.dirty || draft.current.reload)
+    )
+      return failure('UNSAVED_DRAFT');
+    return run(async () => {
+      if (
+        commands.current!.hasPending() ||
+        (current.current && commands.current!.hasPending(current.current))
+      )
+        return failure('CART_RECOVERY_REQUIRED');
+      const id = current.current;
+      if (!id)
+        return commands.current!.initialize({
+          requestId: crypto.randomUUID(),
+          initialItems: [{ productId, quantity: 1 }],
+        });
+      const latest = await readCart(id);
+      if (latest.kind !== 'success') return latest;
+      if (current.current !== id) return failure('STALE_CONTEXT');
+      return commands.current!.operate(id, {
+        operationRequestId: crypto.randomUUID(),
+        expectedCartVersion: latest.data.cartVersion,
+        operation: { type: 'add_item', productId, quantity: 1 },
       });
-      return selectionVersion.current === owner
-        ? result
-        : { kind: 'failure', error: { code: 'STALE_CONTEXT' } };
-    } finally {
-      inFlight.current = false;
-      setBusy(false);
-    }
+    });
   }
-  const restart = () => {
-    if (inFlight.current) return;
-    creation.current = null;
-    sessionStorage.removeItem(creationPendingKey);
-    setCreationLost(false);
-    setCreationUnknown(false);
-    select(null);
-    setCanRestart(false);
-    setMessage('請重新選擇商品建立購物車。');
-  };
+  async function save(intent: {
+    cartId: string;
+    expectedCartVersion: number;
+    operation: CartOperation;
+  }) {
+    if (intent.cartId !== current.current) return failure('STALE_CONTEXT');
+    if (draft.current?.id === intent.cartId && draft.current.reload)
+      return failure('CART_VERSION_CONFLICT');
+    return run(() =>
+      commands.current!.operate(intent.cartId, {
+        operationRequestId: crypto.randomUUID(),
+        expectedCartVersion: intent.expectedCartVersion,
+        operation: intent.operation,
+      }),
+    );
+  }
+  const retry = () =>
+    run(() =>
+      commands.current!.retry(
+        commands.current!.hasPending()
+          ? undefined
+          : (current.current ?? undefined),
+      ),
+    );
   return (
     <CartContext.Provider
       value={{
-        currentCartId: cartId,
-        acquirePurchase,
-        isCurrentCart: (id) => currentId.current === id,
-        selectCart: select,
-        restart,
-        busy:
-          busy || creationUnknown || creationLost || reloadPath === pathname,
-        add,
+        currentCartId,
+        view,
+        ready,
+        busy,
+        pending,
+        selectCart,
+        install,
+        isCurrentCart: (id) => current.current === id,
         setDraftGuard,
-        retryTool: (cartId) => {
-          if (creation.current?.entrance === 'webmcp') {
-            if (
-              cartId ||
-              creation.current.selectionVersion !== selectionVersion.current
-            )
-              return Promise.resolve({
-                kind: 'failure',
-                error: { code: 'STALE_CONTEXT' },
-              });
-            return finishCreation();
-          }
-          return Promise.resolve({
-            kind: 'failure',
-            error: { code: 'NO_PENDING_CREATION' },
-          });
-        },
-        toolSave: (intent) => save(intent, true),
+        add,
         save,
+        retry,
+        restart: () => setMessage('購物車會持續保留，請繼續原車選購。'),
+        acquirePurchase: () => ({ code: 'CHECKOUT_FLOW_REPLACED' }),
+        toolSave: async () => failure('CHECKOUT_FLOW_REPLACED'),
+        retryTool: async () => failure('CHECKOUT_FLOW_REPLACED'),
       }}
     >
-      {!pathname.startsWith('/order-details/') &&
-        (message ||
-          creationUnknown ||
-          creationLost ||
-          reloadPath === pathname) && (
-          <CartFeedback
-            success={message === '已加入購物車' && !creationUnknown}
-            onDismiss={() => setFeedback(null)}
-          >
-            {message && <p role="status">{message}</p>}
-            {reloadPath === pathname && cartId && (
-              <Link href={`/cart/${cartId}`} prefetch={false}>
-                重新載入購物車
-              </Link>
-            )}
-            {creationLost && (
-              <p role="status">
-                建立結果無法確認，原請求材料已遺失，無法自動找回購物車。
-                重新發起會建立新的購物車，原車可能仍存在。
-              </p>
-            )}
-            {cartId && (
-              <Link href={`/cart/${cartId}`} prefetch={false}>
-                前往購物車
-              </Link>
-            )}
-            {creationUnknown && (
-              <Button
-                type="button"
-                onClick={() => {
-                  void finishCreation();
-                }}
-              >
-                重試原建立
-              </Button>
-            )}
-            {(canRestart || creationLost) && (
-              <Button type="button" onClick={restart}>
-                重新發起購物
-              </Button>
-            )}
-          </CartFeedback>
-        )}
+      {message && (
+        <CartFeedback
+          success={message === '已儲存購物車'}
+          onDismiss={() => setMessage('')}
+        >
+          <p role="status">{message}</p>
+          {currentCartId && (
+            <Link href={`/cart/${currentCartId}`} prefetch={false}>
+              前往購物車
+            </Link>
+          )}
+        </CartFeedback>
+      )}
+      {pending && (
+        <section className="notice" aria-label="購物車恢復">
+          <p>上次購物車操作結果未確認，請使用原請求恢復。</p>
+          <Button disabled={busy} onClick={() => void retry()}>
+            重試原購物車請求
+          </Button>
+        </section>
+      )}
       {children}
     </CartContext.Provider>
   );
