@@ -103,6 +103,11 @@ export function attachMcp(
               'utf8',
             ),
             _meta: {
+              'openai/widgetCSP': {
+                connect_domains: [],
+                resource_domains: [],
+                redirect_domains: [origin],
+              },
               ui: {
                 csp: {
                   connectDomains: [],

@@ -53,6 +53,13 @@ const token = process.env.MCP_SERVICE_TOKEN;
         expect(value.text.includes(token!)).toBe(false);
         expect(value.text.match(/<\/script\s*>/gi)).toHaveLength(1);
         expect(value._meta).toEqual({
+          'openai/widgetCSP': {
+            connect_domains: [],
+            resource_domains: [],
+            redirect_domains: [
+              process.env.WEB_ORIGIN ?? 'http://localhost:3000',
+            ],
+          },
           ui: {
             csp: { connectDomains: [], resourceDomains: [], frameDomains: [] },
           },

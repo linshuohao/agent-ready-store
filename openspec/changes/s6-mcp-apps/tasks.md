@@ -80,7 +80,23 @@ Host 刷新后再次查询成功，原生资源发现列出 S6 Host Probe；但 
 - 独立Review：全新只读 /root/s6_implementation_review 审查最终S6实现范围，发现needsRefresh被Host快照自动解锁及修复后的缺失权限恢复死锁两项P2。各新增回归先复现失败，修复后Reviewer定向重跑controller20/20并确认关闭；后续到期反馈/构建origin/专用PG测试/文档增量定向复核无新增Finding（Reviewer实际重跑21+2，其余新增URL/完成车测试由实现者运行）。简单摘要和真实替身截图足以审阅，本轮不生成额外Recap。
 - 进度11/14：1.2、5.2、5.4仍未完成；Human授权只移动了实施顺序，不批准真实外链失败、不替代浏览器实际购买验收、不替S5关闭待办。正式资源元数据已更换，真实Host需刷新连接加载后继续验收。首次implementation checkpoint Guard因尚无实现提交、成果路径仍有修改而拒绝。Human随后明确授权“允许提交实现 checkpoint”；本次仅在codex/s6-mcp-apps提交精确实现/测试/构建/文档范围，再重跑Guard，结果留当前对话；真实Host与最终验收仍未完成。无Push/Merge/归档。
 
+
+2026-10-30 正式Host人工验收（实现提交f0e17f2）：Human确认正式商品视图正常，并确认原车数量/移除/保存等操作正常；明确反馈“前往商城結帳可以点击，但没有打开页面”。真实MCP验收车af711bb3-8e0d-42b1-a724-6f52c2718f98初始为AGENT/version1、P005/P022各1、总额5073.00，初始库存9/37；人工操作后实际保存为version4、P022×1、总额997.50、canCheckout=true且无订单，MCP复查库存仍9/37。该实际结果与建议的P005×2验收材料不同，仅按真实保存内容记证。只读数据库诊断未取得结果并已停止，不冒称已核对DB。随后使用原能力显式幂等create_handoff成功，首次签发为Asia/Shanghai 16:57:28、次日同刻到期；该签发早于本次复查，重试未续期。交接URL未输出或入库。正式Host实际外链未打开，仍不能完成1.2/5.2/5.4；尚未人工购买，无订单/扣库存验收证据。
+
+2026-10-30 外链兼容实验：Human确认正式卡片提示“已向Host请求开启商城…”，实际无页面，证明openLink未返回isError但未观察到导航。核对官方plugins/reference得知ChatGPT的openExternal需openai/widgetCSP.redirect_domains；此规则是否影响标准openLink尚未证明。局部实验仅在资源contents加入legacy CSP兼容声明：connect/resource为空、redirect仅既有WEB_ORIGIN，不改App Bridge调用、不直连网络或暴露交接URL。资源断言先复现字段缺失失败，加入后真实MCP资源/原工具回归4/4、API typecheck/lint/Diff通过；重投同车get_cart卡片等待Human实际重验。Human随后使用新卡片实测仍未打开页面，此假设未解决问题。已精确撤回本次adapter与测试中的兼容字段，代码恢复f0e17f2；仅保留人工验收与实验记录，不能据此勾选真实外链验收或认定根因已修复。
+
+2026-10-30 Host路径调整：Human先选择换Host，本机检查发现Cursor3.27.22及既有同地址/同凭证agent-store连接；官方文档支持Apps，但cua访问Cursor未获批准，未绕过。Human随后改为“评估当前Host的专用外链兼容路径”。已按局部实验暂将ignored search-products-v1.html替换为无车能力的官方SDK探针，原产物备份于/private/tmp；仅搜索资源临时声明商城origin的legacy redirect域。探针只检测window.openai.openExternal并通过显式点击比较标准/专用直开/只读查询后专用打开，不传车Token或交接URL，不购买、不采用自制协议。脚本单文件/语法及API typecheck通过，已触发真实Host探针；待Human反馈，未修改正式结账Adapter，不记为验收通过。Human实测三个按钮均未实际打开首页；只据此判断当前Host未验证出可用外链路径，不推断专用接口是否存在或具体Host内部原因。实验已结束，撤回临时adapter元数据并用正式构建恢复六资源；正式结账不加入未证实有效的Host专用fallback。1.2/5.2/5.4继续未完成；需要另一真实Host环境才能继续标准外链验收。
+
+2026-10-30 白名单重启补验：Human明确要求重新配置白名单并重启重试。六个正式资源再次仅声明既有WEB_ORIGIN的openai/widgetCSP.redirect_domains，connect/resource/frame域仍为空，不使用专用fallback或临时探针。实际资源断言先失败、加入后MCP资源/原工具回归4/4，API typecheck/lint/Diff通过，确认运行服务已返回配置。Human追问服务重启后，明确区分此前仅热加载；已实际执行docker compose restart api，健康状态healthy，重启后实际MCP资源/原工具回归4/4再次通过，数据卷保留且无迁移/seed。Human随后回复“已完全重启”。本次内存能力已丢失，已用记录的原请求键与完全相同原材料幂等恢复原车，核对仍为af711bb3-8e0d-42b1-a724-6f52c2718f98，未另建车；再调用get_cart触发新正式卡片，实际version4/P022×1/总额997.50/canCheckout=true/无订单，等待Human点击后反馈页面是否实际打开。前两轮未确认Host完全重启，不能据此排除缓存或判定该配置无效；不提前认定localhost受限或外链已修复。修改尚未提交。
+
+2026-10-30 双端重启后结果与公网对照：Human明确确认新正式车卡片仍没有打开任何页面，提示仍为Host请求未报错。白名单及API/Host重启未解决现象，但仍无证据归因localhost。启动一次普通公网HTTPS对照：仅ignored搜索资源临时替换为无车能力的example.com探针，分别显式调用标准openLink与Host专用openExternal；仅搜索资源暂补example.com redirect域，其余五资源仍仅商城origin。脚本/单文件检查、API typecheck通过，真实查询已触发卡片，Human明确反馈标准和专用接口均实际打开公网HTTPS，已排除“当前Host所有外链均不可用”；尚不能区分HTTP与回环地址策略。追加最后一组普通页对照：同一标准Bridge分别打开http://example.com/及http://127.0.0.1:3000/，仅搜索资源临时补齐这两个redirect目标；不传秘密或购买。脚本/单文件及API typecheck通过。Human确认公网HTTP与127.0.0.1 HTTP均未打开；结合公网HTTPS标准/专用均成功，证据更支持HTTP scheme相关处理差异，而非仅localhost因素。尚无本地HTTPS对照，不能认定具体Host策略或保证HTTPS解决问题。已结束实验，用正式构建恢复六资源并去掉所有公网/127.0.0.1临时域，仅保留Human授权的商城origin白名单；恢复后实际资源/旧工具回归另行核对。下一步若继续应先评估受信任本地HTTPS，不自动安装根证书、修改系统信任或部署公网。
+
+2026-10-30 需求调整：Human确认两步购买并明确扩展至WebMCP和基础MCP，已同步D-01/Requirements与设计、工程、S5/S6范围提示。仅需求获确认；跨入口购买授权/提交机制仍待统一OpenSpec规划，旧11/14仅代表原S6实现进度，不能代表新增需求完成，不勾销外链与人工验收缺口。现有白名单修改保留，未追加业务代码或提交。
+
+统一两步购买的Proposal/Design/三份delta Spec/Tasks草稿已建立于[agent-confirmed-purchase](../agent-confirmed-purchase/proposal.md)，等待规划Review与Human批准；原S6进度和未通过事实不变。
+
 ## Workflow follow-up
+验收车重启恢复材料（非车能力）：原 createRequestId 为 000a6265-c6ff-482e-a90b-f58cb89510fc，原 items 为 P005×1、P022×1；仅可在同一已认证服务命名空间用完全相同原材料幂等重取原车，不能新建请求键替代。车Token与交接URL不落盘。
 
 - Human 验收及对应授权后同步正式 `mcp-app-shopping` Spec、归档当前 Change；Git 提交/Push/Merge按独立授权，不把文件齐全当成批准。
 - S5 的真实人工接续、最终验收与归档沿原 Change 处理；完整交付前核对 S4/S5/S6 真实证据及保留限制，最终 Showcase 另按授权开展。
