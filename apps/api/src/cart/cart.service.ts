@@ -3,6 +3,8 @@ import {
   cartCreateInput,
   agentCreateInput,
   cartReplaceInput,
+  cartOperateInput,
+  cartItemsInput,
   cartTokenInput,
   cartIdInput,
   type CartItem,
@@ -317,6 +319,66 @@ export class CartService {
           agent ? 'AGENT' : (row.origin as 'HUMAN' | 'AGENT'),
         ),
       );
+      this.authorize(row, token, await this.now(tx));
+      const updated = await tx.cart.update({
+        where: { id, version: parsed.data.expectedCartVersion },
+        data: {
+          items,
+          ...(agent ? { origin: 'AGENT' } : {}),
+          version: { increment: 1 },
+        },
+      });
+      return this.view(tx, updated);
+    });
+  }
+  async operate(
+    id: string,
+    token: string,
+    input: unknown,
+    agent = false,
+  ): Promise<CartView> {
+    if (!cartIdInput.safeParse(id).success)
+      throw new AppError('FORBIDDEN', 403);
+    const parsed = cartOperateInput.safeParse(input);
+    if (!parsed.success) throw new AppError('VALIDATION_ERROR', 400);
+    return this.db.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "Cart" WHERE id=${id}::uuid FOR UPDATE`;
+      const row = await tx.cart.findUnique({ where: { id } });
+      this.authorize(row, token, await this.now(tx));
+      if (await tx.order.findUnique({ where: { cartId: id } }))
+        throw new AppError('CART_COMPLETED', 409);
+      if (row.version !== parsed.data.expectedCartVersion)
+        throw new AppError('CART_VERSION_CONFLICT', 409, {
+          currentCartVersion: row.version,
+        });
+      const operation = parsed.data.operation;
+      const items = (row.items as unknown as CartItem[]).map((item) => ({
+        ...item,
+      }));
+      const index = items.findIndex(
+        (item) => item.productId === operation.productId,
+      );
+      if (operation.type !== 'add_item' && index < 0)
+        throw new AppError('CART_ITEM_NOT_FOUND', 409);
+      if (operation.type === 'remove_item') items.splice(index, 1);
+      else if (operation.type === 'add_item' && index >= 0)
+        items[index].quantity += operation.quantity;
+      else if (operation.type === 'set_quantity')
+        items[index].quantity = operation.quantity;
+      else
+        items.push({
+          productId: operation.productId,
+          quantity: operation.quantity,
+        });
+      if (!cartItemsInput.safeParse(items).success)
+        throw new AppError('VALIDATION_ERROR', 400);
+      const origin = agent ? 'AGENT' : (row.origin as 'HUMAN' | 'AGENT');
+      const contents = await this.contents(tx, items, origin);
+      const targetIssues = contents.issues.filter(
+        (issue) => issue.productId === operation.productId,
+      );
+      if (operation.type !== 'remove_item' && targetIssues.length)
+        throw new AppError('CART_ITEMS_INVALID', 409, { issues: targetIssues });
       this.authorize(row, token, await this.now(tx));
       const updated = await tx.cart.update({
         where: { id, version: parsed.data.expectedCartVersion },

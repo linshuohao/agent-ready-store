@@ -39,12 +39,12 @@
 
 ## 6. 电商逐项操作与按场景刷新（本次修订）
 
-- [ ] 6.1 完成 Proposal/Design/两份 Spec/Tasks 的聚焦 Planning Review，处理 Findings 并取得修订版 Human Approval；核对 D-23 → D-24 的限定替代及旧接口兼容范围，获相应 Git 授权后按 Checkpoint Policy 形成精确成果范围的 planning checkpoint/Guard，再进入受影响实施。
-- [ ] 6.2 增加普通/WebMCP 单操作 DTO、HTTP 路径和共享服务端用例；用真实 PostgreSQL 覆盖加购/设量/删除、空车、行不存在、多条旧问题行逐条修复且未修完不可结算、目标行无效回滚、同版本重复和并发最多一次、来源原子转换、权限/完成/到期及旧确认拒绝；HTTP 验证 Origin/JSON/Cookie/越权字段及旧整车路径、基础 MCP schema 兼容，更新相应接口说明。
-- [ ] 6.3 将 Browser Commands、Provider、Web 目录/详情加购与 CartPage 接入单操作；数量 Enter/失焦去重、非法输入保留/显式恢复、移除直接提交、完整服务端报价及同车 Human/工具短暂互斥用单测和桌面/移动浏览器验证，无整车保存按钮，无操作队列/换版本重试。
-- [ ] 6.4 实现车页进入/返回前台的读取校准、草稿保护与在途后一次校准，统一旧代次/低版本拒绝；先复现并修复“先到冲突、迟到旧成功清除刷新要求”的已有 P2，验证冲突/未知后仅有效显式加载解除、刷新旧读后旧写迟到、A→B→A、后台 GET 后新输入与旧响应均不能覆盖；桌面/移动回归通过。
-- [ ] 6.5 更新 WebMCP update_cart 的单操作 schema/描述及注册契约，验证旧 items 拒绝、草稿/忙碌、来源/报价同步、只读不转换与无购买提交；用注册替身测试和真实 Host 分别记录发现/调用/重发现证据，不把模拟当真实 Host 或 Human 验收。
-- [ ] 6.6 传播已批准的 D-24 限定补充至相关 Baseline 与 README，复用相应服务端交易保障证据并补必要的真实操作/Checkout 并发验证；桌面/移动覆盖同车跨入口先后操作、报价/库存变化后的重新审阅、购买未知结果恢复和旧 HTTP/MCP 兼容，记录命令/环境/revision；生产构建补验与静态检查如实记证。
+- [x] 6.1 完成 Proposal/Design/两份 Spec/Tasks 的聚焦 Planning Review，处理 Findings 并取得修订版 Human Approval；核对 D-23 → D-24 的限定替代及旧接口兼容范围，获相应 Git 授权后按 Checkpoint Policy 形成精确成果范围的 planning checkpoint/Guard，再进入受影响实施。
+- [x] 6.2 增加普通/WebMCP 单操作 DTO、HTTP 路径和共享服务端用例；用真实 PostgreSQL 覆盖加购/设量/删除、空车、行不存在、多条旧问题行逐条修复且未修完不可结算、目标行无效回滚、同版本重复和并发最多一次、来源原子转换、权限/完成/到期及旧确认拒绝；HTTP 验证 Origin/JSON/Cookie/越权字段及旧整车路径、基础 MCP schema 兼容，更新相应接口说明。
+- [x] 6.3 将 Browser Commands、Provider、Web 目录/详情加购与 CartPage 接入单操作；数量 Enter/失焦去重、非法输入保留/显式恢复、移除直接提交、完整服务端报价及同车 Human/工具短暂互斥用单测和桌面/移动浏览器验证，无整车保存按钮，无操作队列/换版本重试。
+- [x] 6.4 实现车页进入/返回前台的读取校准、草稿保护与在途后一次校准，统一旧代次/低版本拒绝；先复现并修复“先到冲突、迟到旧成功清除刷新要求”的已有 P2，验证冲突/未知后仅有效显式加载解除、刷新旧读后旧写迟到、A→B→A、后台 GET 后新输入与旧响应均不能覆盖；桌面/移动回归通过。
+- [x] 6.5 更新 WebMCP update_cart 的单操作 schema/描述及注册契约，验证旧 items 拒绝、草稿/忙碌、来源/报价同步、只读不转换与无购买提交；用注册替身测试和真实 Host 分别记录发现/调用/重发现证据，不把模拟当真实 Host 或 Human 验收。
+- [x] 6.6 传播已批准的 D-24 限定补充至相关 Baseline 与 README，复用相应服务端交易保障证据并补必要的真实操作/Checkout 并发验证；桌面/移动覆盖同车跨入口先后操作、报价/库存变化后的重新审阅、购买未知结果恢复和旧 HTTP/MCP 兼容，记录命令/环境/revision；生产构建补验与静态检查如实记证。
 - [ ] 6.7 对最终受影响 Diff 作适用独立 Code Review、修复/重验及必要定向复核，交付简短结果与剩余风险，由 Human 验收；与 4.2/4.4 合并核对真实 Host 和人工接续缺口，不自动归档、Push 或 Merge。
 
 ## Workflow follow-up
@@ -93,3 +93,18 @@
 - `openspec validate s5-webmcp --strict`、`git diff --check` 通过。修订状态仍为 Draft、6.1 未完成（Human Approval 与 planning checkpoint 待办）；不修改旧证据、不提交或推进业务实施。此轮短摘要足以审阅，无额外可视化。
 
 - **修订版批准与复核：** 全新只读 `/root/complete_spec_review` 核对 Design §4、两份 Spec、Proposal、Tasks §6、D-23/D-24，独立规格审查无重要 Finding（未运行实现测试）。Human 随后明确“批准当前修订版，提交之后开始实施”。本次仅提交规划及相关基线，既有未提交源码保留；规划 Guard 实际输出留当前对话，通过后才开始 §6 实施。
+
+## 逐项操作实施证据 — 2026-10-30
+
+- **规划交接：** Human 批准后提交 `394eada`（仅规划、决策及限定基线，旧源码差异保留）；对精确十个文档路径运行 planning Guard，Verification/Review/Approval 均基于实际记录，结果 PASS，之后才实施。执行复用本 Tasks §6，不建平行计划/流水账。
+- **RED → GREEN：** 新隔离 PostgreSQL 单操作套件先观察到 operate 未实现的8项预期失败，补实现后通过；新浏览器逐项 Enter/blur 用例先观察到0次操作请求（预期1次），补实现后通过。新建车仍原同键幂等，已有车操作同版本最多一次，不加队列、日志表或依赖。
+- **数据库：** 新增操作10项（包括真实锁屏障下操作先/订单先两种竞争顺序），与旧Cart、WebMCP、Handoff、Checkout套件在 store_test 串行 **47/47通过**。覆盖未触及问题行保留/逐步修复、目标校验/失败回滚、原创建恢复、版本/来源/权限、库存不因编辑扣减和旧确认失效。新增锁竞争测试最初误放套件作用域外、随后断言使用toBe匹配非固定ID，均为测试编写错误，已定位修正后重验，未放宽生产逻辑。
+- **HTTP：** 容器内 API_BASE_URL=http://127.0.0.1:3001，cart-operations-http与旧webmcp-http **2/2通过**，确认Cookie/Origin/JSON、错车、越权字段、旧整车路径兼容。原基础MCP handler/schema未改，沿用现有协议回归，不声称HTTP测试等于真实Host。
+- **浏览器：** 购物车四套件桌面/移动 **72/72通过**，新单操作UI与后台GET/草稿/冲突/未知/兼容覆盖；按已批准互斥契约替换原允许同页并行写的三项测试。追加旧读后原写迟到与在途返回校准，以及Checkout/Handoff接续正在补验，最终结果见后续证据。
+- **当前静态：** Web/API lint、Web tsc --noEmit、容器API typecheck通过。初次Web lint指出effect内同步setState，改为可取消的初始化微任务后通过。宿主vitest 39 passed/61 skipped（DB/HTTP环境未配置，跳过不算通过，真实套件另有上述结果）。
+- **生产与追加运行：** 隔离生产镜像构建成功，Next/Nest/契约完整生产编译，不连库、不迁移或seed。追加 Cart operations/Checkout/Handoff 桌面移动36/36通过，含刷新读旧版本后原操作迟到、新意图仍携旧读取版本被拒绝、在途返回后一次校准、购买未知恢复及改车后旧确认拒绝；最终修复后的整套回归另见下文。
+- **真实 Host：** Codex IAB 的 localhost 原生 WebMCP（未注入注册替身）在详情调用 add_to_cart 创建 AGENT 车 `abd8fb68-6dca-446a-a33b-d0377901d614`；导航车页重新发现 get_cart/update_cart，schema 为 expectedCartVersion + operation(oneOf)。实际调用 set_quantity(P001,2) 成功 v1→v2，页面同步P001×2、AI优惠184.00、应付3496.00。未提交该车订单，自动化 UI/工具验证不冒充 Human 验收。
+- **旧协议补验：** 基础 MCP/Handoff 协议3/3、旧 Cart/Checkout HTTP5/5通过。首次误用容器内3001导致MCP Host白名单拒绝，改为配置允许的宿主 localhost:3002 后通过，未更改安全配置；旧HTTP套件初次因S2/S3专用环境变量未提供而跳过，按正确配置补跑通过。
+- **最终独立 Review 与修复：** 全新只读 `/root/review_cart_operations_implementation` 核对最终业务范围，发现1项P2：目录/详情加购冲突或unknown后仍能再次发起增量。先用浏览器复现按钮错误保持可用，再补页面级刷新要求、拒绝工具新写入与打开原车核对入口；离页不保留全局锁。修复后桌面/移动4/4通过。其余已审范围无可行动问题；运行由实现者执行，Reviewer未自行重跑。此轮修复用回归重验，不叠加全量复核。
+- **剩余验收：** 6.2～6.6 实施与对应验证已完成，6.7 中独立代码审查及发现修复已执行，但 Human 最终验收、4.2 真实人工接续仍待完成，故6.7/4.2/4.4不勾选；不自动归档、Push、Merge或进入S6。
+- **最终修复后验证：** 六个受影响浏览器套件 `cart-operations/cart-review-fixes/cart/webmcp/checkout/handoff` 桌面/移动 **94/94通过**；同一最终源码的隔离 Docker 生产构建通过。Web/API lint、Web/API typecheck、Prettier 全仓格式检查、OpenSpec strict、Diff 检查通过。宿主 vitest 为39 passed/61 skipped，真实DB47/47、HTTP/MCP分别另行通过，如上记录；无Skipped冒充成功。完整冷刷新仍读取同车P001×2，未执行真实Human购买。

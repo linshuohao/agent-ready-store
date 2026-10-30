@@ -134,6 +134,30 @@ export class CartController {
       return this.carts.replaceWebMcp(id, this.cookie(req, id), req.body);
     });
   }
+  @Post('carts/:id/operations')
+  @HttpCode(200)
+  async operate(
+    @Param('id') id: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    await this.send(res, async () => {
+      this.checkRequest(req, true);
+      return this.carts.operate(id, this.cookie(req, id), req.body);
+    });
+  }
+  @Post('webmcp/carts/:id/operations')
+  @HttpCode(200)
+  async operateWebMcp(
+    @Param('id') id: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    await this.send(res, async () => {
+      this.checkRequest(req, true);
+      return this.carts.operate(id, this.cookie(req, id), req.body, true);
+    });
+  }
   @Get('carts/:id') async get(
     @Param('id') id: string,
     @Req() req: Request,

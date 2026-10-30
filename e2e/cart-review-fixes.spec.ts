@@ -30,150 +30,120 @@ const addButton = (page: Page) =>
   page.locator('button[data-add-cart]:enabled').first();
 
 for (const latestItems of [[{ productId: 'P003', quantity: 1 }], []]) {
-  test(`keeps every draft item editable after conflict with ${latestItems.length ? 'replacement' : 'empty'} latest cart`, async ({
+  test(`reload replaces the whole stale draft with ${latestItems.length ? 'replacement' : 'empty'} server cart`, async ({
     page,
   }) => {
     let current = view([{ productId: 'P001', quantity: 1 }]);
-    let writes = 0;
-    let saved: { expectedCartVersion: number; items: CartItem[] } | undefined;
+    let reads = 0,
+      writes = 0;
     await page.route('**/api/v1/carts/**', async (route) => {
-      if (route.request().method() === 'PUT') {
-        if (++writes === 1) {
-          current = view(latestItems, 2);
-          return route.fulfill({
-            status: 409,
-            json: failure('CART_VERSION_CONFLICT'),
-          });
-        }
-        saved = route.request().postDataJSON();
-        current = view(saved!.items, 3);
-      }
-      await route.fulfill({ json: success(current) });
-    });
-    await page.goto(`/cart/${cartId}`);
-    const input = page.getByLabel('數量 P001', { exact: true });
-    await input.fill('2');
-    await page.getByRole('button', { name: '儲存調整', exact: true }).click();
-    await expect(
-      page.getByRole('alert').filter({ hasText: '原草稿已保留' }),
-    ).toBeVisible();
-    await expect(input).toHaveValue('2');
-    await expect(
-      page.getByRole('heading', { name: '最新已儲存內容' }),
-    ).toBeVisible();
-    if (latestItems.length) {
-      await expect(page.getByText('P003：1 件', { exact: true })).toBeVisible();
-      await expect(page.getByLabel('數量 P003', { exact: true })).toHaveCount(
-        0,
-      );
-    } else {
-      await expect(
-        page.getByText('最新購物車沒有商品。', { exact: true }),
-      ).toBeVisible();
-    }
-    await input.fill('3');
-    await page
-      .getByRole('button', { name: '以目前草稿儲存', exact: true })
-      .click();
-    await expect(
-      page.getByRole('status').filter({ hasText: '已儲存' }),
-    ).toBeVisible();
-    expect(saved).toEqual({
-      expectedCartVersion: 2,
-      items: [{ productId: 'P001', quantity: 3 }],
-    });
-  });
-}
-
-test('lets the user remove an invalid draft item while retaining the conflict comparison', async ({
-  page,
-}) => {
-  let current = view([{ productId: 'P001', quantity: 1 }]);
-  let writes = 0;
-  const saved: CartItem[][] = [];
-  await page.route('**/api/v1/carts/**', async (route) => {
-    if (route.request().method() === 'PUT') {
-      saved.push(route.request().postDataJSON().items);
-      if (++writes === 1) {
-        current = view([{ productId: 'P003', quantity: 1 }], 2);
+      if (route.request().method() === 'POST') {
+        writes++;
+        current = view(latestItems, 2);
         return route.fulfill({
           status: 409,
           json: failure('CART_VERSION_CONFLICT'),
         });
       }
-      if (writes === 2) {
-        return route.fulfill({
-          status: 409,
-          json: {
-            ...failure('CART_ITEMS_INVALID'),
-            error: {
-              ...failure('CART_ITEMS_INVALID').error,
-              issues: [{ productId: 'P001', code: 'PRODUCT_NOT_FOUND' }],
-            },
-          },
-        });
-      }
-      current = view([], 3);
+      reads++;
+      await route.fulfill({ json: success(current) });
+    });
+    await page.goto(`/cart/${cartId}`);
+    await page.getByLabel('數量 P001', { exact: true }).fill('2');
+    const before = reads;
+    await page.getByRole('spinbutton').first().press('Enter');
+    await expect(page.locator('#cart-error')).toContainText(
+      '服務端的購物車已更新',
+    );
+    expect(reads).toBe(before);
+    expect(writes).toBe(1);
+    await expect(
+      page.getByRole('heading', { name: '最新已儲存內容' }),
+    ).toHaveCount(0);
+    await page
+      .getByRole('button', {
+        name: '重新載入購物車（放棄未儲存修改）',
+        exact: true,
+      })
+      .click();
+    await expect(page.getByLabel('數量 P001', { exact: true })).toHaveCount(0);
+    if (latestItems.length)
+      await expect(page.getByLabel('數量 P003', { exact: true })).toHaveValue(
+        '1',
+      );
+    else
+      await expect(
+        page.getByText('購物車目前沒有商品', { exact: true }),
+      ).toBeVisible();
+    expect(writes).toBe(1);
+  });
+}
+test('unknown edit releases submission and reloads without replaying or comparing', async ({
+  page,
+}) => {
+  let current = view([{ productId: 'P001', quantity: 1 }]);
+  let reads = 0,
+    writes = 0;
+  await page.route('**/api/v1/carts/**', async (route) => {
+    if (route.request().method() === 'POST') {
+      writes++;
+      current = view([{ productId: 'P001', quantity: 2 }], 2);
+      return route.abort();
     }
+    reads++;
     await route.fulfill({ json: success(current) });
   });
   await page.goto(`/cart/${cartId}`);
   await page.getByLabel('數量 P001', { exact: true }).fill('2');
-  await page.getByRole('button', { name: '儲存調整', exact: true }).click();
-  await expect(
-    page.getByRole('alert').filter({ hasText: '原草稿已保留' }),
-  ).toBeVisible();
+  const before = reads;
+  await page.getByRole('spinbutton').first().press('Enter');
+  await expect(page.locator('#cart-error')).toContainText('保存結果未確認');
+  await expect(page.getByLabel('數量 P001', { exact: true })).toBeDisabled();
+  expect(reads).toBe(before);
+  await expect(page.getByRole('button', { name: '重試原保存' })).toHaveCount(0);
   await page
-    .getByRole('button', { name: '以目前草稿儲存', exact: true })
+    .getByRole('button', {
+      name: '重新載入購物車（放棄未儲存修改）',
+      exact: true,
+    })
     .click();
-  await expect(
-    page.getByText('商品已失效，請移除', { exact: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole('heading', { name: '最新已儲存內容' }),
-  ).toBeVisible();
-  await page.getByRole('button', { name: '移除 P001', exact: true }).click();
-  await page
-    .getByRole('button', { name: '以目前草稿儲存', exact: true })
-    .click();
-  await expect(
-    page.getByRole('status').filter({ hasText: '已儲存' }),
-  ).toBeVisible();
-  expect(saved.at(-1)).toEqual([]);
+  await expect(page.getByLabel('數量 P001', { exact: true })).toHaveValue('2');
+  await expect(page.locator('#cart-error')).toHaveCount(0);
+  expect(writes).toBe(1);
 });
 
-test('explicitly discards the entire draft and loads newly added latest items', async ({
-  page,
-}) => {
-  let latest = false;
+test('a late save on A cannot replace B after navigation', async ({ page }) => {
+  const bId = '33333333-3333-4333-8333-333333333333';
+  let release!: () => void;
+  const barrier = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let received = false;
   await page.route('**/api/v1/carts/**', async (route) => {
-    if (route.request().method() === 'PUT') {
-      latest = true;
+    if (route.request().method() === 'POST') {
+      received = true;
+      await barrier;
       return route.fulfill({
-        status: 409,
-        json: failure('CART_VERSION_CONFLICT'),
+        json: success(view([{ productId: 'P001', quantity: 2 }], 2)),
       });
     }
+    const b = route.request().url().endsWith(bId);
     await route.fulfill({
-      json: success(
-        view(
-          [{ productId: latest ? 'P003' : 'P001', quantity: 1 }],
-          latest ? 2 : 1,
-        ),
-      ),
+      json: success({
+        ...view([{ productId: b ? 'P003' : 'P001', quantity: 1 }]),
+        cartId: b ? bId : cartId,
+      }),
     });
   });
   await page.goto(`/cart/${cartId}`);
   await page.getByLabel('數量 P001', { exact: true }).fill('2');
-  await page.getByRole('button', { name: '儲存調整', exact: true }).click();
-  await page
-    .getByRole('button', { name: '放棄草稿，載入最新', exact: true })
-    .click();
+  await page.getByRole('spinbutton').first().press('Enter');
+  await expect.poll(() => received).toBe(true);
+  await page.goto(`/cart/${bId}`);
+  await expect(page.getByLabel('數量 P003', { exact: true })).toHaveValue('1');
+  release();
   await expect(page.getByLabel('數量 P001', { exact: true })).toHaveCount(0);
   await expect(page.getByLabel('數量 P003', { exact: true })).toHaveValue('1');
-  await expect(
-    page.getByRole('button', { name: '儲存調整', exact: true }),
-  ).toBeVisible();
 });
 
 for (const outcome of ['network', 'service']) {
@@ -265,24 +235,36 @@ for (const recover of [false, true]) {
     const createdId = '22222222-2222-4222-8222-222222222222';
     let attempts = 0;
     let original: { cartToken: string; createRequestId: string } | undefined;
-    let saved: { expectedCartVersion: number; items: CartItem[] } | undefined;
+    let saved:
+      | {
+          expectedCartVersion: number;
+          operation: { productId: string; quantity: number };
+        }
+      | undefined;
     let release!: () => void;
     const barrier = new Promise<void>((resolve) => {
       release = resolve;
     });
-    await page.route(`**/api/v1/carts/${cartId}{,/items}`, async (route) => {
-      if (route.request().method() === 'PUT') {
-        saved = route.request().postDataJSON();
-        return route.fulfill({ json: success(view(saved!.items, 2)) });
-      }
-      // A previously inaccessible B remains in the same document's history.
-      // Strict Mode may read more than once; B stays inaccessible until creation begins.
-      if (attempts === 0)
-        return route.fulfill({ status: 403, json: failure('FORBIDDEN') });
-      await route.fulfill({
-        json: success(view([{ productId: 'P001', quantity: 1 }])),
-      });
-    });
+    await page.route(
+      `**/api/v1/carts/${cartId}{,/operations}`,
+      async (route) => {
+        if (route.request().method() === 'POST') {
+          saved = route.request().postDataJSON();
+          return route.fulfill({
+            json: success(
+              view([{ productId: saved!.operation.productId, quantity: 2 }], 2),
+            ),
+          });
+        }
+        // A previously inaccessible B remains in the same document's history.
+        // Strict Mode may read more than once; B stays inaccessible until creation begins.
+        if (attempts === 0)
+          return route.fulfill({ status: 403, json: failure('FORBIDDEN') });
+        await route.fulfill({
+          json: success(view([{ productId: 'P001', quantity: 1 }])),
+        });
+      },
+    );
     await page.route('**/api/v1/carts', async (route) => {
       const input = route.request().postDataJSON();
       if (++attempts === 1) {
@@ -330,6 +312,6 @@ for (const recover of [false, true]) {
       page.getByRole('status').filter({ hasText: '已加入購物車' }),
     ).toBeVisible();
     expect(saved?.expectedCartVersion).toBe(1);
-    expect(saved?.items.some((item) => item.productId === 'P001')).toBe(true);
+    expect(saved?.operation.productId).toBeTruthy();
   });
 }

@@ -1,80 +1,77 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
-  inspectEdit,
-  replaceCart,
+  operateCart,
   createCart,
+  failureText,
 } from '../src/features/cart/commands';
 const id = '10000000-0000-4000-8000-000000000001';
 const intent = {
   cartId: id,
   expectedCartVersion: 3,
-  items: [],
+  operation: { type: 'add_item' as const, productId: 'P001', quantity: 1 },
   entrance: 'webmcp' as const,
 };
-const view = (version: number, origin = 'HUMAN') => ({
-  orderId: null,
-  cartId: id,
-  origin,
-  cartVersion: version,
-  items: [],
-  quote: null,
-  quoteHash: null,
-  issues: [],
-  canCheckout: false,
-  expiresAt: '2026-11-01T00:00:00.000Z',
-});
-function respond(cart: unknown) {
-  vi.stubGlobal(
-    'fetch',
-    vi
-      .fn()
-      .mockResolvedValue(
-        new Response(
-          JSON.stringify({ ok: true, data: cart, requestId: 'test' }),
-          { status: 200 },
-        ),
-      ),
-  );
-}
 afterEach(() => vi.unstubAllGlobals());
-describe('browser mutation recovery', () => {
-  it('keeps the old version unknown', async () => {
-    respond(view(3));
-    expect(await inspectEdit(intent)).toEqual({ kind: 'unknown' });
-  });
-  it('reports conflict when a newer HUMAN version blocks the pending conversion', async () => {
-    respond(view(4));
-    expect(await inspectEdit(intent)).toMatchObject({
-      kind: 'conflict',
-      cart: { origin: 'HUMAN', cartVersion: 4 },
-    });
-  });
-  it('recognizes current intent only when items and Agent source both match', async () => {
-    respond(view(4, 'AGENT'));
-    expect(await inspectEdit(intent)).toMatchObject({ kind: 'success' });
-  });
-  it('keeps ordinary HUMAN recovery semantics', async () => {
-    respond(view(4));
-    expect(await inspectEdit({ ...intent, entrance: undefined })).toMatchObject(
-      { kind: 'success' },
+describe('server authority commands', () => {
+  it('requires a reload for a stale version without asking for a comparison', () => {
+    expect(failureText({ code: 'CART_VERSION_CONFLICT' })).toBe(
+      '服務端的購物車已更新，請重新載入後再調整。',
     );
   });
-  it('uses a fixed WebMCP entrance and does not submit source fields', async () => {
-    respond(view(4, 'AGENT'));
-    await replaceCart(intent);
-    expect(fetch).toHaveBeenCalledWith(
-      `/api/v1/webmcp/carts/${id}/items`,
+  it('returns a version rejection directly without a follow-up GET or replay', async () => {
+    const request = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ok: false,
+          error: {
+            code: 'CART_VERSION_CONFLICT',
+            message: 'conflict',
+            retryable: false,
+          },
+          requestId: 'test',
+        }),
+        { status: 409 },
+      ),
+    );
+    vi.stubGlobal('fetch', request);
+    expect(await operateCart(intent)).toMatchObject({
+      kind: 'failure',
+      error: { code: 'CART_VERSION_CONFLICT' },
+    });
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(request).toHaveBeenCalledWith(
+      `/api/v1/webmcp/carts/${id}/operations`,
       expect.objectContaining({
-        body: JSON.stringify({ expectedCartVersion: 3, items: [] }),
+        method: 'POST',
+        body: JSON.stringify({
+          expectedCartVersion: 3,
+          operation: intent.operation,
+        }),
       }),
     );
-    await createCart(
-      { createRequestId: id, cartToken: 'x'.repeat(43), items: [] },
-      'webmcp',
-    );
-    expect(fetch).toHaveBeenLastCalledWith(
+  });
+  it('returns an unknown write without reading or replaying it', async () => {
+    const request = vi.fn().mockRejectedValue(new TypeError('network'));
+    vi.stubGlobal('fetch', request);
+    expect(await operateCart(intent)).toEqual({ kind: 'unknown' });
+    expect(request).toHaveBeenCalledTimes(1);
+  });
+  it('preserves the original creation key and channel for explicit retry', async () => {
+    const request = vi.fn().mockRejectedValue(new TypeError('network'));
+    vi.stubGlobal('fetch', request);
+    const creation = {
+      createRequestId: id,
+      cartToken: 'x'.repeat(43),
+      items: [],
+    };
+    await createCart(creation, 'webmcp');
+    await createCart(creation, 'webmcp');
+    expect(request.mock.calls).toHaveLength(2);
+    expect(request.mock.calls[0][0]).toBe(request.mock.calls[1][0]);
+    expect(request.mock.calls[0][1].body).toBe(request.mock.calls[1][1].body);
+    expect(request).toHaveBeenCalledWith(
       '/api/v1/webmcp/carts',
-      expect.anything(),
+      expect.objectContaining({ body: JSON.stringify(creation) }),
     );
   });
 });

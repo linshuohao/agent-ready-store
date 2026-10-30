@@ -2,7 +2,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  cartReplaceInput,
+  cartOperateInput,
+  cartOperationSchema,
   productInput,
   searchInput,
   pageInput,
@@ -10,7 +11,6 @@ import {
   type ProductSummary,
   type ProductDetail,
   type Result,
-  type CartItem,
 } from '@store/contracts';
 import { useCartOperations } from '@/features/cart/provider';
 import { getCart, type EditResult } from '@/features/cart/commands';
@@ -34,7 +34,7 @@ type Props = {
   product?: ProductDetail;
   cartId?: string;
   readonly?: boolean;
-  onCartChanged?: (result: EditResult, intentItems?: CartItem[]) => void;
+  onCartChanged?: (result: EditResult) => void;
 };
 const schema = (
   properties: Record<string, unknown> = {},
@@ -208,26 +208,23 @@ export function PageTools(props: Props) {
       },
     );
     if (!readonly) {
-      register(
-        'retry_cart_operation',
-        '明確重試本頁尚未確認的原 WebMCP 寫入，沿用原材料與原版本；無待恢復操作則拒絕。',
-        schema(),
-        false,
-        async (input) => {
-          if (!input || typeof input !== 'object' || Object.keys(input).length)
-            return failure('VALIDATION_ERROR');
-          const intentItems = latest.current.operations.pendingEdit?.items;
-          const result = await latest.current.operations.retryTool(cartId);
-          if (
-            active &&
-            result &&
-            (result.kind === 'success' || result.kind === 'conflict') &&
-            result.cart.cartId === cartId
-          )
-            latest.current.props.onCartChanged?.(result, intentItems);
-          return active ? result : failure('STALE_CONTEXT');
-        },
-      );
+      if (hasCatalog || productId)
+        register(
+          'retry_cart_creation',
+          '僅重試結果未確認的原建立請求，沿用原通道、請求鍵與條目；不恢復購物車編輯。',
+          schema(),
+          false,
+          async (input) => {
+            if (
+              !input ||
+              typeof input !== 'object' ||
+              Object.keys(input).length
+            )
+              return failure('VALIDATION_ERROR');
+            const result = await latest.current.operations.retryTool(cartId);
+            return active ? result : failure('STALE_CONTEXT');
+          },
+        );
       if (hasCatalog || productId)
         register(
           'add_to_cart',
@@ -250,7 +247,7 @@ export function PageTools(props: Props) {
       if (cartId)
         register(
           'update_cart',
-          '按預期版本整車儲存目前車並取得 Agent 優惠；有未保存草稿時拒絕，不確認或提交購買。',
+          '按服務端版本提交一次加購、絕對設量或移除操作；草稿/忙碌時拒絕，衝突/未知須重新載入，不換版本重試，不提交購買。',
           schema(
             {
               expectedCartVersion: {
@@ -258,24 +255,15 @@ export function PageTools(props: Props) {
                 minimum: 1,
                 maximum: 2147483646,
               },
-              items: {
-                type: 'array',
-                maxItems: 100,
-                items: schema(
-                  {
-                    productId: { type: 'string' },
-                    quantity: { type: 'integer', minimum: 1 },
-                  },
-                  ['productId', 'quantity'],
-                ),
-              },
+              operation: cartOperationSchema,
             },
-            ['expectedCartVersion', 'items'],
+            ['expectedCartVersion', 'operation'],
           ),
           false,
           async (input) => {
-            const parsed = cartReplaceInput.safeParse(input);
+            const parsed = cartOperateInput.safeParse(input);
             if (!parsed.success) return failure('VALIDATION_ERROR');
+            const notify = latest.current.props.onCartChanged;
             const result = await latest.current.operations.toolSave({
               cartId: cartId!,
               ...parsed.data,
@@ -283,10 +271,9 @@ export function PageTools(props: Props) {
             if (
               active &&
               result &&
-              (result.kind === 'success' || result.kind === 'conflict') &&
-              result.cart.cartId === cartId
+              (result.kind !== 'success' || result.cart.cartId === cartId)
             )
-              latest.current.props.onCartChanged?.(result, parsed.data.items);
+              notify?.(result);
             return active ? result : failure('STALE_CONTEXT');
           },
         );
