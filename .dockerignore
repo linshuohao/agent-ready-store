@@ -8,3 +8,15 @@
 !.env.example
 playwright-report
 test-results
+**/*.tsbuildinfo
+**/generated
+references
+docs
+design
+openspec
+.agents
+.codex
+.github
+**/test
+**/tests
+e2e

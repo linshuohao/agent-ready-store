@@ -58,6 +58,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Verify local command lifecycle
+        run: node --test scripts/local.test.mjs
+
       - name: Generate Prisma client
         run: pnpm db:generate
 
@@ -76,7 +79,7 @@ jobs:
       - name: Migrate and initialize test database
         run: |
           pnpm db:migrate
-          CATALOG_PATH=../../references/products.json pnpm db:seed
+          pnpm db:seed
 
       - name: Run API integration tests
         run: |
@@ -104,3 +107,50 @@ jobs:
 
       - name: Run database and unit tests
         run: pnpm test --no-file-parallelism
+
+  delivery:
+    name: Delivery image
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      COMPOSE_PROJECT_NAME: store-delivery-ci
+      POSTGRES_PASSWORD: delivery_test_only
+      CART_ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      MCP_SERVICE_TOKEN: delivery-ci-token-long-enough
+      CART_COOKIE_SECURE: 'false'
+      WEB_ORIGIN: http://localhost:3100
+      WEB_PORT: 3100
+      API_PUBLIC_PORT: 3102
+      MCP_ALLOWED_HOSTS: localhost:3102,127.0.0.1:3102
+      IMAGE_TAG: ci
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build delivery image
+        run: docker compose build
+      - name: Check image contents
+        run: |
+          docker run --rm agent-ready-store-production:ci sh -ec '
+            test ! -e /app/references
+            test ! -e /app/.env
+            test ! -e /app/apps/api/src
+            test -f /app/apps/api/dist/main.js
+            test -f /app/apps/web/.next/BUILD_ID
+            test "$(find /app/apps/api/dist/mcp-app -name "*.html" | wc -l)" -eq 8
+          '
+      - name: Initialize isolated delivery database
+        run: |
+          docker compose up -d --wait db
+          docker compose run --rm api pnpm --filter @store/api db:migrate
+          docker compose run --rm api pnpm --filter @store/api db:seed
+      - name: Start and smoke test production services
+        run: |
+          docker compose up -d --no-build --wait
+          curl --fail --retry 15 --retry-connrefused --retry-delay 2 http://localhost:3100/ > /tmp/store-home.html
+          curl --fail http://localhost:3100/api/v1/products > /tmp/store-products.json
+          node -e "const r = require('/tmp/store-products.json'); if (!r.ok) process.exit(1)"
+      - name: Delivery logs
+        if: failure()
+        run: docker compose logs --no-color
+      - name: Clean up isolated CI deployment
+        if: always()
+        run: docker compose down --volumes --remove-orphans
