@@ -44,7 +44,29 @@ S4测试：专用 `store_test` 库迁移后，设置 `TEST_DATABASE_URL` 串行�
 
 S5 隔离 DB 测试为 `apps/api/test/cart/webmcp-db.test.ts`，及 `apps/api/test/cart/cart-operations-db.test.ts`，与其他 DB 套件串行运行且仅指向 `store_test`。HTTP 测试为 `apps/api/test/cart/webmcp-http.test.ts`及 `apps/api/test/cart/cart-operations-http.test.ts`（API_BASE_URL、WEB_ORIGIN）；浏览器协调测试为 `e2e/webmcp.spec.ts` 和 `e2e/cart-operations.spec.ts`（WEB_BASE_URL 必须匹配 WEB_ORIGIN）。注册替身测试与真实 Host 证据分开记录，自动化确认不称为 Human 验收。
 
-## S1 本地开发
+## 本地 Node 启动（无需 Docker）
+
+需要 Node 24（>=24.11 <25）、pnpm 12.11.2 和本机 PostgreSQL 18。先在 PostgreSQL 创建专用用户与其拥有的空库（例如 `store`），不使用已有的其他业务库。
+
+```sh
+cp .env.example .env
+# 编辑 .env：DATABASE_URL 指向本机数据库，设置随机 MCP_SERVICE_TOKEN，
+# CART_ENCRYPTION_KEY 设置为稳定的 32 字节随机值（64 位十六进制）。
+# 可用 node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))" 生成。
+pnpm install --frozen-lockfile
+pnpm db:generate
+pnpm db:migrate
+pnpm build
+# 仅首次空库执行；已有库存时拒绝初始化，升级不要再次 seed。
+pnpm db:seed
+pnpm dev
+```
+
+Web 为 http://localhost:3000，API 健康检查为 http://localhost:3002/api/v1/health，MCP 为 http://localhost:3002/mcp。浏览器使用与 `WEB_ORIGIN` 一致的地址；Web 同源反代至本机 API。`WEB_PORT`、`API_PUBLIC_PORT` 可配置，变更时同步 `WEB_ORIGIN`、`MCP_ALLOWED_HOSTS`。不要与相同端口的 Compose 服务同时运行。
+
+本地入口自动加载根目录 `.env`（已导出的环境变量优先），目录原件路径默认解析到仓库的 `references/products.json`。开发会 watch contracts、API 与 Web；Ctrl+C 停止本次启动的进程。构建后用 `pnpm start` 运行生产产物；API 代理地址在构建时写入产物，修改 `API_PUBLIC_PORT` 或 `API_INTERNAL_URL` 后须重新构建。已有库升级先停写服务，显式 `pnpm db:generate && pnpm db:migrate && pnpm build`，再启动，不 seed、不删除数据；启动入口不会隐式迁移或初始化数据库。真实 `.env` 不提交，密钥跨重启保留。
+
+## Docker Compose 启动
 
 需要 Node 24、pnpm 12.11.2、Docker/Compose。版本锁定于 package.json 与 pnpm-lock.yaml。以下为本项目操作入口，首次运行需下载依赖/镜像；S1 自动验证与真实 Codex Host 验证已完成，Human 已验收 S1。真实读屏实测仍无证据，本轮 Review 修订的验证与限制见 Tasks。
 
@@ -61,12 +83,12 @@ docker compose run --rm api pnpm db:generate
 docker compose run --rm api pnpm db:migrate
 # Catalog 功能就绪后首次空库显式执行；已有任何库存行会拒绝
 docker compose run --rm api sh -c 'pnpm db:generate && pnpm --filter @store/contracts build && pnpm --filter @store/api build && pnpm db:seed'
-pnpm dev
+pnpm dev:docker
 ```
 
 Web 默认 http://localhost:3000，API 为 http://localhost:3002/api/v1；API_PUBLIC_PORT/WEB_PORT 可配置，改变端口时同步 WEB_ORIGIN/MCP_ALLOWED_HOSTS。浏览器经 Web 同源反代，Next Server 经 Compose 内网访问 API，MCP Host 直连 http://localhost:3002/mcp；数据库不暴露宿主端口。真实 .env 不提交。
 
-`pnpm dev:deps` 使用开发服务共用的依赖卷执行 frozen-lockfile 安装，首次运行及依赖变化后均可显式同步；重建镜像或宿主安装不会更新已有依赖卷。`pnpm dev` 先顺序完成该同步，再运行三服务开发配置，API 侧同时 watch contracts/TypeScript 和 Node 依赖；Web 使用 Next dev。先构建生产镜像 `docker compose -f compose.yaml -f compose.production.yaml build`，再 `pnpm start` 使用编译产物运行；构建不连接数据库、不迁移或 seed。停止使用 `docker compose down`，保留库存卷；不运行带 `-v` 的清理命令。
+`pnpm dev:deps` 使用开发服务共用的依赖卷执行 frozen-lockfile 安装，首次运行及依赖变化后均可显式同步；重建镜像或宿主安装不会更新已有依赖卷。`pnpm dev:docker` 先顺序完成该同步，再运行三服务开发配置，API 侧同时 watch contracts/TypeScript 和 Node 依赖；Web 使用 Next dev。先构建生产镜像 `docker compose -f compose.yaml -f compose.production.yaml build`，再 `pnpm start:docker` 使用编译产物运行；构建不连接数据库、不迁移或 seed。停止使用 `docker compose down`，保留库存卷；不运行带 `-v` 的清理命令。
 
 基础检查：`pnpm typecheck`、`pnpm lint`、`pnpm format:check`、`pnpm build`。`pnpm format` 只处理工程文件，保留原件/设计/历史文档。`pnpm test` 运行 Catalog 契约；真实 DB/API 套件分别需 TEST_DATABASE_URL/API_BASE_URL，无配置时明确 skipped，不代表集成通过。Playwright 用例随页面建立，入口 `pnpm test:e2e`。
 
