@@ -1,5 +1,7 @@
 # 工程与技术决策
 
+**接入术语说明：** MCP Apps 是现有 MCP Server 的交互式 UI 协议扩展，不新增独立 MCP Server。下文及历史记录中的“三入口/三种接入”按交互形态与验收路径理解；协议、连接和构建关系见 [Technical Design §1.1](TECHNICAL_DESIGN.md#11-系统全景与请求路径)。历史批准与各路径分别验收的要求不变。
+
 **下一里程碑阅读入口：** [T-08～T-11：订单生命周期、demo接续、事务与跨端分层](#order-lifecycle-decisions)。仅记录已采用设计选择，不授权实施；限定替代关系见该节。
 
 **最新实施授权（2026-10-30）：** Human已明确接受当前购买Change §4.3可信Host/浏览器UI隔离与§6短期可转交订单只读权限，并授权提交、验证与实施。以下“仅修订/尚未批准”保留历史语境；真实Host证据与验收条件不变，见[权限补充](../../DECISIONS.md)及[当前Design](../../openspec/changes/archive/2026-10-30-agent-confirmed-purchase/design.md)。

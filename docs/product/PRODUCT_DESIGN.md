@@ -8,6 +8,8 @@
 
 ## 1. 设计目标与资产入口
 
+交互形态按基础 MCP、MCP Apps 内嵌 UI、WebMCP 页面工具分别设计与验收。MCP Apps 扩展现有 MCP Server 的交互式 UI 能力，不新增独立 MCP Server；接入术语见 [Requirements §3.3](REQUIREMENTS.md#33-当前需求agent交互形态的生单与human支付)。
+
 让用户看清“仍在选购”“已有待支付订单”“已支付或关闭”，等待付款不阻塞继续购物，未知结果可以定位原单。沿用黑白极简、zh-TW系统文案、原商品文本保真和功能优先，不引入新视觉系统。
 
 [统一设计预览](../../design/index.html)及既有截图是旧流程/视觉参考；新的行为和组件关系以本文及Technical Design §3～5为准，本轮未更新演示资产或执行页面验收。
@@ -80,7 +82,7 @@ Agent：咨询只读，明确加购只改车，明确购买在完整目标及预
 
 ## 7. Design Review、验收与实际证据
 
-旧视觉稿的1440×1000及390×844等检查、截图、日志异常和未完成可访问性项目见[历史证据](archive/2026-10-31-PRODUCT_DESIGN.md#7-design-review验收与实际证据)，本轮不重跑、不冒称新流程通过。新流程以真实Web桌面/移动、键盘/辅助反馈以及三入口实际Human支付分别验收；替身Bridge、自动化和真实Host分开记录。
+旧视觉稿的1440×1000及390×844等检查、截图、日志异常和未完成可访问性项目见[历史证据](archive/2026-10-31-PRODUCT_DESIGN.md#7-design-review验收与实际证据)，本轮不重跑、不冒称新流程通过。新流程以真实Web桌面/移动、键盘/辅助反馈以及各交互路径实际Human支付分别验收；替身Bridge、自动化和真实Host分开记录。
 
 本轮独立规划审查与修订证据归[Tasks](../../openspec/changes/checkout-lifecycle-redesign/tasks.md)，它审查体验约束，不是页面渲染或Human验收。
 

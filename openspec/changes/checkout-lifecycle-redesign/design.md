@@ -240,7 +240,9 @@ Human已授权按审查建议统一整理设计：关闭不回车、订单行固
 
 结果含orderId、cartId、status、effectiveStatus、summary、reservationExpiresAt、allowedActions、导航目标。effectiveStatus区分待支付/已支付/已取消/已超时；各入口使用同一服务端结果，不自行拼出另一套业务状态。
 
-#### 8.3 三入口及普通Web
+#### 8.3 Agent交互路径及普通Web
+
+基础 MCP 与 MCP Apps 使用同一个 MCP Server；Apps 是其交互式 UI 协议扩展，通过工具关联的 UI 资源和 Host Bridge 提供内嵌交互，不新增服务连接或常驻 Server。WebMCP 在网页中暴露页面级工具。下文按交互路径区分展示与验收，不按三套独立协议服务划分。
 
 各端目标路径与展示职责统一见[Technical Design §3](../../../docs/engineering/TECHNICAL_DESIGN.md#shopping-journeys)，适配边界见[§5](../../../docs/engineering/TECHNICAL_DESIGN.md#frontend-architecture)。基础MCP用网页订单入口、WebMCP直接导航、Apps内嵌；服务端用例相同，Agent无支付工具，UI点击直接支付不等待模型。基础MCP的真实链接接手、Apps重挂载与WebMCP导航仍须分别按§12实测，不能互相代替。
 

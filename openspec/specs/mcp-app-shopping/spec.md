@@ -1,5 +1,7 @@
 # mcp-app-shopping Specification
 
+术语说明：MCP Apps 是现有 MCP Server 的交互式 UI 协议扩展，基础 MCP 与 Apps 共用服务连接和业务用例。本文按交互路径区分基础 MCP、Apps 内嵌 UI 与 WebMCP 页面工具；分别验收不代表独立部署三个 MCP Server。此说明不改变下文 Requirement 名称、业务行为或验收条件。
+
 ## Purpose
 
 使支持 MCP Apps 的真实 Agent Host 能在隔离视图中展示商品与同一购物车、经 Bridge 编辑、准备及在Human点击后直接完成内嵌购买，复用既有计价、权限和订单保障；区分视图操作、访问能力与 Human 最终购买确认，保留不支持环境的明确降级。

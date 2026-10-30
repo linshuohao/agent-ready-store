@@ -1,5 +1,7 @@
 # agent-purchase-authorization Specification
 
+术语说明：MCP Apps 是现有 MCP Server 的交互式 UI 协议扩展，基础 MCP 与 Apps 共用服务连接和业务用例。本文按交互路径区分基础 MCP、Apps 内嵌 UI 与 WebMCP 页面工具；分别验收不代表独立部署三个 MCP Server。此说明不改变下文 Requirement 名称、业务行为或验收条件。
+
 ## Purpose
 
 规范基础MCP、WebMCP和MCP Apps的便利准备与具体Human购买确认：Apps/WebMCP点击支付后由UI直接请求下单，基础MCP经Host原生确认后由Agent提交；分离车访问权、准备、具体确认与订单事实，保持原车权限、交易一致性及未知恢复。

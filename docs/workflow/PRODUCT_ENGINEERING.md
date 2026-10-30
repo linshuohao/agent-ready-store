@@ -1,5 +1,7 @@
 # 产品、设计与交付契约
 
+**接入术语说明：** MCP Apps 是现有 MCP Server 的交互式 UI 协议扩展，不新增独立 MCP Server。下文及历史记录中的“三入口/三种接入”按交互形态与验收路径理解；协议、连接和构建关系见 [Technical Design §1.1](../engineering/TECHNICAL_DESIGN.md#11-系统全景与请求路径)。历史批准与各路径分别验收的要求不变。
+
 本文件是工作流的按需参考，规定产物职责、基线维护和最终交付映射，不是另一套 Spec、Plan 或 Tasks。当前为 **Approved — 产物职责与交付契约 v1.0**；本次批准不授予业务实施权限，也不批准引用的项目 Baseline 或 Workflow / Review Skill。任务入口仍是 [Workflow Skill](../../.agents/skills/ai-native-workflow/SKILL.md)，权限及冲突处理见 [AGENTS](../../AGENTS.md)。
 
 - **批准记录：** Human，2026-10-29（Asia/Shanghai）；直接依据为本聊天「PRODUCT_ENGINEERING — Governance Review Finalization」：Human + ChatGPT 已完成 Review，整体接受现有治理契约，并授权本次小幅修订和定稿。对应决策见 [ENG-012](../engineering/ENGINEERING_DECISIONS.md#eng-012--产品设计与最终交付集成)。

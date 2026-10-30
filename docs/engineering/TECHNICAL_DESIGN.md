@@ -36,6 +36,10 @@
 
 ### 1.1 系统全景与请求路径
 
+MCP Apps 是现有 MCP Server 的交互式 UI 协议扩展：与基础 MCP 共用 Server、连接和业务用例，由 Server 关联工具与 UI 资源，支持 Apps 的 Host 加载界面并通过 Bridge 交互；不要求另建或单独安装一个 MCP Server。WebMCP 则在网页中提供页面级工具。本文所称“三入口”指基础 MCP 交互、MCP Apps 内嵌交互、WebMCP 页面交互三条体验与验收路径，不表示三套独立协议服务；各路径仍须分别验证。
+
+`apps/mcp-app` 是 UI 源码与构建单元，静态 HTML 产物由 `apps/api` 的既有 `/mcp` 端点通过资源读取提供；目录独立不代表常驻服务独立。基础工具与 Apps 资源注册在同一 MCP Server，UI 经 Host Bridge 调用所属 Server 的工具。
+
 ```mermaid
 flowchart TB
     subgraph Web[商城浏览器]
@@ -50,12 +54,12 @@ flowchart TB
         Proxy[同源API转发]
     end
     subgraph Host[Agent Host]
-        Agent[基础MCP Agent]
-        Apps[Apps UI与Bridge]
+        Agent[MCP Agent]
+        Apps[MCP Apps UI扩展与Bridge]
     end
     subgraph API[NestJS单一业务进程]
         HTTP[HTTP Controllers]
-        MCP[MCP Adapter与Apps资源]
+        MCP[同一MCP Server：工具与Apps资源]
         Core["Catalog / Cart / Order<br/>共享用例"]
         Pricing[唯一计价规则]
         HTTP --> Core
@@ -517,7 +521,7 @@ sequenceDiagram
 
 ### 5.7 各端复用与协议适配
 
-| 能力 | Web | WebMCP | 基础MCP | MCP Apps |
+| 能力 / 交互形态 | Web | WebMCP页面工具 | 基础MCP交互 | MCP Apps UI扩展 |
 | --- | --- | --- | --- | --- |
 | 商品/详情/评论 | 页面与HTTP | 按页面注册查询工具 | 查询工具返回结构化公开数据 | Host结果与展示组件 |
 | 恢复车/逐项编辑 | 当前车、显式操作 | 复用相同Commands、携带目标车 | MCP调用共享Cart用例 | Bridge调用，隔离实例快照 |
