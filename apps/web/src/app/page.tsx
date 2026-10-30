@@ -61,7 +61,7 @@ export default async function Home({
           </section>
         ) : (
           <>
-            <div className="grid">
+            <div className="product-grid">
               {response.data.items.map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}

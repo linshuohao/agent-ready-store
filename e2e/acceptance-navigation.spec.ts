@@ -313,9 +313,15 @@ test('selected checkbox has a visible contrasting mark and continue shopping ope
       background: getComputedStyle(root).backgroundColor,
       width: rect.width,
       height: rect.height,
+      inside:
+        rect.left >= root.getBoundingClientRect().left &&
+        rect.right <= root.getBoundingClientRect().right &&
+        rect.top >= root.getBoundingClientRect().top &&
+        rect.bottom <= root.getBoundingClientRect().bottom,
     };
   });
 
+  expect(styles.inside).toBe(true);
   expect(styles.stroke).toBe('rgb(255, 255, 255)');
   expect(styles.stroke).not.toBe(styles.background);
   expect(styles.width).toBeGreaterThanOrEqual(16);
@@ -324,4 +330,23 @@ test('selected checkbox has a visible contrasting mark and continue shopping ope
   await expect(
     page.getByRole('link', { name: '繼續購物', exact: true }),
   ).toHaveAttribute('href', '/');
+});
+
+test('catalog checkbox checkmark stays centered inside its background', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const checkbox = page.getByRole('checkbox', { name: '只看可購買商品' });
+  await checkbox.check();
+  await expect(checkbox.locator('svg')).toBeVisible();
+  const centers = await checkbox.evaluate((el) => {
+    const box = el.getBoundingClientRect(),
+      mark = el.querySelector('svg')!.getBoundingClientRect();
+    return {
+      x: Math.abs((box.left + box.right - mark.left - mark.right) / 2),
+      y: Math.abs((box.top + box.bottom - mark.top - mark.bottom) / 2),
+    };
+  });
+  expect(centers.x).toBeLessThan(1);
+  expect(centers.y).toBeLessThan(1);
 });
