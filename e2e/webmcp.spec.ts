@@ -105,7 +105,7 @@ test('add intent displays cart, protects drafts and retains original operation k
     error: { code: 'UNSAVED_DRAFT' },
   });
   await expect(page.getByLabel('數量 P001', { exact: true })).toHaveValue('2');
-  await page.getByRole('button', { name: '恢復已儲存數量 P001' }).click();
+  await page.getByRole('button', { name: '還原數量 P001' }).click();
   let lost = true;
   await page.route('**/shopping/carts/*/operations', async (route) => {
     if (lost) {

@@ -59,7 +59,7 @@ export function CartPage({ id }: { id?: string }) {
         <PageTools cartId={id} />
         <h1>購物車</h1>
         <p>
-          勾選整行商品，先儲存數量，再建立待支付訂單。生單後保留庫存15分鐘，尚未支付。
+          勾選要購買的商品並調整數量，即可建立待支付訂單。生單後保留庫存15分鐘，尚未支付。
         </p>
       </div>
       {loading && <p role="status">正在讀取購物車…</p>}
@@ -162,7 +162,10 @@ export function CartPage({ id }: { id?: string }) {
                           });
                       }}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
+                        if (
+                          e.key === 'Enter' &&
+                          draft[item.productId] !== String(item.quantity)
+                        ) {
                           e.preventDefault();
                           void perform({
                             type: 'set_quantity',
@@ -172,24 +175,6 @@ export function CartPage({ id }: { id?: string }) {
                         }
                       }}
                     />
-                    <Button
-                      variant="outline"
-                      disabled={
-                        busy ||
-                        reload ||
-                        conflict ||
-                        draft[item.productId] === String(item.quantity)
-                      }
-                      onClick={() =>
-                        void perform({
-                          type: 'set_quantity',
-                          productId: item.productId,
-                          quantity: Number(draft[item.productId]),
-                        })
-                      }
-                    >
-                      儲存 {item.productId} 數量
-                    </Button>
                     {draft[item.productId] !== String(item.quantity) && (
                       <Button
                         variant="outline"
@@ -199,7 +184,7 @@ export function CartPage({ id }: { id?: string }) {
                           change(item.productId, String(item.quantity))
                         }
                       >
-                        恢復已儲存數量 {item.productId}
+                        還原數量 {item.productId}
                       </Button>
                     )}
                     <Button
@@ -218,10 +203,9 @@ export function CartPage({ id }: { id?: string }) {
                   </div>
                 </article>
               ))}
-              {dirty && (
-                <p role="status">
-                  數量尚未儲存，按 Enter 或離開欄位後儲存；儲存前無法建立訂單。
-                </p>
+              {working && <p role="status">正在更新購物車…</p>}
+              {dirty && !working && (
+                <p role="status">數量會在離開欄位或按 Enter 後自動更新。</p>
               )}
             </section>
             <aside className="purchase-aside" aria-label="所選商品預估">
@@ -231,7 +215,7 @@ export function CartPage({ id }: { id?: string }) {
               ) : (
                 <p>
                   {selected.length
-                    ? '預估更新中，或請先儲存數量。'
+                    ? '正在更新所選商品預估。'
                     : '請勾選要購買的整行商品。'}
                 </p>
               )}

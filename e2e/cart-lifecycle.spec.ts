@@ -51,7 +51,7 @@ test('defaults to no selection, protects drafts on focus, saves quantities and c
     .click();
   await expect(page.getByLabel('數量 P001', { exact: true })).toHaveValue('1');
   await page.getByLabel('數量 P001', { exact: true }).fill('2');
-  await page.getByRole('button', { name: '儲存 P001 數量' }).click();
+  await page.getByLabel('數量 P001', { exact: true }).press('Tab');
   await expect(page.getByLabel('選取 P001', { exact: true })).not.toBeChecked();
   await page.getByLabel('選取 P001', { exact: true }).check();
   await expect(
@@ -175,10 +175,10 @@ test('foreground refresh installs new rows without selecting them and an old res
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   await expect.poll(() => held).toBe(true);
   await page.getByLabel('數量 P001', { exact: true }).fill('2');
-  await page.getByRole('button', { name: '儲存 P001 數量' }).click();
+  await page.getByLabel('數量 P001', { exact: true }).press('Tab');
   await expect(
     page.getByRole('button', { name: '儲存 P001 數量' }),
-  ).toBeDisabled();
+  ).toHaveCount(0);
   await expect
     .poll(async () => {
       const result = await (
@@ -260,7 +260,7 @@ test('blur saves one changed row and a create version conflict offers explicit r
   await page.getByRole('heading', { name: '商品明細', exact: true }).click();
   await expect(
     page.getByRole('button', { name: '儲存 P001 數量' }),
-  ).toBeDisabled();
+  ).toHaveCount(0);
   await expect
     .poll(async () => {
       const data = await (

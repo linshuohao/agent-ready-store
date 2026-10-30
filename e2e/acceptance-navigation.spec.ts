@@ -67,7 +67,12 @@ async function setup(page: Page) {
   await page.route('**/api/v1/shopping/**', async (route) => {
     const path = new URL(route.request().url()).pathname;
     let data: unknown;
-    if (path.endsWith('/quote')) data = order.summary;
+    if (path.endsWith('/operations')) {
+      const input = route.request().postDataJSON();
+      cart.items[0].quantity = input.operation.quantity;
+      cart.cartVersion++;
+      data = cart;
+    } else if (path.endsWith('/quote')) data = order.summary;
     else if (path.endsWith('/pay')) {
       order.status = 'PAID';
       order.effectiveStatus = 'PAID';
@@ -249,4 +254,44 @@ test('payment after creation restarts the feedback reading window', async ({
   await expect(feedback).toBeVisible();
   await page.clock.fastForward(4500);
   await expect(feedback).toHaveCount(0);
+});
+
+test('quantity updates automatically without a save action', async ({
+  page,
+}) => {
+  const writes: unknown[] = [];
+  page.on('request', (request) => {
+    if (request.url().endsWith('/operations'))
+      writes.push(request.postDataJSON());
+  });
+  await page.goto(`/cart/${cartId}`);
+  const quantity = page.getByRole('spinbutton', {
+    name: '數量 P001',
+    exact: true,
+  });
+  await expect(quantity).toHaveValue('1');
+  await expect(
+    page.getByRole('button', { name: /^儲存 .* 數量$/ }),
+  ).toHaveCount(0);
+  await quantity.fill('2');
+  await quantity.press('Tab');
+  await expect.poll(() => writes.length).toBe(1);
+  await expect(quantity).toBeEnabled();
+  await expect(quantity).toHaveValue('2');
+  await quantity.press('Enter');
+  await quantity.press('Tab');
+  expect(writes).toHaveLength(1);
+  await quantity.fill('0');
+  await quantity.press('Tab');
+  await expect(page.getByRole('main').getByRole('alert')).toContainText(
+    '數量必須是正整數',
+  );
+  expect(writes).toHaveLength(1);
+  await quantity.fill('3');
+  await quantity.press('Enter');
+  await expect.poll(() => writes.length).toBe(2);
+  await expect(quantity).toHaveValue('3');
+  await expect(quantity).toBeEnabled();
+  await page.reload();
+  await expect(quantity).toHaveValue('3');
 });
