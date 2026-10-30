@@ -232,7 +232,7 @@ export function OrderPage({
             {!share && sameCart && (
               <Link
                 className="commerce-action-secondary"
-                href={`/cart/${order.cartId}`}
+                href="/"
                 prefetch={false}
               >
                 繼續購物

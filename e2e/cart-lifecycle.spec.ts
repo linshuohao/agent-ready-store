@@ -59,7 +59,10 @@ test('defaults to no selection, protects drafts on focus, saves quantities and c
   ).toBeVisible();
   await create.click();
   await expect(page).toHaveURL(/\/orders\//);
-  await page.getByRole('link', { name: '繼續購物', exact: true }).click();
+  await expect(
+    page.getByRole('link', { name: '繼續購物', exact: true }),
+  ).toHaveAttribute('href', '/');
+  await page.goto(`/cart/${cart.cartId}`);
   await expect(page.getByLabel('數量 P001', { exact: true })).toHaveCount(0);
   await expect(page.getByLabel('選取 P003', { exact: true })).not.toBeChecked();
   const orders = await (
@@ -121,7 +124,10 @@ test('unknown add operation recovers its original key after reload and same SKU 
     .getByRole('button', { name: '建立待支付訂單', exact: true })
     .click();
   await expect(page).toHaveURL(/\/orders\//);
-  await page.getByRole('link', { name: '繼續購物', exact: true }).click();
+  await expect(
+    page.getByRole('link', { name: '繼續購物', exact: true }),
+  ).toHaveAttribute('href', '/');
+  await page.goto(`/cart/${cart.cartId}`);
   await expect(
     page.getByText('購物車目前沒有商品', { exact: true }),
   ).toBeVisible();

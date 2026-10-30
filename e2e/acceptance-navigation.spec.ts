@@ -295,3 +295,33 @@ test('quantity updates automatically without a save action', async ({
   await page.reload();
   await expect(quantity).toHaveValue('3');
 });
+
+test('selected checkbox has a visible contrasting mark and continue shopping opens catalog', async ({
+  page,
+}) => {
+  await page.goto(`/cart/${cartId}`);
+  const checkbox = page.getByRole('checkbox', { name: '選取 P001' });
+  await checkbox.check();
+  await expect(checkbox).toHaveCSS('background-color', 'rgb(25, 25, 25)');
+  const mark = checkbox.locator('svg');
+  await expect(mark).toBeVisible();
+  const styles = await mark.evaluate((svg) => {
+    const root = svg.closest('[data-slot="checkbox"]')!;
+    const rect = svg.getBoundingClientRect();
+    return {
+      stroke: getComputedStyle(svg).stroke,
+      background: getComputedStyle(root).backgroundColor,
+      width: rect.width,
+      height: rect.height,
+    };
+  });
+
+  expect(styles.stroke).toBe('rgb(255, 255, 255)');
+  expect(styles.stroke).not.toBe(styles.background);
+  expect(styles.width).toBeGreaterThanOrEqual(16);
+  expect(styles.height).toBeGreaterThanOrEqual(16);
+  await page.goto(`/orders/${orderId}`);
+  await expect(
+    page.getByRole('link', { name: '繼續購物', exact: true }),
+  ).toHaveAttribute('href', '/');
+});

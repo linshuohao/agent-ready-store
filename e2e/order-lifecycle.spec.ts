@@ -73,7 +73,8 @@ test('fixed order summary pays the original order and continues shopping in the 
     page.getByRole('heading', { name: '支付成功', exact: true }),
   ).toBeVisible();
   await page.getByRole('link', { name: '繼續購物', exact: true }).click();
-  await expect(page).toHaveURL(/\/cart/);
+  await expect(page).toHaveURL(/\/$/);
+  await page.goto(`/cart/${cart.cartId}`);
   await expect(page.getByLabel('數量 P003', { exact: true })).toHaveValue('1');
   expect(
     await page.evaluate(() => localStorage.getItem('store.currentCartId')),
@@ -109,6 +110,8 @@ test('cancellation closes only the chosen order and keeps sibling navigation', a
     page.getByRole('heading', { name: '訂單已取消', exact: true }),
   ).toBeVisible();
   await page.getByRole('link', { name: '繼續購物', exact: true }).click();
+  await expect(page).toHaveURL(/\/$/);
+  await page.goto(`/cart/${cart.cartId}`);
   await expect(
     page.getByText('購物車目前沒有商品', { exact: true }),
   ).toBeVisible();
