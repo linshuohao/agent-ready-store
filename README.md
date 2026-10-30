@@ -78,26 +78,34 @@ S5 隔离 DB 测试为 `apps/api/test/cart/webmcp-db.test.ts`，及 `apps/api/te
 
 ## 本机开发
 
-日常开发使用本机 Node 24（>=24.11 <25）、pnpm 12.11.2 与 PostgreSQL 18；Docker 仅用于交付验证，不再提供容器热更新开发模式。
+日常开发使用本机 Node 24（>=24.11 <25）和 pnpm 12.11.2。Web/API 在本机运行；推荐只用 Docker 启动 PostgreSQL 18，不必在本机安装 PostgreSQL。完整应用镜像用于交付，开发不使用应用容器。
 
-首次准备，在 PostgreSQL 创建专用用户和空库后：
+**首次准备**（先启动 Docker Desktop）：
+
+1. 没有 `.env` 时才执行 `cp .env.example .env`。已有 `.env` 不要覆盖，保留原来的 `CART_ENCRYPTION_KEY` 和 `MCP_SERVICE_TOKEN`；旧 Compose 配置通常没有 `DATABASE_URL`，需要补上。
+2. 配置 `POSTGRES_PASSWORD`，以及 `DATABASE_URL=postgresql://store:<同一个密码>@127.0.0.1:5432/store`。URL 中的密码须做百分号编码；可用只含字母/数字的随机密码避免编码问题。设置稳定的 `CART_ENCRYPTION_KEY` 与随机 `MCP_SERVICE_TOKEN`，`WEB_ORIGIN` 与浏览器地址一致，本机 HTTP 显式设置 `CART_COOKIE_SECURE=false`。
+3. 执行以下命令：
 
 ```sh
-cp .env.example .env
-# 编辑 DATABASE_URL、稳定的 CART_ENCRYPTION_KEY、随机 MCP_SERVICE_TOKEN。
-# WEB_ORIGIN 必须与浏览器访问地址一致；本机 HTTP 显式设置 CART_COOKIE_SECURE=false。
 pnpm install --frozen-lockfile
+pnpm db:up
 pnpm db:generate
 pnpm db:migrate
-# 仅首次空库：自动准备 API 编译，不会构建 Web；已有库存时拒绝初始化。
+# 仅首次空库；自动准备 API 编译，不构建 Web，已有库存时拒绝初始化。
 pnpm db:seed
-```
-
-日常启动只运行：
-
-```sh
 pnpm dev
 ```
+
+`db:up` 使用 `compose.local.yaml`，只启动 PostgreSQL，并等待健康检查。首次创建的空数据卷会自动创建 `store` 用户和 `store` 数据库；业务表仍由 `db:migrate` 创建。数据库端口仅绑定 `127.0.0.1`，默认 5432；如被占用，在 `.env` 设置 `LOCAL_DB_PORT` 并同步修改 `DATABASE_URL`。开发数据卷为 `agent-ready-store-local_inventory`，与交付配置的 `agent-ready-store_inventory` 分开，不自动迁移或覆盖已有交付数据。已有卷的数据库密码不会因修改 `.env` 自动变化。
+
+**日常启动**：
+
+```sh
+pnpm db:up
+pnpm dev
+```
+
+数据库已运行时可只执行 `pnpm dev`。停止应用用 Ctrl+C；需要停止开发数据库时运行 `pnpm db:down`，数据卷保留。不要使用 `down -v` 删除已有数据。若已有本机或远程 PostgreSQL，直接将 `DATABASE_URL` 指向其专用库，跳过 `db:up/db:down`，其余步骤相同。
 
 无需先执行 `pnpm build`。入口加载根 `.env`（已导出的变量优先），自动生成 Prisma Client 和必要的 contracts/API/Apps 产物，然后监听 contracts、API、Apps 及共享 UI，Web 使用 Next dev。这里的首次 TypeScript 编译不是 Next 生产构建。Apps 文件更新后由 Host 重新加载资源；Host 内已打开的卡片不承诺热更新。Ctrl+C 停止本次进程组。
 

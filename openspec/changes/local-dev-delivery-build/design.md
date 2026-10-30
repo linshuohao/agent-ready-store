@@ -32,3 +32,9 @@ Non-Goals：公网发布、镜像仓库、自动部署、业务改动、删除�
 ## Planning Review
 
 聚焦自查：未改变业务契约；不混入 DB 自动初始化；没有新依赖/服务；库存卷保持。实施授权来自 Human 本轮明确指令，具体局部实现由 AI 决定，不冒称独立 Review 或逐项 Human 批准。
+
+## Follow-up — 本地数据库启动缺口（2026-10-30）
+
+Human 在合入后报告 README 的 db:generate/db:migrate 缺少 DATABASE_URL，并明确本机应用应连接 Docker PostgreSQL，不安装本机 PostgreSQL。实测旧 .env 缺少 DATABASE_URL，5432 无监听；前轮隔离库验证未覆盖用户现有配置。
+
+补充：compose.local.yaml 仅运行 PostgreSQL，使用 agent-ready-store-local 项目及独立库存卷，loopback 5432（可配置 LOCAL_DB_PORT），提供 db:up/db:down。完整应用 Compose 保持交付用途。README 分开首次准备、旧 .env 补齐、日常启动；本机脚本缺 DATABASE_URL 时在启动工具前给出明确指引。当前本机 .env 只补连接地址，不覆盖已有密钥，不将凭证加入 Git。

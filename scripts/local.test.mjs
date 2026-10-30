@@ -14,7 +14,12 @@ import { join } from 'node:path';
 import { spawn } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
 
-async function fixture(t, mode, fail = '') {
+async function fixture(
+  t,
+  mode,
+  fail = '',
+  databaseUrl = 'postgresql://test:test@localhost/store_test',
+) {
   const root = await realpath(
     await mkdtemp(join(tmpdir(), 'store-local-test-')),
   );
@@ -29,7 +34,10 @@ async function fixture(t, mode, fail = '') {
     join(root, 'apps/api/dist/main.js'),
     'setInterval(() => {}, 1000);',
   );
-  await writeFile(join(root, '.env'), 'WEB_PORT=4310\nAPI_PUBLIC_PORT=4312\n');
+  await writeFile(
+    join(root, '.env'),
+    `WEB_PORT=4310\nAPI_PUBLIC_PORT=4312\nDATABASE_URL=${databaseUrl}\n`,
+  );
   await writeFile(
     join(root, 'bin/pnpm'),
     `#!${process.execPath}
@@ -46,11 +54,16 @@ if (args.includes('dev') || args.includes('start')) setInterval(() => {}, 1000);
     cwd: root,
     env: {
       ...process.env,
+      DATABASE_URL: undefined,
       PATH: `${join(root, 'bin')}:${process.env.PATH}`,
       CALL_LOG: log,
       FAIL_COMMAND: fail,
     },
-    stdio: 'ignore',
+    stdio: ['ignore', 'ignore', 'pipe'],
+  });
+  let stderr = '';
+  child.stderr.on('data', (chunk) => {
+    stderr += chunk;
   });
   const exited = new Promise((resolve) =>
     child.on('exit', (code) => resolve(code)),
@@ -72,7 +85,15 @@ if (args.includes('dev') || args.includes('start')) setInterval(() => {}, 1000);
       throw error;
     }
   }
-  return { child, exited, calls, root };
+  return {
+    child,
+    exited,
+    calls,
+    root,
+    get stderr() {
+      return stderr;
+    },
+  };
 }
 
 test('failed initialization exits nonzero without seed or watchers', async (t) => {
@@ -118,4 +139,12 @@ test('production start does not build or migrate and termination stops children'
   assert.equal(await f.exited, 143);
   for (const { pid } of calls)
     assert.throws(() => process.kill(pid, 0), { code: 'ESRCH' });
+});
+
+test('missing database configuration gives setup guidance before invoking tools', async (t) => {
+  const f = await fixture(t, 'db:generate', '', '');
+  assert.equal(await f.exited, 1);
+  assert.match(f.stderr, /DATABASE_URL/);
+  assert.match(f.stderr, /README/);
+  assert.deepEqual(await f.calls(), []);
 });

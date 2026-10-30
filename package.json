@@ -22,7 +22,9 @@
     "build:apps": "pnpm --filter @store/contracts build && pnpm --filter @store/api build && pnpm --filter @store/mcp-app build && pnpm --filter @store/web build",
     "build:docker": "docker compose build",
     "db:migrate:docker": "docker compose run --rm api pnpm --filter @store/api db:migrate",
-    "db:seed:docker": "docker compose run --rm api pnpm --filter @store/api db:seed"
+    "db:seed:docker": "docker compose run --rm api pnpm --filter @store/api db:seed",
+    "db:up": "docker compose -f compose.local.yaml up -d --wait",
+    "db:down": "docker compose -f compose.local.yaml down"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",

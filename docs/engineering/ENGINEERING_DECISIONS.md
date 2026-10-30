@@ -252,7 +252,7 @@ T-01～T-06 原为未选择方案的讨论索引；2026-10-29 按 Human 明确�
 
 #### T-06 补充：本机开发与 Docker 交付分离（2026-10-30）
 
-Human 明确确认并授权：日常 Web/API 开发在本机运行，Docker 主要服务可复现交付，删除容器开发入口。开发启动无需手动生产 build；初始化、迁移、生产构建与运行分别提供命令，启动不隐式迁移/seed。保留三服务交付、原件只读及数据卷不覆盖约束；没有公网发布授权。替代前文待细化的开发容器方向，原始历史与业务约束不变。实现与实际验证见 [local-dev-delivery-build](../../openspec/changes/local-dev-delivery-build/tasks.md)。
+Human 明确确认并授权：日常 Web/API 开发在本机运行，Docker 主要服务可复现交付，删除容器开发入口。开发启动无需手动生产 build；初始化、迁移、生产构建与运行分别提供命令，启动不隐式迁移/seed。保留三服务交付、原件只读及数据卷不覆盖约束；没有公网发布授权。替代前文待细化的开发容器方向，原始历史与业务约束不变。 同日 Human 补充明确：本机不安装 PostgreSQL，允许只用 Docker 运行开发数据库并从本机应用连接；应用开发容器仍移除，开发数据库使用独立卷。实现与实际验证见 [local-dev-delivery-build](../../openspec/changes/local-dev-delivery-build/tasks.md)。
 
 <a id="conflict--需-human-批准的修订与契约缺口"></a>
 

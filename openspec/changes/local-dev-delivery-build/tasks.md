@@ -33,3 +33,9 @@
 ## Remaining limits
 
 GitHub CI 已更新但未远程运行；公网部署/TLS、镜像发布、完整依赖裁剪和 Host 内已打开卡片的 HMR 不在本轮范围。Human 已授权提交并本地合入 main；实际提交/合并结果以 Git 历史为准。尚未归档，未授权 Push 或发布。
+
+## 4. 合入后本机开发反馈
+
+- [x] 4.1 补齐仅 PostgreSQL 的 Docker 入口与 README 步骤、缺失 DATABASE_URL 提示；用当前 .env（无测试 URL 覆盖）验证 db:up、generate、migrate、首次 seed 与 dev，保持交付数据卷不变。
+
+反馈根因：旧 .env 缺少 DATABASE_URL，原文档假设已经自行创建本机 PostgreSQL，没有提供用户期望的数据库启动入口。新增配置缺失回归测试先失败（缺配置仍调用工具），修复后 4 个脚本测试通过。新增开发卷首次创建后迁移 6 项、seed 成功；直接使用当前 .env 的 pnpm dev、首页和同源商品查询均通过。开发数据库保持运行，应用验证进程停止后交还用户自行启动。此补充采用聚焦自查：确认配置只启动 DB、独立卷与 loopback 端口、无自动迁移/seed、实际 .env 未纳入 Git。
