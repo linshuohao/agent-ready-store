@@ -20,9 +20,7 @@ test('redeems fragment before review and preserves AGENT source through editing 
     404,
   );
   await page.getByRole('link', { name: '編輯原購物車', exact: true }).click();
-  await expect(
-    page.getByRole('button', { name: '儲存調整', exact: true }),
-  ).toBeVisible();
+  await expect(page.getByRole('spinbutton').first()).toBeVisible();
   await page.getByRole('link', { name: '前往結帳', exact: true }).click();
   await page.getByRole('button', { name: '確認購買', exact: true }).click();
   await expect(

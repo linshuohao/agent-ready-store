@@ -25,7 +25,7 @@ test('adds, refreshes, edits and removes a product with server quote', async ({
   await page.reload();
   await expect(page.getByLabel(`數量 ${id}`, { exact: true })).toHaveValue('1');
   await page.getByLabel(`數量 ${id}`, { exact: true }).fill('2');
-  await page.getByRole('button', { name: '儲存調整', exact: true }).click();
+  await page.getByRole('spinbutton').first().press('Enter');
   await expect(
     page.getByRole('status').filter({ hasText: '已儲存' }),
   ).toBeVisible();
@@ -34,8 +34,10 @@ test('adds, refreshes, edits and removes a product with server quote', async ({
   await expect(
     page.getByRole('status').filter({ hasText: '已儲存' }),
   ).toHaveCount(0);
+  await page
+    .getByRole('button', { name: `恢復已儲存數量 ${id}`, exact: true })
+    .click();
   await page.getByRole('button', { name: `移除 ${id}`, exact: true }).click();
-  await page.getByRole('button', { name: '儲存調整', exact: true }).click();
   await expect(page.getByText('購物車目前沒有商品')).toBeVisible();
   await expect(page.getByRole('button', { name: '確認購買' })).toHaveCount(0);
 });
@@ -174,7 +176,7 @@ test('a late add response cannot replace another cart after history navigation',
     release = resolve;
   });
   let committed = false;
-  await page.route(`**/api/v1/carts/${bId}/items`, async (route) => {
+  await page.route(`**/api/v1/carts/${bId}/operations`, async (route) => {
     const response = await route.fetch();
     committed = true;
     await barrier;
@@ -202,41 +204,34 @@ test('a late add response cannot replace another cart after history navigation',
   const savedB = await page.request.get(`/api/v1/carts/${bId}`);
   expect((await savedB.json()).data.items[0].quantity).toBe(2);
 });
-test('recovers an uncertain edit with the exact version and payload, then rejects a late original', async ({
+test('reloads an uncertain edit from the server without replaying it', async ({
   page,
 }) => {
   const id = await addFirst(page);
-  let delayed: { url: string; body: unknown } | undefined;
-  await page.route('**/api/v1/carts/*/items', async (route) => {
-    if (!delayed) {
-      delayed = {
-        url: route.request().url(),
-        body: route.request().postDataJSON(),
-      };
-      await route.abort('failed');
-    } else {
-      await route.continue();
-    }
+  let writes = 0;
+  await page.route('**/api/v1/carts/*/operations', async (route) => {
+    writes++;
+    await route.fetch();
+    await route.abort();
   });
   await page.getByLabel(`數量 ${id}`, { exact: true }).fill('2');
-  await page.getByRole('button', { name: '儲存調整', exact: true }).click();
+  await page.getByRole('spinbutton').first().press('Enter');
+  await expect(page.locator('#cart-error')).toContainText('保存結果未確認');
   await expect(
-    page.getByText('儲存結果未明，尚未確認是否完成。'),
-  ).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: '儲存調整', exact: true }),
-  ).toBeDisabled();
-  await page.getByRole('button', { name: '重試原保存', exact: true }).click();
-  await expect(
-    page.getByRole('status').filter({ hasText: '已儲存' }),
-  ).toBeVisible();
-  const late = await page.request.put(delayed!.url, {
-    data: delayed!.body,
-    headers: { Origin: new URL(delayed!.url).origin },
-  });
-  expect(late.status()).toBe(409);
-  await page.reload();
+    page.getByRole('button', {
+      name: '重新載入購物車（放棄未儲存修改）',
+      exact: true,
+    }),
+  ).toBeEnabled();
+  await page
+    .getByRole('button', {
+      name: '重新載入購物車（放棄未儲存修改）',
+      exact: true,
+    })
+    .click();
   await expect(page.getByLabel(`數量 ${id}`, { exact: true })).toHaveValue('2');
+  await expect(page.locator('#cart-error')).toHaveCount(0);
+  expect(writes).toBe(1);
 });
 test('keeps invalid quantity and the draft on a failed save', async ({
   page,
@@ -244,13 +239,13 @@ test('keeps invalid quantity and the draft on a failed save', async ({
   const id = await addFirst(page);
   const quantity = page.getByLabel(`數量 ${id}`, { exact: true });
   await quantity.fill('0');
-  await page.getByRole('button', { name: '儲存調整', exact: true }).click();
+  await page.getByRole('spinbutton').first().press('Enter');
   await expect(
     page.getByRole('alert').filter({ hasText: '數量' }),
   ).toBeVisible();
   await expect(quantity).toHaveValue('0');
   await quantity.fill('2');
-  await page.route('**/api/v1/carts/*/items', (route) =>
+  await page.route('**/api/v1/carts/*/operations', (route) =>
     route.fulfill({
       status: 503,
       contentType: 'application/json',
@@ -265,14 +260,14 @@ test('keeps invalid quantity and the draft on a failed save', async ({
       }),
     }),
   );
-  await page.getByRole('button', { name: '儲存調整', exact: true }).click();
+  await page.getByRole('spinbutton').first().press('Enter');
   await expect(
-    page.getByText('儲存結果未明，尚未確認是否完成。'),
+    page.getByText('保存結果未確認，請重新載入查看服務端的購物車。'),
   ).toBeVisible();
   await expect(quantity).toHaveValue('2');
 });
 
-test('shows a real version conflict and preserves the unsaved quantity', async ({
+test('requires a fresh server cart after a real version conflict', async ({
   page,
 }) => {
   const id = await addFirst(page);
@@ -284,14 +279,16 @@ test('shows a real version conflict and preserves the unsaved quantity', async (
     headers: { Origin: new URL(page.url()).origin },
   });
   expect(changed.status()).toBe(200);
-  await page.getByRole('button', { name: '儲存調整', exact: true }).click();
+  await page.getByRole('spinbutton').first().press('Enter');
   await expect(
-    page.getByRole('alert').filter({ hasText: '購物車已變更' }),
+    page.getByRole('alert').filter({ hasText: '服務端的購物車已更新' }),
   ).toBeVisible();
   await expect(quantity).toHaveValue('2');
-  await expect(page.getByText(`${id}：3 件`, { exact: true })).toBeVisible();
   await page
-    .getByRole('button', { name: '放棄草稿，載入最新', exact: true })
+    .getByRole('button', {
+      name: '重新載入購物車（放棄未儲存修改）',
+      exact: true,
+    })
     .click();
   await expect(quantity).toHaveValue('3');
 });
@@ -315,9 +312,7 @@ test('keeps two carts isolated in one browser and after switching routes', async
   const secondPage = await context.newPage();
   await secondPage.goto(`/cart/${secondId}`);
   await secondPage.getByLabel(`數量 ${id}`, { exact: true }).fill('2');
-  await secondPage
-    .getByRole('button', { name: '儲存調整', exact: true })
-    .click();
+  await secondPage.getByRole('spinbutton').first().press('Enter');
   await expect(
     secondPage.getByRole('status').filter({ hasText: '已儲存' }),
   ).toBeVisible();

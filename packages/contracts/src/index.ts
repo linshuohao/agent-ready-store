@@ -113,6 +113,26 @@ export const cartReplaceInput = z
     items: cartItemsInput,
   })
   .strict();
+export const cartOperationInput = z.discriminatedUnion('type', [
+  cartItemInput.extend({ type: z.literal('add_item') }).strict(),
+  cartItemInput.extend({ type: z.literal('set_quantity') }).strict(),
+  z
+    .object({
+      type: z.literal('remove_item'),
+      productId: cartItemInput.shape.productId,
+    })
+    .strict(),
+]);
+export const cartOperateInput = z
+  .object({
+    expectedCartVersion: cartReplaceInput.shape.expectedCartVersion,
+    operation: cartOperationInput,
+  })
+  .strict();
+export type CartOperation = z.infer<typeof cartOperationInput>;
+export const cartOperationSchema = z.toJSONSchema(cartOperationInput, {
+  io: 'input',
+});
 export type CartItem = z.infer<typeof cartItemInput>;
 export type CartOrigin = 'HUMAN' | 'AGENT';
 export interface PriceLine extends CartItem {

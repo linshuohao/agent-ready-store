@@ -107,6 +107,57 @@ export class CartController {
       return created.cart;
     });
   }
+  @Post('webmcp/carts') async createWebMcp(
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    await this.send(res, async () => {
+      this.checkRequest(req, true);
+      const created = await this.carts.createWebMcp(req.body);
+      this.setCartCookie(
+        res,
+        created.cart.cartId,
+        req.body.cartToken,
+        created.cart.expiresAt,
+      );
+      res.status(created.replayed ? 200 : 201);
+      return created.cart;
+    });
+  }
+  @Put('webmcp/carts/:id/items') async replaceWebMcp(
+    @Param('id') id: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    await this.send(res, async () => {
+      this.checkRequest(req, true);
+      return this.carts.replaceWebMcp(id, this.cookie(req, id), req.body);
+    });
+  }
+  @Post('carts/:id/operations')
+  @HttpCode(200)
+  async operate(
+    @Param('id') id: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    await this.send(res, async () => {
+      this.checkRequest(req, true);
+      return this.carts.operate(id, this.cookie(req, id), req.body);
+    });
+  }
+  @Post('webmcp/carts/:id/operations')
+  @HttpCode(200)
+  async operateWebMcp(
+    @Param('id') id: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    await this.send(res, async () => {
+      this.checkRequest(req, true);
+      return this.carts.operate(id, this.cookie(req, id), req.body, true);
+    });
+  }
   @Get('carts/:id') async get(
     @Param('id') id: string,
     @Req() req: Request,

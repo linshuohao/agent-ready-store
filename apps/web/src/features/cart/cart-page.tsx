@@ -1,9 +1,10 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   cartIdInput,
-  cartItemsInput,
+  cartOperationInput,
+  type CartOperation,
   type CartItem,
   type CartIssue,
   type CartView,
@@ -14,6 +15,7 @@ import { useCartOperations } from './provider';
 import { getCart, failureText, type EditResult } from './commands';
 import { MoneyBreakdown } from './money-breakdown';
 import { formatMoney } from '@/lib/money';
+import { PageTools } from '@/features/webmcp/page-tools';
 
 const drafts = (items: CartItem[]) =>
   Object.fromEntries(
@@ -29,43 +31,130 @@ const issueText: Record<string, string> = {
 };
 export function CartPage({ id }: { id?: string }) {
   const operations = useCartOperations();
-  const { selectCart } = operations;
-  const initialRecovery = useRef(operations.pendingEdit);
+  const { selectCart, setDraftGuard } = operations;
+  const mounted = useRef(false);
+  const submitting = useRef(false);
+  const viewRef = useRef<CartView | null>(null);
+  const draftRef = useRef<Record<string, string>>({});
+  const reloadRequired = useRef(false);
+  const generation = useRef(0);
+  const inputEpoch = useRef(0);
+  const reading = useRef(false);
+  const readSequence = useRef(0);
+  const deferredRead = useRef(false);
+  const busyRef = useRef(false);
+  const [pageGeneration, setPageGeneration] = useState(0);
   const [view, setView] = useState<CartView | null>(null);
   const [draft, setDraft] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
-  const [conflicted, setConflicted] = useState(false);
+  const [needsReload, setNeedsReload] = useState(false);
   const [saveIssues, setSaveIssues] = useState<CartIssue[]>([]);
   const [expired, setExpired] = useState(false);
+  const [completed, setCompleted] = useState(false);
   const [loading, setLoading] = useState(Boolean(id));
-  const [loadAttempt, setLoadAttempt] = useState(0);
-  useEffect(() => {
-    if (!id) return;
-    let active = true;
-    async function load() {
+  const dirty = Boolean(
+    view &&
+    (Object.keys(draft).length !== view.items.length ||
+      view.items.some(
+        (item) => Number(draft[item.productId]) !== item.quantity,
+      )),
+  );
+  const dirtyProduct = view?.items.find(
+    (item) => Number(draft[item.productId]) !== item.quantity,
+  )?.productId;
+  const hasDraft = useCallback(() => {
+    const current = viewRef.current;
+    return Boolean(
+      current &&
+      (Object.keys(draftRef.current).length !== current.items.length ||
+        current.items.some(
+          (item) => Number(draftRef.current[item.productId]) !== item.quantity,
+        )),
+    );
+  }, []);
+  const requireReload = useCallback(
+    (text: string) => {
+      reloadRequired.current = true;
+      inputEpoch.current++;
+      setNeedsReload(true);
+      setStatus('');
+      setError(text);
+      if (id) setDraftGuard(id, hasDraft(), true);
+    },
+    [id, setDraftGuard, hasDraft],
+  );
+  const install = useCallback((cart: CartView) => {
+    if (
+      viewRef.current?.cartId === cart.cartId &&
+      cart.cartVersion < viewRef.current.cartVersion
+    )
+      return;
+    viewRef.current = cart;
+    draftRef.current = drafts(cart.items);
+    setView(cart);
+    setDraft(draftRef.current);
+    setSaveIssues([]);
+    setExpired(false);
+    setCompleted(Boolean(cart.orderId));
+    setError('');
+    setStatus('');
+  }, []);
+  const load = useCallback(
+    async (explicit = false) => {
+      if (!id) return;
       if (!cartIdInput.safeParse(id).success) {
-        if (active) {
-          setError('購物車連結格式有誤。');
-          setLoading(false);
-        }
+        setError('購物車連結格式有誤。');
+        setLoading(false);
         return;
       }
-      selectCart(id!);
-      const result = await getCart(id!);
-      if (!active) return;
+      if (!explicit) {
+        if (reloadRequired.current) return;
+        if (busyRef.current || submitting.current) {
+          deferredRead.current = true;
+          return;
+        }
+        if (hasDraft()) {
+          requireReload('購物車可能已更新，請重新載入後再調整。');
+          return;
+        }
+        if (reading.current) return;
+      } else {
+        generation.current++;
+        inputEpoch.current++;
+        setPageGeneration(generation.current);
+        setLoading(true);
+      }
+      const owner = generation.current,
+        epoch = inputEpoch.current,
+        sequence = ++readSequence.current;
+      reading.current = true;
+      const result = await getCart(id);
+      if (
+        !mounted.current ||
+        owner !== generation.current ||
+        sequence !== readSequence.current
+      )
+        return;
+      reading.current = false;
       setLoading(false);
+      if (
+        !explicit &&
+        (reloadRequired.current ||
+          epoch !== inputEpoch.current ||
+          busyRef.current)
+      ) {
+        if (hasDraft()) requireReload('購物車可能已更新，請重新載入後再調整。');
+        else if (busyRef.current) deferredRead.current = true;
+        return;
+      }
       if (result.kind === 'success') {
-        setView(result.cart);
-        const recovery = initialRecovery.current;
-        setDraft(
-          drafts(
-            recovery && recovery.cartId === id
-              ? recovery.items
-              : result.cart.items,
-          ),
-        );
-        setError('');
+        install(result.cart);
+        if (explicit) {
+          reloadRequired.current = false;
+          setNeedsReload(false);
+        }
+        setDraftGuard(id, false, reloadRequired.current);
       } else {
         setError(
           result.kind === 'failure'
@@ -77,12 +166,54 @@ export function CartPage({ id }: { id?: string }) {
             ['FORBIDDEN', 'CREDENTIAL_EXPIRED'].includes(result.error.code),
         );
       }
-    }
-    void load();
+    },
+    [id, hasDraft, requireReload, install, setDraftGuard],
+  );
+  const leavePage = useCallback(() => {
+    mounted.current = false;
+    generation.current++;
+  }, []);
+  useEffect(() => {
+    let active = true;
+    mounted.current = true;
+    void Promise.resolve().then(() => {
+      if (active && id) {
+        selectCart(id);
+        void load(true);
+      }
+    });
     return () => {
       active = false;
+      leavePage();
+      if (id) setDraftGuard(id, false);
     };
-  }, [id, selectCart, loadAttempt]);
+  }, [id, selectCart, setDraftGuard, load, leavePage]);
+  useEffect(() => {
+    busyRef.current = operations.busy;
+    if (!operations.busy && deferredRead.current) {
+      deferredRead.current = false;
+      void load();
+    }
+  }, [operations.busy, load]);
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const returned = () => {
+      if (document.visibilityState === 'hidden' || timer !== undefined) return;
+      timer = setTimeout(() => {
+        timer = undefined;
+        void load();
+      }, 0);
+    };
+    window.addEventListener('focus', returned);
+    window.addEventListener('pageshow', returned);
+    document.addEventListener('visibilitychange', returned);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('focus', returned);
+      window.removeEventListener('pageshow', returned);
+      document.removeEventListener('visibilitychange', returned);
+    };
+  }, [load]);
   useEffect(() => {
     if (!view) return;
     const timer = setTimeout(
@@ -94,53 +225,96 @@ export function CartPage({ id }: { id?: string }) {
     );
     return () => clearTimeout(timer);
   }, [view]);
-  const pending = operations.pendingEdit?.cartId === id;
-  function accept(result: EditResult | undefined) {
-    if (!result) return;
-    setStatus('');
+  function accept(result: EditResult | undefined, owner: number) {
+    if (!mounted.current || owner !== generation.current || !result) return;
     if (result.kind === 'success') {
-      setView(result.cart);
-      setDraft(drafts(result.cart.items));
-      setError('');
-      setConflicted(false);
-      setSaveIssues([]);
+      if (result.cart.cartId !== id || reloadRequired.current) return;
+      install(result.cart);
+      if (id) setDraftGuard(id, false);
       setStatus('已儲存，內容與報價已更新。');
-    }
-    if (result.kind === 'conflict') {
-      setView(result.cart);
-      setConflicted(true);
-      setSaveIssues([]);
-      setError('購物車已變更，原草稿已保留，請比較最新內容後重新調整。');
-    }
-    if (result.kind === 'failure') {
-      setError(failureText(result.error));
-      setSaveIssues(result.error.issues ?? []);
+    } else if (result.kind === 'unknown')
+      requireReload('保存結果未確認，請重新載入查看服務端的購物車。');
+    else {
+      if (result.error.code === 'CART_COMPLETED') {
+        requireReload('此購物車已完成購買。');
+        setCompleted(true);
+        return;
+      }
+      if (
+        ['CART_BUSY', 'UNSAVED_DRAFT', 'STALE_CONTEXT'].includes(
+          result.error.code,
+        )
+      )
+        return;
+      if (
+        [
+          'CART_VERSION_CONFLICT',
+          'CART_ITEM_NOT_FOUND',
+          'CART_RELOAD_REQUIRED',
+        ].includes(result.error.code)
+      )
+        requireReload(failureText(result.error));
+      else {
+        setError(failureText(result.error));
+        setSaveIssues(result.error.issues ?? []);
+      }
       setExpired(
         ['FORBIDDEN', 'CREDENTIAL_EXPIRED'].includes(result.error.code),
       );
     }
-    if (result.kind === 'unknown') setError('');
   }
-  async function save() {
-    if (!view || !id) return;
-    const items = Object.entries(draft).map(([productId, value]) => ({
-      productId,
-      quantity: Number(value),
-    }));
-    const parsed = cartItemsInput.safeParse(items);
+  function changeQuantity(productId: string, value: string) {
+    inputEpoch.current++;
+    draftRef.current = { ...draftRef.current, [productId]: value };
+    setDraft(draftRef.current);
+    setStatus('');
+    if (id) setDraftGuard(id, hasDraft(), reloadRequired.current);
+  }
+  async function perform(operation: CartOperation) {
+    const current = viewRef.current;
+    if (
+      !current ||
+      !id ||
+      submitting.current ||
+      busyRef.current ||
+      reloadRequired.current
+    )
+      return;
+    const parsed = cartOperationInput.safeParse(operation);
     if (!parsed.success) {
       setError('數量須為不超過目前庫存的正整數，請檢查輸入。');
-      setStatus('');
       return;
     }
-    accept(
-      await operations.save({
-        cartId: id,
-        expectedCartVersion: view.cartVersion,
-        items: parsed.data,
-      }),
-    );
+    submitting.current = true;
+    busyRef.current = true;
+    inputEpoch.current++;
+    const owner = generation.current;
+    try {
+      accept(
+        await operations.save({
+          cartId: id,
+          expectedCartVersion: current.cartVersion,
+          operation: parsed.data,
+        }),
+        owner,
+      );
+    } finally {
+      submitting.current = false;
+      busyRef.current = false;
+    }
   }
+  function saveQuantity(productId: string) {
+    const current = viewRef.current?.items.find(
+      (item) => item.productId === productId,
+    );
+    const quantity = Number(draftRef.current[productId]);
+    if (!current || quantity === current.quantity) return;
+    void perform({ type: 'set_quantity', productId, quantity });
+  }
+  const reload = () => {
+    void load(true);
+  };
+
   if (!id)
     return (
       <main id="main" tabIndex={-1} className="commerce-page">
@@ -172,8 +346,7 @@ export function CartPage({ id }: { id?: string }) {
         {!expired && (
           <Button
             onClick={() => {
-              setLoading(true);
-              setLoadAttempt((n) => n + 1);
+              void load(true);
             }}
           >
             重新讀取
@@ -185,7 +358,7 @@ export function CartPage({ id }: { id?: string }) {
         </p>
       </main>
     );
-  if (view.orderId)
+  if (view.orderId || completed)
     return (
       <main id="main" tabIndex={-1}>
         <h1>購物車</h1>
@@ -201,12 +374,16 @@ export function CartPage({ id }: { id?: string }) {
   const canProceed =
     view.canCheckout &&
     !operations.busy &&
-    !pending &&
-    !conflicted &&
+    !needsReload &&
+    !dirty &&
     Object.keys(draft).length === view.items.length &&
     view.items.every((item) => Number(draft[item.productId]) === item.quantity);
   return (
     <main id="main" tabIndex={-1} className="commerce-page cart-page">
+      <PageTools
+        cartId={id}
+        onCartChanged={(result) => accept(result, pageGeneration)}
+      />
       <div className="commerce-page-heading">
         <p className="eyebrow">CART</p>
         <h1>購物車</h1>
@@ -222,18 +399,10 @@ export function CartPage({ id }: { id?: string }) {
           {error}
         </p>
       )}
-      {pending && (
-        <section className="notice">
-          <p role="status">儲存結果未明，尚未確認是否完成。</p>
-          <Button
-            type="button"
-            onClick={async () => {
-              accept(await operations.retryEdit());
-            }}
-          >
-            重試原保存
-          </Button>
-        </section>
+      {needsReload && (
+        <Button type="button" onClick={reload}>
+          重新載入購物車（放棄未儲存修改）
+        </Button>
       )}
       {view.items.length === 0 && <p>購物車目前沒有商品</p>}
       <div className="purchase-layout">
@@ -242,23 +411,10 @@ export function CartPage({ id }: { id?: string }) {
             <h2>商品明細</h2>
             <p>來源：{view.origin === 'AGENT' ? 'AI 助理準備' : '自行選購'}</p>
           </div>
-          {conflicted && (
-            <>
-              <h2>目前草稿</h2>
-              <p>儲存會以完整草稿取代最新內容，不會自動合併其他入口的調整。</p>
-            </>
-          )}
           {Object.keys(draft).length === 0 && view.items.length > 0 && (
             <p>目前草稿沒有商品，儲存後將清空購物車。</p>
           )}
-          <form
-            id="cart-edit-form"
-            className="cart-edit-form"
-            onSubmit={(event) => {
-              event.preventDefault();
-              void save();
-            }}
-          >
+          <div className="cart-edit-form">
             {Object.entries(draft).map(([productId, quantity]) => {
               const item = view.items.find(
                 (item) => item.productId === productId,
@@ -298,67 +454,64 @@ export function CartPage({ id }: { id?: string }) {
                       type="number"
                       step="1"
                       value={quantity}
-                      disabled={operations.busy}
+                      disabled={
+                        operations.busy ||
+                        needsReload ||
+                        Boolean(dirtyProduct && dirtyProduct !== productId)
+                      }
                       aria-describedby={error ? 'cart-error' : undefined}
-                      onChange={(event) => {
-                        setStatus('');
-                        setDraft((old) => ({
-                          ...old,
-                          [productId]: event.target.value,
-                        }));
+                      onChange={(event) =>
+                        changeQuantity(productId, event.target.value)
+                      }
+                      onBlur={() => saveQuantity(productId)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault();
+                          saveQuantity(productId);
+                        }
                       }}
                     />
                     <Button
                       variant="outline"
                       type="button"
-                      disabled={operations.busy}
+                      disabled={
+                        operations.busy ||
+                        needsReload ||
+                        Boolean(dirtyProduct && dirtyProduct !== productId)
+                      }
                       aria-label={`移除 ${productId}`}
                       onClick={() => {
-                        setStatus('');
-                        setDraft((old) =>
-                          Object.fromEntries(
-                            Object.entries(old).filter(
-                              ([key]) => key !== productId,
-                            ),
-                          ),
-                        );
+                        if (!hasDraft())
+                          void perform({ type: 'remove_item', productId });
                       }}
                     >
                       移除
                     </Button>
+                    {dirtyProduct === productId && !operations.busy && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        aria-label={`恢復已儲存數量 ${productId}`}
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => {
+                          changeQuantity(
+                            productId,
+                            String(item?.quantity ?? ''),
+                          );
+                          if (!reloadRequired.current) setError('');
+                        }}
+                      >
+                        恢復已儲存數量
+                      </Button>
+                    )}
                   </div>
                 </article>
               );
             })}
-          </form>
-          {conflicted && (
-            <section className="notice">
-              <h2>最新已儲存內容</h2>
-              {view.items.length === 0 && <p>最新購物車沒有商品。</p>}
-              <ul>
-                {view.items.map((item) => (
-                  <li key={item.productId}>
-                    {item.productId}：{item.quantity} 件
-                  </li>
-                ))}
-              </ul>
-              <Button
-                variant="outline"
-                disabled={operations.busy}
-                onClick={() => {
-                  setStatus('');
-                  setDraft(drafts(view.items));
-                  setError('');
-                  setConflicted(false);
-                  setSaveIssues([]);
-                }}
-              >
-                放棄草稿，載入最新
-              </Button>
-            </section>
-          )}
+          </div>
           <p className="hint">
-            移除與數量變更須儲存後才生效。不會自動減量或預留庫存。
+            數量按 Enter
+            或離開欄位後儲存；移除立即提交。以服務端回應為準，不會自動減量或預留庫存。
           </p>
         </section>
         <aside className="purchase-aside" aria-label="購物車摘要">
@@ -384,18 +537,7 @@ export function CartPage({ id }: { id?: string }) {
                 請先儲存調整並排除商品問題後再前往結帳。
               </p>
             )}
-            {(view.items.length > 0 ||
-              Object.keys(draft).length > 0 ||
-              conflicted) && (
-              <Button
-                type="submit"
-                form="cart-edit-form"
-                variant={canProceed ? 'outline' : 'default'}
-                disabled={operations.busy}
-              >
-                {conflicted ? '以目前草稿儲存' : '儲存調整'}
-              </Button>
-            )}
+            {operations.busy && <p role="status">儲存中…</p>}
             <Link className="commerce-action-text" href="/">
               繼續選購
             </Link>

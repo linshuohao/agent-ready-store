@@ -10,6 +10,7 @@ import {
 import { Reviews } from '@/features/product-discovery/components/reviews';
 import { AddButton } from '@/features/cart/add-button';
 import { formatMoney } from '@/lib/money';
+import { PageTools } from '@/features/webmcp/page-tools';
 export const dynamic = 'force-dynamic';
 export default async function Product({
   params,
@@ -36,6 +37,7 @@ export default async function Product({
   const p = r.data;
   return (
     <main tabIndex={-1} id="main">
+      <PageTools product={p} />
       <Link href="/">返回商品列表</Link>
       <div className="detail">
         <div className="art">

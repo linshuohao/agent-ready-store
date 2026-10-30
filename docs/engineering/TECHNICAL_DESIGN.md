@@ -1,5 +1,9 @@
 # Agent-Ready Store — Technical Design
 
+
+**2026-10-30 Human 逐项操作修订：** [D-24](../../DECISIONS.md#d-24--电商逐项操作与购物快照新鲜度) 与 [S5 Design §4](../../openspec/changes/s5-webmcp/design.md) 已获批准，限定替代 Web 整车保存和干净页面仅手动刷新细节：Web/WebMCP 逐项操作、同车短暂互斥、进入/返回校准；旧 HTTP/基础 MCP 兼容，目标行严格校验、旧问题行可逐条修复且未修完不可结算。D-23 的版本权威、禁止重放及交易边界继续有效；实施状态以 Tasks §6 为准。
+**2026-10-30 Human 限定修订：** [D-23](../../DECISIONS.md#d-23--服务端权威与购物车客户端简化) 批准 Web/WebMCP 购物车以服务端为准；编辑冲突或响应未知提示显式重新加载，刷新会放弃全部未保存修改，不逐项比较、合并、重放编辑或长期全局锁定。创建幂等、购买确认/未知结果恢复和服务端交易保障保持。此补充取代下文历史客户端冲突比较/编辑恢复细节，实施与验收见 [S5 Change](../../openspec/changes/s5-webmcp/design.md)。
+
 **2026-10-30限定补充（Human Accepted）：** 确认材料与Cart截止一致、同步生单及成交价格固定的定义和批准来源见[D-21追加确认](../../DECISIONS.md#s3-confirmation-lifetime-20261030)；不另设支付或独立短期确认倒计时，既有绑定/重验与整体实施授权边界保持。
 
 **S3限定补充（Human Accepted，2026-10-29）：** §8.2准入与commit边界、§8.3/§9.2结果访问与保留的相关历史Pending，按[D-21 S3限定补充](../../DECISIONS.md#s3-checkout-boundary-20261029)局部收敛；S3确认绑定与恢复/事务实施方案仍Proposed，不代表完整规划、实施或Git授权。
@@ -664,6 +668,8 @@ Server MCP 为 External Agent Host → Nest MCP Adapter → UseCases，不经过
 七工具均调用共享 Commerce UseCases；读工具无写副作用，编辑检查本车权限与版本。工具注解与 Host 确认提示不能替代服务端权限或 Human 购买确认。五工具仅是已被七工具取代的历史范围；无 submit_order。
 
 ### 6.3 同一 Cart 的写入一致性与各环境快照
+
+**S5 限定补充（2026-10-30）：** Human 已批准 [S5 WebMCP 规划](../../openspec/changes/s5-webmcp/proposal.md)并授权实施。下段“新车来源 Pending”及“JavaScript 声明不能取得优惠”为原设计阶段边界，现由 [D-07 S5 补充](../../DECISIONS.md#s5-webmcp-source-20261030)限定取代：WebMCP 工具新建车及成功接手编辑普通车具备 AGENT 优惠资格；额外身份认证/来源防伪后置，不宣称专用 HTTP 通道能防请求模拟。来源转换、版本与条目同事务提交，原权限期限不变；独立创建事实用于保持 D-22 统计，接手不补计创建。具体实现与验收证据留同一 Change，不改写历史归档或推定 S5 已获最终验收。
 
 **写入唯一落点：** 四种入口的 Cart 写入均经 Nest Commerce UseCases，Cart Version 与数据库裁决并发；不建设跨 Host 客户端锁。冲突返回最新状态/处理指引，各环境保留自己的未保存意图供 Human/Agent 核对，不自动合并或静默覆盖。真正的来源由服务端入口确定，WebMCP 的 JavaScript 声明不能取得 AGENT 优惠；新车来源问题继续 Pending。
 

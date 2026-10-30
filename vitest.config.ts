@@ -3,6 +3,7 @@ export default defineConfig({
   test: {
     include: [
       'apps/api/test/**/*.test.ts',
+      'apps/web/test/**/*.test.ts',
       'packages/contracts/test/**/*.test.ts',
     ],
     testTimeout: 15000,

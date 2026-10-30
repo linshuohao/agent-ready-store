@@ -2,7 +2,7 @@
 
 面向人类与 AI Agent 的商店作业。目标与交付约束见只读的 [作业原件](references/home-quiz.md) 和 [商品原件](references/products.json)；PM 需求仍是草稿。
 
-本轮产品与技术设计阶段已由 Human 批准结束（2026-10-29，Asia/Shanghai）：Requirements v0.2、Product Design v0.2 与 [Technical Design v0.5](docs/engineering/TECHNICAL_DESIGN.md) 均为 Approved Baseline；产品/技术决策及演进保留。已批准五页结构、三份视觉方向和前端主导的 Next.js/NestJS/Agent 架构；其余 Proposed Implementation Details、P-04、WebMCP 来源及运行验收缺口继续保留；L-01 已由 S2 限定补充批准解决，见下方当前规划。基础 MCP、WebMCP、MCP Apps 均属本次完整交付目标，S1 商品发现已实现并记录 Human 验收，Web交易已实现，S4基础MCP闭环已通过Human验收（真实接手链路补证限制见S4 Tasks）；WebMCP/MCP Apps尚未实施。
+本轮产品与技术设计阶段已由 Human 批准结束（2026-10-29，Asia/Shanghai）：Requirements v0.2、Product Design v0.2 与 [Technical Design v0.5](docs/engineering/TECHNICAL_DESIGN.md) 均为 Approved Baseline；产品/技术决策及演进保留。已批准五页结构、三份视觉方向和前端主导的 Next.js/NestJS/Agent 架构；其余 Proposed Implementation Details、P-04 及运行验收缺口继续保留；WebMCP 来源已有 S5 限定补充；L-01 已由 S2 限定补充批准解决，见下方当前规划。基础 MCP、WebMCP、MCP Apps 均属本次完整交付目标，S1 商品发现已实现并记录 Human 验收，Web交易已实现，S4基础MCP闭环已通过Human验收（真实接手链路补证限制见S4 Tasks）；S5 WebMCP 实施中，MCP Apps 尚未实施。
 
 阶段关闭记录见 [Technical Design §10.4](docs/engineering/TECHNICAL_DESIGN.md#104-设计阶段关闭与交接--2026-10-29)。Human 已批准 [S1 规划](openspec/changes/archive/2026-10-29-s1-product-discovery/proposal.md) 并授权实施；S1 已完成本轮 Review 并归档，运行证据与保留限制见 [归档 Tasks](openspec/changes/archive/2026-10-29-s1-product-discovery/tasks.md)；后续切片等待对应授权。精益执行原则见 [AGENTS](AGENTS.md#默认执行原则)。
 
@@ -12,7 +12,7 @@ S3已完成实施并于2026-10-30通过Human验收：[Proposal](openspec/changes
 
 ## S4 Agent Handoff
 
-[S4 Change](openspec/changes/archive/2026-10-30-s4-agent-handoff/proposal.md) 已实施七工具、同车分享/兑换及本地有效创建统计，并于2026-10-30通过Human验收；验证与保留限制见 [Tasks](openspec/changes/archive/2026-10-30-s4-agent-handoff/tasks.md)。四份正式Spec已同步，Change已归档。真实Host七工具已有证据，Human实际接手/编辑/确认的新增可核对证据未补齐，按Human知悉限制后的明确授权保留此缺口归档；S5/S6未实施。
+[S4 Change](openspec/changes/archive/2026-10-30-s4-agent-handoff/proposal.md) 已实施七工具、同车分享/兑换及本地有效创建统计，并于2026-10-30通过Human验收；验证与保留限制见 [Tasks](openspec/changes/archive/2026-10-30-s4-agent-handoff/tasks.md)。四份正式Spec已同步，Change已归档。真实Host七工具已有证据，Human实际接手/编辑/确认的新增可核对证据未补齐，按Human知悉限制后的明确授权保留此缺口归档；S5 实施中，S6 未实施。
 
 基础 MCP 仍为 `http://localhost:3002/mcp`，使用本机 `MCP_SERVICE_TOKEN` 的 Bearer 认证及既有 Host/Origin 限制。七工具为 `search_products`、`get_product`、`list_product_reviews`、`create_cart`、`get_cart`、`update_cart`、`create_handoff`。无订单提交工具。单个配置的服务身份共享创建键命名空间，不能区分 Host 或顾客；每个新意图使用随机 UUID `createRequestId`。
 
@@ -25,6 +25,24 @@ S3已完成实施并于2026-10-30通过Human验收：[Proposal](openspec/changes
 已有数据库只需执行 `docker compose exec api pnpm db:migrate`（服务未启动时使用前文 `run --rm` 入口），新增可空 `handoffIssuedAt`，不 seed、不删卷。已分享后不能回退到忽略此字段的旧权限实现。只读统计执行 `docker compose exec api pnpm --filter @store/api metrics:agent-carts`，按持久 AGENT Cart ID 计数；后续删空、到期或成交不撤销创建，不代表独立顾客或运营目标已达成。本轮无自动清理。
 
 S4测试：专用 `store_test` 库迁移后，设置 `TEST_DATABASE_URL` 串行运行 `apps/api/test/cart/handoff-db.test.ts`；MCP/HTTP测试设置 `API_BASE_URL=http://localhost:3002`、`MCP_SERVICE_TOKEN`、`WEB_ORIGIN` 后运行 `apps/api/test/cart/handoff-http.test.ts`；桌面/移动 `e2e/handoff.spec.ts` 另需相同服务Token与匹配 `WEB_BASE_URL`。真实Host调用和模拟协议/浏览器测试分别记证，不把自动化点击称为Human验收。
+
+## S5 WebMCP
+
+**当前已批准修订：** [电商逐项操作与按场景刷新](openspec/changes/s5-webmcp/design.md#4-电商逐项操作服务端权威与按场景刷新本次拟议修订) 已在本地实施；[Tasks §6](openspec/changes/s5-webmcp/tasks.md#6-电商逐项操作与按场景刷新本次修订) 记录实际验证和剩余验收。
+
+[S5 Change](openspec/changes/s5-webmcp/proposal.md) 已由 Human 批准规划并授权实施，当前实现与验证进度见 [Tasks](openspec/changes/s5-webmcp/tasks.md)，尚未获得最终验收；S6 未实施。以下是本轮新增运行契约，不将基础 MCP 成功当作 WebMCP 验收。
+
+支持 `document.modelContext` 的浏览器按页面提供工具：目录页 `search_products`、`add_to_cart`；详情页 `get_product`、`list_product_reviews`、`add_to_cart`；活动购物车页 `update_cart`。上述页面还提供 `get_cart`；目录/详情另提供仅用于原创建重试的 `retry_cart_creation`，购物车编辑无恢复工具；Checkout 仅 `get_cart`，无购买确认/提交工具。Host 发现名称可能带本次注册后缀，必须使用当前发现结果，不能缓存旧句柄。
+
+商品详情/评论为当前页商品，不接受任意 `productId`；评论分页沿用 offset/limit/catalogRevision。搜索参数沿用目录契约，更新 URL 后返回同一次页面查询的结构化结果；导航未确认不声称已取得新结果。工具加购传 productId；WebMCP 编辑传 expectedCartVersion/operation，操作当前车，不接收车 Token 或客户端来源/报价。返回完整服务端 CartView/报价或明确错误。数量在 Enter/失焦时逐项保存，移除直接提交，取消整车保存按钮；输入非法保留并可显式恢复已保存数量。同车在途时短暂阻止 Human/工具重复写入，未保存输入拒绝工具写入。进入/返回前台更新干净快照，有草稿则保护并要求刷新。编辑冲突或响应未知须显式重新加载，不比较、不合并、不重放；旧响应不能解除刷新要求，离页结果不更新新车。仅创建重试保留原入口、请求键和材料。
+
+新车及成功接手编辑的普通车享 AGENT 优惠；来源升级不延长车权限，不代表购买确认。来源防伪按 Human 决定后置，本轮不额外认证，不能防止模拟 WebMCP 的 HTTP 请求；车 Cookie、同源防护、服务端计价及 Human Checkout 确认保持。无 WebMCP 时显示限制并可继续普通 Web 购物。
+
+浏览器创建通道为 `POST /api/v1/webmcp/carts`；逐项操作为 `POST /api/v1/carts/:id/operations` 与 `POST /api/v1/webmcp/carts/:id/operations`。请求严格为 `{expectedCartVersion,operation}`，operation 为 `add_item(productId,quantity)`、`set_quantity(productId,quantity)` 或 `remove_item(productId)`；成功返回完整 CartView，冲突或行不存在须刷新，未知不自动重试增量。目标行严格校验，未触及旧问题行可保留并逐条修复，整车有问题不可结算。原 `PUT /carts/:id/items`、`PUT /webmcp/carts/:id/items` 与基础 MCP 七工具参数保持兼容，WebMCP 的同名 update_cart 不再接收 items。各入口沿用普通车的浏览器证明和 HttpOnly Cookie，不使用或下发 `MCP_SERVICE_TOKEN`。WebMCP 与普通创建命名空间隔离，原车升级后普通创建请求仍可恢复原车。
+
+升级时先停止 API 写服务，再运行 `docker compose run --rm api pnpm db:migrate`，生成客户端并重启 API/Web；保留所有卷，不 seed。新增不可变 `agentCreated`：迁移时历史 AGENT 回填 true，HUMAN false，今后只有有效 Agent 新建写 true，HUMAN 后续升级不改此事实。不可回退到仅按 origin 统计的旧应用；需回退时先停用 WebMCP 新写入口，保留新数据并使用兼容创建事实的修订版，不能批量降来源或重写订单。
+
+S5 隔离 DB 测试为 `apps/api/test/cart/webmcp-db.test.ts`，及 `apps/api/test/cart/cart-operations-db.test.ts`，与其他 DB 套件串行运行且仅指向 `store_test`。HTTP 测试为 `apps/api/test/cart/webmcp-http.test.ts`及 `apps/api/test/cart/cart-operations-http.test.ts`（API_BASE_URL、WEB_ORIGIN）；浏览器协调测试为 `e2e/webmcp.spec.ts` 和 `e2e/cart-operations.spec.ts`（WEB_BASE_URL 必须匹配 WEB_ORIGIN）。注册替身测试与真实 Host 证据分开记录，自动化确认不称为 Human 验收。
 
 ## S1 本地开发
 
@@ -54,11 +72,11 @@ Web 默认 http://localhost:3000，API 为 http://localhost:3002/api/v1；API_PU
 
 ## S2 购物车与报价
 
-商品列表/详情支持加购，导航进入独立 `/cart/{cartId}` 页面，可修改数量、移除并保存整车。报价由API唯一实现：满1000减100、可信Agent来源在满减后95折，优惠前小计满990免运；当前普通Web创建固定HUMAN，不提供AI来源开关。建车不预留库存，数量/商品异常会提示调整，空车不计算运费。可购买且已保存的购物车可进入S3结算页，由Human明确确认后同步生单。
+商品列表/详情支持加购，导航进入独立 `/cart/{cartId}` 页面，可修改数量并逐项保存、直接移除商品。报价由API唯一实现：满1000减100、可信Agent来源在满减后95折，优惠前小计满990免运；当前普通Web创建固定HUMAN，不提供AI来源开关。建车不预留库存，数量/商品异常会提示调整，空车不计算运费。可购买且已保存的购物车可进入S3结算页，由Human明确确认后同步生单。
 
 `POST /api/v1/carts`、`GET /api/v1/carts/:id`、`PUT /api/v1/carts/:id/items`提供创建/读取/整车替换。写请求必须为JSON且Origin精确匹配`WEB_ORIGIN`；本地打开Web时也须使用该配置中的同一origin。车ID只定位，访问通过每车HttpOnly Cookie；来源、价格不能由请求伪造。输入/DTO细则见Change与`packages/contracts`。
 
-未交接Cart创建起固定24小时，到期不续期。服务端重验权限和版本；保存冲突展示完整可编辑草稿与最新已保存内容，可明确以草稿保存或放弃草稿载入最新。结果未明时显式重试原版本/原完整条目，避免覆盖其他编辑。创建响应丢失时复用原材料恢复；刷新丢失内存材料后，标签页仅保留非敏感待确认标记，提示结果无法确认，须明确重新发起才允许新建。内存材料与Cookie均丢失时无法自动恢复，不凭ID补发；重新发起可能留下无法访问的旧车。首次分享后完整24小时已由S4实现，分享通过MCP工具提供，普通Web不另增分享操作。
+未交接Cart创建起固定24小时，到期不续期。服务端重验权限和版本；按 [D-23](DECISIONS.md#d-23--服务端权威与购物车客户端简化)，保存冲突或结果未明提示“重新载入购物车（放弃未保存修改）”，刷新后以完整服务端数据替换；不比较差异、合并或重放编辑。当前请求结束即解除提交状态，服务端继续校验版本。创建响应丢失时复用原材料恢复；刷新丢失内存材料后，标签页仅保留非敏感待确认标记，提示结果无法确认，须明确重新发起才允许新建。内存材料与Cookie均丢失时无法自动恢复，不凭ID补发；重新发起可能留下无法访问的旧车。首次分享后完整24小时已由S4实现，分享通过MCP工具提供，普通Web不另增分享操作。
 
 现有数据库升级仅新增Cart表，执行`docker compose run --rm api pnpm db:migrate`，保留Inventory，不重新seed或删卷。`CART_ENCRYPTION_KEY`仅存本机安全环境，备份并跨重启保留；丢失或替换会使既有Cart凭证无法恢复。`.env.example`只含空占位。`CART_COOKIE_SECURE=false`只允许显式的本机HTTP例外，HTTPS使用true。加密实现与精确计价依赖均已锁定，运行证据以Tasks为准。
 

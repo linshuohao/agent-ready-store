@@ -2,6 +2,7 @@ import {
   cartResultOutput,
   type CartItem,
   type CartView,
+  type CartOperation,
 } from '@store/contracts';
 export type CartFailure = {
   code: string;
@@ -15,8 +16,15 @@ export type EditIntent = {
   cartId: string;
   expectedCartVersion: number;
   items: CartItem[];
+  entrance?: 'webmcp';
 };
-export type EditResult = CartCall | { kind: 'conflict'; cart: CartView };
+export type OperationIntent = {
+  cartId: string;
+  expectedCartVersion: number;
+  operation: CartOperation;
+  entrance?: 'webmcp';
+};
+export type EditResult = CartCall;
 async function request(
   path: string,
   method = 'GET',
@@ -45,37 +53,41 @@ async function request(
 }
 export const getCart = (id: string) =>
   request(`/carts/${encodeURIComponent(id)}`);
-export const createCart = (input: {
-  createRequestId: string;
-  cartToken: string;
-  items: CartItem[];
-}) => request('/carts', 'POST', input);
+export const createCart = (
+  input: {
+    createRequestId: string;
+    cartToken: string;
+    items: CartItem[];
+  },
+  entrance?: 'webmcp',
+) => request(entrance ? '/webmcp/carts' : '/carts', 'POST', input);
 export const replaceCart = (intent: EditIntent) =>
-  request(`/carts/${encodeURIComponent(intent.cartId)}/items`, 'PUT', {
-    expectedCartVersion: intent.expectedCartVersion,
-    items: intent.items,
-  });
-export function sameItems(a: CartItem[], b: CartItem[]) {
-  const key = (items: CartItem[]) =>
-    JSON.stringify(
-      items
-        .map(({ productId, quantity }) => ({ productId, quantity }))
-        .sort((x, y) =>
-          x.productId < y.productId ? -1 : x.productId > y.productId ? 1 : 0,
-        ),
-    );
-  return key(a) === key(b);
-}
-export async function inspectEdit(intent: EditIntent): Promise<EditResult> {
-  const result = await getCart(intent.cartId);
-  if (result.kind !== 'success') return result;
-  if (result.cart.cartVersion <= intent.expectedCartVersion)
-    return { kind: 'unknown' };
-  return sameItems(result.cart.items, intent.items)
-    ? result
-    : { kind: 'conflict', cart: result.cart };
-}
+  request(
+    `${intent.entrance ? '/webmcp' : ''}/carts/${encodeURIComponent(intent.cartId)}/items`,
+    'PUT',
+    {
+      expectedCartVersion: intent.expectedCartVersion,
+      items: intent.items,
+    },
+  );
+export const operateCart = (intent: OperationIntent) =>
+  request(
+    `${intent.entrance ? '/webmcp' : ''}/carts/${encodeURIComponent(intent.cartId)}/operations`,
+    'POST',
+    {
+      expectedCartVersion: intent.expectedCartVersion,
+      operation: intent.operation,
+    },
+  );
 export const failureText = (failure: CartFailure) => {
+  if (
+    [
+      'CART_VERSION_CONFLICT',
+      'CART_ITEM_NOT_FOUND',
+      'CART_RELOAD_REQUIRED',
+    ].includes(failure.code)
+  )
+    return '服務端的購物車已更新，請重新載入後再調整。';
   if (failure.code === 'CREDENTIAL_EXPIRED')
     return '購物車已過期，請重新發起購物。';
   if (failure.code === 'FORBIDDEN')

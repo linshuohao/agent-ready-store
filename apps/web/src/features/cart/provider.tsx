@@ -15,10 +15,9 @@ import { Button } from '@/components/ui/button';
 import {
   createCart,
   getCart,
-  replaceCart,
-  inspectEdit,
+  operateCart,
   failureText,
-  type EditIntent,
+  type OperationIntent,
   type EditResult,
 } from './commands';
 
@@ -27,6 +26,7 @@ type Creation = {
   createRequestId: string;
   cartToken: string;
   items: CartItem[];
+  entrance?: 'webmcp';
 };
 const creationPendingKey = 'cartCreationPending';
 type Context = {
@@ -34,10 +34,14 @@ type Context = {
   selectCart: (id: string) => void;
   restart: () => void;
   busy: boolean;
-  pendingEdit: EditIntent | null;
-  add: (productId: string) => Promise<void>;
-  save: (intent: EditIntent) => Promise<EditResult | undefined>;
-  retryEdit: () => Promise<EditResult | undefined>;
+  add: (
+    productId: string,
+    entrance?: 'webmcp',
+  ) => Promise<EditResult | undefined>;
+  toolSave: (intent: OperationIntent) => Promise<EditResult | undefined>;
+  retryTool: (cartId?: string) => Promise<EditResult>;
+  setDraftGuard: (id: string, dirty: boolean, needsReload?: boolean) => void;
+  save: (intent: OperationIntent) => Promise<EditResult | undefined>;
 };
 const CartContext = createContext<Context | null>(null);
 export const useCartOperations = () => {
@@ -49,15 +53,36 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const currentId = useRef<string | null>(null);
   const selectionVersion = useRef(0);
   const creation = useRef<Creation | null>(null);
-  const lock = useRef(true);
+  const initialized = useRef(false);
   const inFlight = useRef(false);
-  // The ref blocks writes until storage is read; avoid an unnecessary mount update
-  // around streamed children when this tab has no pending creation.
+  const draftGuard = useRef<{
+    id: string;
+    dirty: boolean;
+    needsReload: boolean;
+  } | null>(null);
+  const setDraftGuard = useCallback(
+    (id: string, dirty: boolean, needsReload = false) => {
+      draftGuard.current = { id, dirty, needsReload };
+    },
+    [],
+  );
+  // Storage holds only navigation and a non-sensitive pending-creation marker.
   const [busy, setBusy] = useState(false);
-  const [pendingEdit, setPendingEdit] = useState<EditIntent | null>(null);
   const [creationUnknown, setCreationUnknown] = useState(false);
   const [creationLost, setCreationLost] = useState(false);
   const pathname = usePathname();
+  const blockedPage = useRef<string | null>(null);
+  const [reloadPath, setReloadPath] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    blockedPage.current = null;
+    void Promise.resolve().then(() => {
+      if (active) setReloadPath(null);
+    });
+    return () => {
+      active = false;
+    };
+  }, [pathname]);
   const [feedback, setFeedback] = useState<{
     text: string;
     path: string;
@@ -65,7 +90,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const message = feedback?.text ?? '';
   const setMessage = (text: string) =>
     setFeedback(text ? { text, path: pathname } : null);
-  // Navigation ends this page's feedback; mutation recovery state stays in the provider.
+  // Navigation ends feedback; only creation materials survive page navigation.
   if (feedback && feedback.path !== pathname) setFeedback(null);
   const [cartId, setCartId] = useState<string | null>(null);
   const [canRestart, setCanRestart] = useState(false);
@@ -82,8 +107,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     Promise.resolve().then(() => {
       if (!active) return;
       const lost = sessionStorage.getItem(creationPendingKey) === '1';
-      lock.current = lost;
-      setBusy(lost);
+      initialized.current = true;
       setCreationLost(lost);
       const id = sessionStorage.getItem('currentCartId');
       if (id && cartIdInput.safeParse(id).success && !currentId.current) {
@@ -95,55 +119,21 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       active = false;
     };
   }, []);
-  const unlock = () => {
-    lock.current = false;
-    setBusy(false);
-  };
-  async function performSave(
-    intent: EditIntent,
-    recovery: boolean,
-  ): Promise<EditResult | undefined> {
-    if (inFlight.current || (!recovery && lock.current)) return;
-    lock.current = true;
+  async function finishCreation(): Promise<EditResult> {
+    if (inFlight.current)
+      return { kind: 'failure', error: { code: 'CART_BUSY' } };
+    if (!creation.current)
+      return { kind: 'failure', error: { code: 'NO_PENDING_CREATION' } };
     inFlight.current = true;
     setBusy(true);
-    try {
-      let result: EditResult = await replaceCart(intent);
-      if (
-        result.kind === 'unknown' ||
-        (result.kind === 'failure' &&
-          (result.error.code === 'CART_VERSION_CONFLICT' ||
-            (recovery &&
-              !['FORBIDDEN', 'CREDENTIAL_EXPIRED'].includes(
-                result.error.code,
-              ))))
-      ) {
-        setPendingEdit(intent);
-        result = await inspectEdit(intent);
-      }
-      if (result.kind === 'unknown') {
-        setPendingEdit(intent);
-      } else {
-        setPendingEdit(null);
-        unlock();
-      }
-      return result;
-    } finally {
-      inFlight.current = false;
-    }
-  }
-  async function finishCreation() {
-    if (!creation.current || inFlight.current) return;
-    inFlight.current = true;
-    lock.current = true;
-    setBusy(true);
-    const { selectionVersion: owner, ...input } = creation.current;
-    const result = await createCart(input);
+    const { selectionVersion: owner, entrance, ...input } = creation.current;
+    const result = await createCart(input, entrance);
     inFlight.current = false;
+    setBusy(false);
     if (result.kind === 'unknown') {
       setCreationUnknown(true);
       setMessage('建立結果未明，請使用原請求重試。');
-      return;
+      return result;
     }
     setCreationUnknown(false);
     creation.current = null;
@@ -160,12 +150,23 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
     }
     sessionStorage.removeItem(creationPendingKey);
-    unlock();
+    return result;
   }
-  async function add(productId: string) {
-    if (lock.current || inFlight.current) return;
-    lock.current = true;
-    setBusy(true);
+  async function add(
+    productId: string,
+    entrance?: 'webmcp',
+  ): Promise<EditResult | undefined> {
+    if (blockedPage.current === pathname)
+      return { kind: 'failure', error: { code: 'CART_RELOAD_REQUIRED' } };
+    if (entrance && draftGuard.current?.dirty)
+      return { kind: 'failure', error: { code: 'UNSAVED_DRAFT' } };
+    if (
+      !initialized.current ||
+      inFlight.current ||
+      creation.current ||
+      creationLost
+    )
+      return { kind: 'failure', error: { code: 'CART_BUSY' } };
     setMessage('');
     setCanRestart(false);
     const stored = sessionStorage.getItem('currentCartId');
@@ -183,50 +184,97 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         createRequestId: crypto.randomUUID(),
         cartToken: token,
         items: [{ productId, quantity: 1 }],
+        entrance,
       };
       // Persist only uncertainty, never the capability or request materials.
       sessionStorage.setItem(creationPendingKey, '1');
-      await finishCreation();
-      return;
+      return finishCreation();
     }
     select(id);
-    const latest = await getCart(id);
-    if (latest.kind !== 'success') {
-      unlock();
-      setMessage(
-        latest.kind === 'failure'
-          ? failureText(latest.error)
-          : '暫時無法讀取購物車，請重試。',
-      );
-      setCanRestart(
-        latest.kind === 'failure' &&
-          ['FORBIDDEN', 'CREDENTIAL_EXPIRED'].includes(latest.error.code),
-      );
-      return;
+    const owner = selectionVersion.current;
+    inFlight.current = true;
+    setBusy(true);
+    try {
+      const latest = await getCart(id);
+      if (selectionVersion.current !== owner) {
+        return { kind: 'failure', error: { code: 'STALE_CONTEXT' } };
+      }
+      if (latest.kind !== 'success') {
+        setMessage(
+          latest.kind === 'failure'
+            ? failureText(latest.error)
+            : '暫時無法讀取購物車，請重試。',
+        );
+        setCanRestart(
+          latest.kind === 'failure' &&
+            ['FORBIDDEN', 'CREDENTIAL_EXPIRED'].includes(latest.error.code),
+        );
+        return latest;
+      }
+      if (latest.cart.orderId) {
+        setMessage('此購物車已完成購買，請明確開始新的購物。');
+        setCanRestart(true);
+        return { kind: 'failure', error: { code: 'CART_COMPLETED' } };
+      }
+      const result = await operateCart({
+        cartId: id,
+        expectedCartVersion: latest.cart.cartVersion,
+        operation: { type: 'add_item', productId, quantity: 1 },
+        entrance,
+      });
+      if (selectionVersion.current !== owner)
+        return { kind: 'failure', error: { code: 'STALE_CONTEXT' } };
+      if (
+        result.kind === 'unknown' ||
+        (result.kind === 'failure' &&
+          [
+            'CART_VERSION_CONFLICT',
+            'CART_ITEM_NOT_FOUND',
+            'CART_COMPLETED',
+          ].includes(result.error.code))
+      ) {
+        blockedPage.current = pathname;
+        setReloadPath(pathname);
+      }
+      if (result?.kind === 'success') setMessage('已加入購物車');
+      else if (result?.kind === 'failure')
+        setMessage(failureText(result.error));
+      else setMessage('保存結果未確認，請開啟購物車重新載入查看。');
+      return result;
+    } finally {
+      inFlight.current = false;
+      setBusy(false);
     }
-    if (latest.cart.orderId) {
-      unlock();
-      setMessage('此購物車已完成購買，請明確開始新的購物。');
-      setCanRestart(true);
-      return;
+  }
+  async function save(
+    intent: OperationIntent,
+    tool = false,
+  ): Promise<EditResult> {
+    if (inFlight.current || creation.current || creationLost)
+      return { kind: 'failure', error: { code: 'CART_BUSY' } };
+    if (currentId.current !== intent.cartId)
+      return { kind: 'failure', error: { code: 'STALE_CONTEXT' } };
+    if (draftGuard.current?.id === intent.cartId) {
+      if (draftGuard.current.needsReload)
+        return { kind: 'failure', error: { code: 'CART_RELOAD_REQUIRED' } };
+      if (tool && draftGuard.current.dirty)
+        return { kind: 'failure', error: { code: 'UNSAVED_DRAFT' } };
     }
-    const items = latest.cart.items.map(({ productId, quantity }) => ({
-      productId,
-      quantity,
-    }));
-    const item = items.find((item) => item.productId === productId);
-    if (item) item.quantity++;
-    else items.push({ productId, quantity: 1 });
-    // Transfer the synchronous page lock to the mutation without an event-loop gap.
-    lock.current = false;
-    const result = await performSave(
-      { cartId: id, expectedCartVersion: latest.cart.cartVersion, items },
-      false,
-    );
-    if (result?.kind === 'success') setMessage('已加入購物車');
-    else if (result?.kind === 'conflict')
-      setMessage('購物車已變更，請開啟購物車重新調整。');
-    else if (result?.kind === 'failure') setMessage(failureText(result.error));
+    const owner = selectionVersion.current;
+    inFlight.current = true;
+    setBusy(true);
+    try {
+      const result = await operateCart({
+        ...intent,
+        ...(tool ? { entrance: 'webmcp' as const } : {}),
+      });
+      return selectionVersion.current === owner
+        ? result
+        : { kind: 'failure', error: { code: 'STALE_CONTEXT' } };
+    } finally {
+      inFlight.current = false;
+      setBusy(false);
+    }
   }
   const restart = () => {
     if (inFlight.current) return;
@@ -234,8 +282,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     sessionStorage.removeItem(creationPendingKey);
     setCreationLost(false);
     setCreationUnknown(false);
-    setPendingEdit(null);
-    unlock();
     select(null);
     setCanRestart(false);
     setMessage('請重新選擇商品建立購物車。');
@@ -246,27 +292,45 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         currentCartId: cartId,
         selectCart: select,
         restart,
-        busy,
-        pendingEdit,
+        busy:
+          busy || creationUnknown || creationLost || reloadPath === pathname,
         add,
-        save: (intent) => performSave(intent, false),
-        retryEdit: () =>
-          pendingEdit
-            ? performSave(pendingEdit, true)
-            : Promise.resolve(undefined),
+        setDraftGuard,
+        retryTool: (cartId) => {
+          if (creation.current?.entrance === 'webmcp') {
+            if (
+              cartId ||
+              creation.current.selectionVersion !== selectionVersion.current
+            )
+              return Promise.resolve({
+                kind: 'failure',
+                error: { code: 'STALE_CONTEXT' },
+              });
+            return finishCreation();
+          }
+          return Promise.resolve({
+            kind: 'failure',
+            error: { code: 'NO_PENDING_CREATION' },
+          });
+        },
+        toolSave: (intent) => save(intent, true),
+        save,
       }}
     >
-      {((message && !pathname.startsWith('/cart')) ||
+      {(message ||
         creationUnknown ||
         creationLost ||
-        pendingEdit) && (
+        reloadPath === pathname) && (
         <CartFeedback
-          success={
-            message === '已加入購物車' && !creationUnknown && !pendingEdit
-          }
+          success={message === '已加入購物車' && !creationUnknown}
           onDismiss={() => setFeedback(null)}
         >
           {message && <p role="status">{message}</p>}
+          {reloadPath === pathname && cartId && (
+            <Link href={`/cart/${cartId}`} prefetch={false}>
+              重新載入購物車
+            </Link>
+          )}
           {creationLost && (
             <p role="status">
               建立結果無法確認，原請求材料已遺失，無法自動找回購物車。
@@ -287,15 +351,6 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
             >
               重試原建立
             </Button>
-          )}
-          {pendingEdit && (
-            <p>
-              保存結果尚未確認，請
-              <Link href={`/cart/${pendingEdit.cartId}`} prefetch={false}>
-                開啟原購物車恢復
-              </Link>
-              。
-            </p>
           )}
           {(canRestart || creationLost) && (
             <Button type="button" onClick={restart}>

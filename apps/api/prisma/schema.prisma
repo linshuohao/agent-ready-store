@@ -19,6 +19,7 @@ model Cart {
   order              Order?
   id                 String   @id @db.Uuid
   origin             String   @default("HUMAN")
+  agentCreated       Boolean  @default(false)
   items              Json
   version            Int      @default(1)
   createdAt          DateTime @db.Timestamptz(3)
