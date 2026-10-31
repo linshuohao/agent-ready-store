@@ -96,6 +96,9 @@ export function attachMcp(
       tool,
       uri: `ui://store/${tool.replaceAll('_', '-')}-v6.html`,
       filename: `${tool.replaceAll('_', '-')}-v6.html`,
+      cachedUris: ['v4', 'v5'].map(
+        (version) => `ui://store/${tool.replaceAll('_', '-')}-${version}.html`,
+      ),
     }));
     const uiMeta = (tool: string) => {
       const resource = resources.find((entry) => entry.tool === tool)!;
@@ -113,12 +116,15 @@ export function attachMcp(
       })),
     }));
     server.setRequestHandler(ReadResourceRequestSchema, async ({ params }) => {
-      const resource = resources.find((entry) => entry.uri === params.uri);
+      const resource = resources.find(
+        (entry) =>
+          entry.uri === params.uri || entry.cachedUris.includes(params.uri),
+      );
       if (!resource) throw new Error('Unknown UI resource');
       return {
         contents: [
           {
-            uri: resource.uri,
+            uri: params.uri,
             mimeType: 'text/html;profile=mcp-app',
             text: await readFile(
               new URL(`../mcp-app/${resource.filename}`, import.meta.url),
@@ -161,7 +167,7 @@ export function attachMcp(
         {
           name: 'query_products',
           description:
-            '购买准备或后台比较时只读查询商品，不生成UI；输入和结果与search_products一致。明确搜索/浏览意图才调用search_products展示结果；不建车、不生单。',
+            '购买准备或后台比较时只读查询商品，不生成UI；输入和结果与search_products一致。明确搜索/浏览意图必须在结束前调用search_products展示一次结果，不能将本工具当最终展示；购买多个商品时在后台准备完整集合，最后仅生一笔包含全部目标的订单，不逐商品生单；不建车、不生单。',
           inputSchema: z.toJSONSchema(searchInput, { io: 'input' }),
           annotations,
         },
@@ -226,7 +232,7 @@ export function attachMcp(
             schema: orderCreation,
             readOnly: false,
             description:
-              '仅Human明确购买意图并遵守Host审批后，为本次完整目标创建待支付订单、固定摘要并预留库存；selectedItems断言整行数量，显式传TWD及所有预算/规格约束。准备任一目标失败不可缩单；默认仅本次目标行。未知沿原requestId和原载荷恢复。支持Apps时仅本工具展示最终结算卡片并在同卡片由Human点击支付；无Apps返回网页orderUrl/shareUrl供Human亲自打开核对并点击支付；不得代开UI点击、代付或宣称已支付。',
+              '仅Human明确购买意图并遵守Host审批后，为本次完整目标创建待支付订单、固定摘要并预留库存；selectedItems断言整行数量，显式传TWD及所有预算/规格约束。准备任一目标失败不可缩单；默认仅本次目标行。未知沿原requestId和原载荷恢复。同一次购买多个商品须一次包含完整目标，仅生成一笔订单及一张最终结算卡片，不能逐商品生单；用户明确拆单除外。支持Apps时仅本工具展示最终结算卡片并在同卡片由Human点击支付；无Apps返回网页orderUrl/shareUrl供Human亲自打开核对并点击支付；不得代开UI点击、代付或宣称已支付。',
           },
           {
             name: 'get_order',

@@ -41,7 +41,11 @@
 
 #### Scenario: 按意图只展示最终结果
 - **WHEN** 用户明确购买，或只要求搜索商品
-- **THEN** 购买准备使用无UI的query_products及详情/购物车/报价工具，只有create_order生成最终结算卡片；搜索使用search_products生成一张搜索结果卡片；支付与状态恢复在原结算卡片更新，不生成中间工具卡片、不自动外跳
+- **THEN** 购买准备使用无UI的query_products及详情/购物车/报价工具，同一次购买完整集合只调用一次create_order生成包含全部商品的一张最终结算卡片（Human明确拆单除外）；搜索使用search_products生成一张搜索结果卡片；支付与状态恢复在原结算卡片更新，不生成中间工具卡片、不自动外跳
+
+#### Scenario: Host缓存最终卡片旧URI
+- **WHEN** 已认证Host读取此前公布的search-products或create-order的v4/v5资源URI
+- **THEN** 精确映射至当前最终卡片静态HTML，响应保留请求URI；资源列表仍只公布两份当前资源，不恢复旧中间卡片或接受任意版本/文件路径；工具发现缓存仍需Host刷新，不视为UI真实呈现证明
 
 ### Requirement: Bridge适配与上下文接续
 Apps SHALL 经所属服务Host Bridge调用共享购物/订单能力，不直接获取网站Cookie或服务Token，不依赖Next环境。按cartId/orderId恢复Demo上下文，不索取车Token；视图目标与当前购物车分开，分享只展示单订单。资源不申请无关权限，外链只接受固定可信站点及预期订单路径。

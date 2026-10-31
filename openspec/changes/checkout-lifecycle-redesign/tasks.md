@@ -305,6 +305,16 @@ Human明确：“授权之后往下推进，如果没有什么需要我审批的
 - 本地Web3000/API3002沿原root环境配置重启加载v6；无迁移、seed、清理或真实购买写入。需刷新Host连接重新发现query_products与v6资源。真实Agent按意图选择工具、真实Host只生成最终卡片及Human点击仍须验收，9.1/9.3不勾选，不同步正式Spec或归档。
 - Git：codex/mcp-intent-cards，基于已合并main@526f1b9复用干净实施工作树；Human随后明确回复「提交」，授权提交本轮代码、测试和文档；实际提交由Git历史核对，未Push/Merge。此前合并授权仅覆盖已提交的上一轮增量。Checkpoint Guard按本轮精确路径执行，验证/审查/实施批准均pass，返回BLOCKED仅因本轮尚无覆盖变更的checkpoint commit；取得本轮提交授权后，提交并重验Guard；不推进合并/归档。
 
+## 13. 搜索缺UI与多商品展示修复
+
+- [x] 13.1 修复两个最终展示资源的旧v4/v5缓存读取失效，严格保留资源白名单；完善工具发现刷新说明及搜索最终展示/同次多商品一单一卡约束。
+- [x] 13.2 验证旧最终资源可读、中间及未知资源拒绝、现有展示元数据不扩散、多商品同卡片支付；记录真实失败归因限制。
+
+- 诊断：当前服务tools/list确认query_products存在且search_products指向v6；本聊天可用工具仍为旧13个模型工具、旧描述。真实只读读取search-products-v4/v5在修复前均为Unknown UI resource，v6可读；未取得Human原失败调用记录，不将此路径作为所有缺UI的唯一原因。
+- 验证：真实MCP资源/发现4/4通过，覆盖两个最终工具v4/v5与v6内容一致（保留请求URI），未知版本、路径及旧中间资源拒绝，资源列表仍2、无中间工具UI；搜索/多商品结算桌面移动定向4/4通过，明确两商品、单iframe、同orderId支付及重挂载。API typecheck/lint、API→Apps构建、OpenSpec strict validate、Prettier及diff检查通过。交易/共享UI运行代码未改，复用既有业务事务与23单元、18浏览器证据，不重跑全量。
+- 独立只读审查/root/cached_card_review无阻塞Finding，独立重跑MCP只读4/4通过；本地服务已按原配置加载修复，无数据迁移、seed、清理或真实购买写入。Host须刷新工具发现；用户实际失败归因和真实多商品聚合/呈现仍待验证，不冒称Host已恢复。
+- Git：codex/fix-search-card-recovery基于main@3792ea7；Human随后明确授权「把剩余的搜索卡片恢复修改也提交，完成 checkpoint 检查」，据此提交本节剩余成果；未Push/Merge/归档。本次只修最终静态资源的精确版本映射和工具说明，不更改支付/权限/事务边界，使用聚焦验证及上述独立审查。
+
 
 ## 14. 完整代码审查发现修复（2026-10-31）
 

@@ -275,7 +275,7 @@ test('embedded catalog shows search results without a search form', async ({
   ).toMatch(/^\d+(?:\.\d+)?px$/);
 });
 
-test('purchase opens only the final checkout and updates payment in the same card', async ({
+test('multi-product purchase opens one final checkout and updates payment in the same card', async ({
   page,
 }) => {
   const f = await openFixture(page, '?checkout');
@@ -287,6 +287,10 @@ test('purchase opens only the final checkout and updates payment in the same car
   await expect(f.getByTestId('order-id')).toHaveText(
     '20000000-0000-4000-8000-000000000001',
   );
+  await expect(f.locator('.purchase-product')).toHaveCount(2);
+  await expect(f.locator('.purchase-product').nth(0)).toContainText('P001');
+  await expect(f.locator('.purchase-product').nth(1)).toContainText('P002');
+  await expect(page.locator('iframe')).toHaveCount(1);
   const card = await page.locator('iframe').elementHandle();
   await f.getByRole('button', { name: '確認支付', exact: true }).click();
   await expect(

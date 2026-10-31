@@ -91,6 +91,28 @@ const token = process.env.MCP_SERVICE_TOKEN;
           },
         });
       }
+      // Cached final cards may still reference v4/v5; resolve only these exact known URIs.
+      for (const name of ['search-products', 'create-order']) {
+        const current = await client.readResource({
+          uri: `ui://store/${name}-v6.html`,
+        });
+        for (const version of ['v4', 'v5']) {
+          const uri = `ui://store/${name}-${version}.html`;
+          const cached = await client.readResource({ uri });
+          expect(cached.contents).toEqual(
+            current.contents.map((c) => ({ ...c, uri })),
+          );
+        }
+      }
+      // Do not revive intermediate cards or derive arbitrary file paths from aliases.
+      for (const uri of [
+        'ui://store/get-cart-v4.html',
+        'ui://store/get-product-v5.html',
+        'ui://store/search-products-v999.html',
+        'ui://store/../search-products-v4.html',
+      ]) {
+        await expect(client.readResource({ uri })).rejects.toThrow();
+      }
       expect(
         tools.find((tool) => tool.name === 'list_product_reviews')?._meta,
       ).toBeUndefined();
