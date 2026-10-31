@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { OrderExpiryWorker } from '../../src/cart/order-expiry.worker.js';
 import { CatalogService } from '../../src/catalog/catalog.service.js';
 import { randomUUID } from 'node:crypto';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import {
   database,
   seedInventory,
@@ -782,8 +782,9 @@ const catalog = new Catalog(readFileSync('references/products.json', 'utf8'));
             where: { productId: 'P001' },
           }),
         ).toMatchObject({ quantity: 100, reservedQuantity: 0 });
+        mkdirSync('test-results', { recursive: true });
         writeFileSync(
-          '/private/tmp/checkout-expiration-evidence.json',
+          'test-results/checkout-expiration-evidence.json',
           JSON.stringify({
             startupOrders: 20,
             periodicOrders: 1,

@@ -55,7 +55,7 @@ test('fixed order summary pays the original order and continues shopping in the 
     page.getByRole('region', { name: '訂單固定摘要' }),
   ).toContainText(order.summary.items[0].name);
   await page.screenshot({
-    path: `/private/tmp/order-page-${testInfo.project.name}.png`,
+    path: testInfo.outputPath('order-page.png'),
     fullPage: true,
   });
   await page.getByRole('button', { name: '確認支付', exact: true }).click();
@@ -80,10 +80,17 @@ test('fixed order summary pays the original order and continues shopping in the 
     await page.evaluate(() => localStorage.getItem('store.currentCartId')),
   ).toBe(cart.cartId);
 });
-test('cancellation closes only the chosen order and keeps sibling navigation', async ({
+test('cancellation closes only the chosen order and keeps sibling navigation @ci', async ({
   page,
 }) => {
+  const available = async () => {
+    const response = await page.request.get('/api/v1/products/P001');
+    expect(response.ok()).toBeTruthy();
+    return (await response.json()).data.availability.currentQuantity;
+  };
+  const before = await available();
   const { order, cart } = await create(page);
+  expect(await available()).toBe(before - 1);
   const second = await post(page, `/carts/${cart.cartId}/orders`, {
     requestId: randomUUID(),
     expectedCartVersion: cart.cartVersion,
@@ -98,6 +105,7 @@ test('cancellation closes only the chosen order and keeps sibling navigation', a
   await expect(
     page.getByRole('button', { name: '確認支付', exact: true }),
   ).toHaveCount(0);
+  expect(await available()).toBe(before);
   await page.getByRole('link', { name: '查看所有訂單', exact: true }).click();
   await page
     .getByRole('link', { name: `訂單 ${second.order.orderId}`, exact: true })
@@ -148,7 +156,7 @@ test.afterEach(async ({ page }) => {
   ).toBe(true);
 });
 
-test('lost payment response is recovered by reading the same paid order after refresh', async ({
+test('lost payment response is recovered by reading the same paid order after refresh @ci', async ({
   page,
 }) => {
   const { order } = await create(page);
