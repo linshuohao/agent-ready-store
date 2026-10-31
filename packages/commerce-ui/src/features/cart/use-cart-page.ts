@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import type {
   CartOperation,
   ShoppingCartView,
-  OrderSummary,
+  SelectionQuote,
 } from '@store/contracts';
 import { useCartOperations } from './provider';
 import { useRouter, usePathname } from '../../runtime';
@@ -31,7 +31,7 @@ export function useCartPage(id?: string) {
     [selected, setSelected] = useState<string[]>([]),
     [quoteResult, setQuote] = useState<{
       key: string;
-      data: OrderSummary;
+      data: SelectionQuote;
     } | null>(null),
     [error, setError] = useState(''),
     [loading, setLoading] = useState(Boolean(id)),

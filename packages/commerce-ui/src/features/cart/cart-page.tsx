@@ -215,11 +215,20 @@ export function CartPage({ id }: { id?: string }) {
             <aside className="purchase-aside" aria-label="所選商品預估">
               <h2>所選商品預估</h2>
               {quote && !dirty && !reload ? (
-                <MoneyBreakdown quote={quote} />
+                <>
+                  <MoneyBreakdown quote={quote} />
+                  {quote.issues?.map((issue) => (
+                    <p role="status" key={issue.productId}>
+                      {issue.productId} 庫存不足，請調整數量後再建立訂單。
+                    </p>
+                  ))}
+                </>
               ) : (
                 <p>
                   {selected.length
-                    ? '正在更新所選商品預估。'
+                    ? error
+                      ? '目前無法提供所選商品預估。'
+                      : '正在更新所選商品預估。'
                     : '請勾選要購買的整行商品。'}
                 </p>
               )}
@@ -231,6 +240,7 @@ export function CartPage({ id }: { id?: string }) {
                     reload ||
                     conflict ||
                     !selected.length ||
+                    Boolean(quote?.issues?.length) ||
                     unknownOrder
                   }
                   onClick={() => void create()}
@@ -250,7 +260,7 @@ export function CartPage({ id }: { id?: string }) {
                 )}
                 {createdId && (
                   <p role="status">
-                    訂單已建立，尚未支付。
+                    訂單已建立，請查看最新狀態。
                     <Link href={`/orders/${createdId}`} prefetch={false}>
                       查看新訂單
                     </Link>

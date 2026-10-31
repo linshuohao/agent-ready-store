@@ -270,6 +270,7 @@ export class CartService {
     row: Cart,
     body: z.infer<typeof quoteSelectionInput>,
     channel: ShoppingChannel,
+    quoteOnly = false,
   ) {
     const current = row.items as CartItem[];
     const selected = body.selectedItems.map((selected) => {
@@ -282,7 +283,15 @@ export class CartService {
         });
       return item;
     });
-    const { stock } = await this.validItems(tx, selected);
+    const { stock, issues } = await this.contents(tx, selected);
+    if (
+      issues.some(
+        (issue) =>
+          !quoteOnly ||
+          !['INSUFFICIENT_STOCK', 'SOLD_OUT'].includes(issue.code),
+      )
+    )
+      throw new AppError('CART_ITEMS_INVALID', 409, { issues });
     const products = selected.map((i) => ({
       item: i,
       product: this.catalog.get(i.productId, stock),
@@ -318,22 +327,32 @@ export class CartService {
     )
       throw new AppError('BUDGET_EXCEEDED', 409);
     return {
-      ...quote,
-      pricingRuleVersion: 'pricing-v1',
-      items: quote.items.map((i) => {
-        const p = products.find(
-          (p) => p.item.productId === i.productId,
-        )!.product;
-        return { ...i, brand: p.brand, specs: p.specs };
-      }),
+      issues,
+      summary: {
+        ...quote,
+        pricingRuleVersion: 'pricing-v1',
+        items: quote.items.map((i) => {
+          const p = products.find(
+            (p) => p.item.productId === i.productId,
+          )!.product;
+          return { ...i, brand: p.brand, specs: p.specs };
+        }),
+      },
     };
   }
   async quoteSelection(id: string, input: unknown, channel: ShoppingChannel) {
     const body = parse(quoteSelectionInput, input);
     parse(shoppingChannel, channel);
-    return this.transaction(async (tx) =>
-      this.selection(tx, await this.cart(tx, id), body, channel),
-    );
+    return this.transaction(async (tx) => {
+      const { summary, issues } = await this.selection(
+        tx,
+        await this.cart(tx, id),
+        body,
+        channel,
+        true,
+      );
+      return { ...summary, ...(issues.length ? { issues } : {}) };
+    });
   }
   async createOrder(id: string, input: unknown, channel: ShoppingChannel) {
     parse(cartIdInput, id);
@@ -413,7 +432,7 @@ export class CartService {
         body.selectedItems.map((i) => i.productId),
         true,
       );
-      const summary = await this.selection(tx, row, body, channel),
+      const { summary } = await this.selection(tx, row, body, channel),
         createdAt = await this.now(tx),
         { items, ...amounts } = summary;
       const order = await tx.order.create({
