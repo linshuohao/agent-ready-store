@@ -26,3 +26,13 @@
 - API与两份Apps资源构建通过，3002端口已从原工作区进程切换到本工作树构建；3000网页、原数据库与密钥沿用，无迁移、seed或数据重置。
 - 对运行中的3002服务进行只读探针：健康检查通过；发现18个工具，搜索/建单说明包含每轮至多一次展示指引；仅search_products/create_order关联UI；两份资源可读；商品结果包含simulation标记。探针无加购、建单或支付。
 - Human实际测试前须刷新MCP连接的工具发现缓存；真实Host可见卡片数仍待Human验收。
+
+## Human 验收（2026-10-31）
+
+Human 在真实本地 MCP/Apps 购物对话后回复「验证通过」，并显式调用 ai-native-workflow 确认「已人工验收通过」。本次修订按当前范围验收完成。
+
+实际调用：get_order确认旧单过期 → query_products → get_cart确认空车 → add_cart_item准备一副 → quote_selection核对含运总额 → create_order。本轮仅一次create_order展示，未调用search_products或建单后补开购物车；Human确认可见单卡流程通过。订单c1f22d7f-a5a2-4b1c-bc33-e8651f830de7固定含运总额NT$1,700.50，不将验收或建单表述为已支付。
+
+服务结果已有simulation标记；该轮Agent发现的工具文字仍为缓存旧描述，不能据此声称Host已完成目录刷新。未采集Host精确版本；失败恢复、多目标搜索及支付未在本轮分别人工复测。复用已有67项通过、2项环境依赖跳过的证据，不扩大实际验证范围。
+
+本轮同步正式Spec并归档；Push/Merge及公网发布仍未授权。
