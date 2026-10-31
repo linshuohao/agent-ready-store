@@ -2,7 +2,7 @@
 
 **接入术语说明：** MCP 与 WebMCP 是两类 Agent 接入；MCP Apps 是 MCP 的 UI 增强，不兼容时降级为无 Apps UI 的 MCP。协议、连接和构建关系见 [Technical Design §1.1](TECHNICAL_DESIGN.md#11-系统全景与请求路径)。本次统一术语不改变历史批准、业务行为与尚未完成的验证事实。
 
-当前基础 MCP 按 [checkout-lifecycle-redesign](../../openspec/changes/checkout-lifecycle-redesign/specs/agent-shopping/spec.md) 提供商品查询、持久购物车与待支付订单工具。旧七工具及原生购买批准流程不兼容；请重新发现工具。Apps只为搜索结果与最终生单关联UI资源；不支持Apps的Host仍可使用基础MCP。实际验收状态以同一Change的Tasks为准。
+当前基础 MCP 按 [checkout-lifecycle-redesign](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/specs/agent-shopping/spec.md) 提供商品查询、持久购物车与待支付订单工具。旧七工具及原生购买批准流程不兼容；请重新发现工具。Apps只为搜索结果与最终生单关联UI资源；不支持Apps的Host仍可使用基础MCP。实际验收状态以同一Change的Tasks为准。
 
 ## 连接
 
@@ -73,7 +73,7 @@ Web与Apps使用同一完整购物应用；共享源码、界面/交互边界和
 
 ## 验证边界
 
-自动化以隔离 `store_test` 和 loopback API3003 验证真实 HTTP/MCP 发现、错误映射、幂等与交易约束。真实 Host 的网页接手、可见摘要、Human 支付及库存结果仍须按 [Tasks](../../openspec/changes/checkout-lifecycle-redesign/tasks.md) 分入口记录，协议测试不能冒充 Human 验收。旧 prepare/review/submit/handoff/get_order_link 写流程返回 `CHECKOUT_FLOW_REPLACED`，旧支付调用不生效。
+自动化以隔离 `store_test` 和 loopback API3003 验证真实 HTTP/MCP 发现、错误映射、幂等与交易约束。真实 Host 的网页接手、可见摘要、Human 支付及库存结果仍须按 [Tasks](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/tasks.md) 分入口记录，协议测试不能冒充 Human 验收。旧 prepare/review/submit/handoff/get_order_link 写流程返回 `CHECKOUT_FLOW_REPLACED`，旧支付调用不生效。
 
 ## 多目标搜索与新协议选择
 

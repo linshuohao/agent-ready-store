@@ -1,6 +1,6 @@
 # 结算交易核心（实施分支）
 
-本文件说明本轮已实现的共享用例及隔离验证方式。权威契约仍为 [checkout-lifecycle-redesign](../../openspec/changes/checkout-lifecycle-redesign/design.md)，进度和运行证据见同一 Change 的 [Tasks](../../openspec/changes/checkout-lifecycle-redesign/tasks.md)。这是不兼容旧购买schema的重构；交易核心、Web/MCP/WebMCP及Apps共享应用已实施，剩余真实Host/Human验收与正式Spec同步见Tasks 9.1/9.3。旧交易HTTP返回410 / CHECKOUT_FLOW_REPLACED；当前MCP工具及UI-only能力以[MCP_CONNECT](MCP_CONNECT.md)为准，不沿用旧工具清单或将实现完成当最终交付接受。
+本文件说明本轮已实现的共享用例及隔离验证方式。权威契约仍为 [checkout-lifecycle-redesign](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/design.md)，进度和运行证据见同一 Change 的 [Tasks](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/tasks.md)。这是不兼容旧购买schema的重构；交易核心、Web/MCP/WebMCP及Apps共享应用已实施，Human验收与正式Spec同步已完成，历史验证及直接证据边界见Tasks最终收尾。旧交易HTTP返回410 / CHECKOUT_FLOW_REPLACED；当前MCP工具及UI-only能力以[MCP_CONNECT](MCP_CONNECT.md)为准，不沿用旧工具清单或将实现完成当最终交付接受。
 
 ## 普通 Web HTTP 与 Next 代理
 

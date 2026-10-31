@@ -8,7 +8,7 @@
 <a id="checkout-lifecycle-20261031"></a>
 ## 订单生命周期：已采用选择的限定传播（2026-10-31）
 
-**状态与来源：** 已采用设计选择的归档传播，非新增整体Approved或实施授权。2026-10-30的Human选择已记录于[T-08～T-11](docs/engineering/ENGINEERING_DECISIONS.md#order-lifecycle-decisions)及[Change Design §0/§11](openspec/changes/checkout-lifecycle-redesign/design.md)；2026-10-31本聊天Human明确“按建议：本轮不新增禁售功能”，随后授权“继续完成…基线传播和独立规划审查，发现问题后修订同一Change，先不进入开发”。本次不把这些话解释为最终规划批准、Git授权或数据删除授权。
+**状态与来源：** 已采用设计选择的归档传播，非新增整体Approved或实施授权。2026-10-30的Human选择已记录于[T-08～T-11](docs/engineering/ENGINEERING_DECISIONS.md#order-lifecycle-decisions)及[Change Design §0/§11](openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/design.md)；2026-10-31本聊天Human明确“按建议：本轮不新增禁售功能”，随后授权“继续完成…基线传播和独立规划审查，发现问题后修订同一Change，先不进入开发”。本次不把这些话解释为最终规划批准、Git授权或数据删除授权。
 
 **问题与取舍：** 原整车确认和一车一单使继续购物与付款绑定；增加独立Checkout或每次换车也无法满足同车多单。采用持续Cart和单一Order，代价是预留/释放、独立支付状态及旧流程不兼容。Demo暂缓权限凭证，降低接续成本，同时明确接受ID可定位数据、分享仅展示约束；不将该边界推广至真实支付或多用户隐私。
 

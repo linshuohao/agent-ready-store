@@ -1,10 +1,10 @@
 # Agent-Ready Store — Requirements Baseline
 
-- **Status：Draft v0.3 / 订单生命周期目标修订，待Human批准。** 2026-10-31（Asia/Shanghai）；不表示新流程已实现。
-- **依据与范围：** [结算生命周期决定与限定替代](../../DECISIONS.md#checkout-lifecycle-20261031)、[T-08～T-11](../engineering/ENGINEERING_DECISIONS.md#order-lifecycle-decisions)及[当前Change](../../openspec/changes/checkout-lifecycle-redesign/proposal.md)。Human本轮授权基线传播与独立规划审查、修订同一Change，明确不开发；上一轮明确不新增禁售功能。
-- **批准与历史：** 已批准v0.2及其后续限定补充完整保留于[传播前快照](archive/2026-10-31-REQUIREMENTS.md)，包括2026-10-29 Human批准来源。本稿承接已采用设计选择，不据此新增整体Approved或实施授权；正式Spec本轮仍不直接同步。
+- **Status：Draft v0.3 / 订单生命周期目标修订，待Human批准。** 2026-10-31（Asia/Shanghai）；该全局稿仍非整体Approved；相关已批准增量已实施、验收并归档。
+- **依据与范围：** [结算生命周期决定与限定替代](../../DECISIONS.md#checkout-lifecycle-20261031)、[T-08～T-11](../engineering/ENGINEERING_DECISIONS.md#order-lifecycle-decisions)及[当前Change](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/proposal.md)。规划阶段Human仅授权传播与审查，后续实施授权与验收见归档Tasks；上一轮明确不新增禁售功能。
+- **批准与历史：** 已批准v0.2及其后续限定补充完整保留于[传播前快照](archive/2026-10-31-REQUIREMENTS.md)，包括2026-10-29 Human批准来源。本稿承接已采用设计选择，不据此新增整体Approved或实施授权；相关正式Spec已按已批准Change同步。
 - **取代范围：** 目标流程以持续Cart、单车多Order、生单锁价预留、Human支付原单、ID长期接续取代旧整车确认/凭证期限/成功才生单；未改变的商品发现、价格算法、原件边界及工程交付要求继续保留。各需求ID沿用并明确新含义，旧含义由快照追溯。
-- **Pending：** 规划审查结果见同一Change Tasks；Human规划批准/实施授权及真实验证尚未完成。真实支付、账户隐私、禁售功能和生产级权限均不在本轮范围。
+- **Pending：** 规划审查结果见同一Change Tasks；相关增量的限定批准、实施授权及Human验收已完成；直接证据与自动化范围分开记录于归档Tasks。真实支付、账户隐私、禁售功能和生产级权限均不在本轮范围。
 
 ## 1. 阅读口径与产品目标
 
@@ -51,7 +51,7 @@ Agent接入分为 MCP 与 WebMCP。MCP Apps 是 MCP 的交互式 UI 增强，复
 | <a id="cat-05"></a>CAT-05 | 对外提供购物判断所需信息，例如 ID、名称、品牌、类别、描述、价格、库存或可购买状态、规格及评论查询能力；确切公开字段按场景细化。公开商品接口不得直接返回内部 margin_rate；原始 recommendation_score 可用于排序，不要求公开数值 | [D-20] |
 | <a id="cat-06"></a>CAT-06 | 商品名称允许重复，以唯一商品 ID 区分，搜索、购物车和订单都不能按名称合并商品；不得虚构供应商或变体资料 | [D-18] |
 
-2026-10-31增量（Human授权审查后实施）：CAT-02增加有界多目标独立查询和同卡分组展示；CAT-03的文字匹配增加统一简繁规范化及受控中英文别名，硬筛选与推荐/ID排序不变。候选型号优先经客户端结构化选择，选择不等于购买或支付授权。具体契约、验收及实施状态见[grouped-multilingual-search](../../openspec/changes/grouped-multilingual-search/proposal.md)，不将本增量视为基线整体重批。其余查询细则沿正式product-discovery规格；未来变更按第11节处理。当前样例评论少、商品仅 30 件，不能成为取消分页和结果边界的理由。
+2026-10-31增量（Human授权审查后实施）：CAT-02增加有界多目标独立查询和同卡分组展示；CAT-03的文字匹配增加统一简繁规范化及受控中英文别名，硬筛选与推荐/ID排序不变。候选型号优先经客户端结构化选择，选择不等于购买或支付授权。具体契约、验收及实施状态见[grouped-multilingual-search](../../openspec/changes/archive/2026-10-31-grouped-multilingual-search/proposal.md)，不将本增量视为基线整体重批。其余查询细则沿正式product-discovery规格；未来变更按第11节处理。当前样例评论少、商品仅 30 件，不能成为取消分页和结果边界的理由。
 
 ### 4.2 商品可购买状态与数据边界
 

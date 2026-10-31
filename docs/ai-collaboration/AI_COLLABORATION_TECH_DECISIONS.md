@@ -103,7 +103,7 @@
 <a id="order-lifecycle-discussion"></a>
 ## 7. 订单生命周期重设计：精选推导与纠偏（2026-10-30）
 
-**来源边界：** 本节由Codex依据仓库已存的[Change Design](../../openspec/changes/checkout-lifecycle-redesign/design.md) v0.11（Git提交`47ade5a`）§0、§1、§3～§11及[T-08～T-11](../engineering/ENGINEERING_DECISIONS.md#order-lifecycle-decisions)整理，追加于原始补件之后。本节对候选比较及原章节的回顾以该v0.11为准；v0.12已将重复流程改为引用全局方案。前文截至2026-10-29的补件正文保留；本节不是该ChatGPT补件的一部分，也不声称读取过完整外部对话。下文Human要求均为现存材料的归纳，不新增逐字引语、轮次顺序或批准事实；材料只记采用结果的建议，不倒推其提出者。
+**来源边界：** 本节由Codex依据仓库已存的[Change Design](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/design.md) v0.11（Git提交`47ade5a`）§0、§1、§3～§11及[T-08～T-11](../engineering/ENGINEERING_DECISIONS.md#order-lifecycle-decisions)整理，追加于原始补件之后。本节对候选比较及原章节的回顾以该v0.11为准；v0.12已将重复流程改为引用全局方案。前文截至2026-10-29的补件正文保留；本节不是该ChatGPT补件的一部分，也不声称读取过完整外部对话。下文Human要求均为现存材料的归纳，不新增逐字引语、轮次顺序或批准事实；材料只记采用结果的建议，不倒推其提出者。
 
 ### 7.1 从整车确认转向独立交易
 

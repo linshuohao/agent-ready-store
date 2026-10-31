@@ -1,27 +1,21 @@
 # 技术方案与交付状态
 
-日期：2026-10-31（Asia/Shanghai）。正式增量与逐项证据以 [checkout-lifecycle-redesign Tasks](../../openspec/changes/checkout-lifecycle-redesign/tasks.md) 为准；完整方案见 [Technical Design](TECHNICAL_DESIGN.md)。本页汇总差距，不建立平行计划，不替代Human批准。
+日期：2026-10-31（Asia/Shanghai）。当前行为以[正式规格](../../openspec/specs/)为准；过程与证据分别见[结算归档Tasks](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/tasks.md)和[搜索归档Tasks](../../openspec/changes/archive/2026-10-31-grouped-multilingual-search/tasks.md)。本页仅汇总交付结果，不建立平行计划或扩大批准范围。
 
 | 范围 | 当前结果与边界 |
 | --- | --- |
-| 交易模型与共享核心 | 持久车、整行转单、固定金额、预留、原单模拟支付/取消/到期、多单额度与统计已实现。真实PostgreSQL事务、并发、幂等、回滚和释放验证见Tasks第1～4组 |
-| 普通Web | 车页选行、统一orderId支付页、未知恢复、迟到结果、本人跨车确认及单订单分享已实现，桌面/移动真实测试API验证完成 |
-| 基础MCP / WebMCP | 新工具/schema/来源及同单接续已实现；基础MCP回网页，WebMCP页面内生单导航。协议与浏览器注册替身验证不能替代真实Host/Human |
-| Web / Apps完整应用复用 | 两端共用commerce-ui完整页面、控件、CSS/资源和Hooks/Commands；Apps旧购物Controller/View/CSS已删除，仅保留Bridge/工具结果、导航及存储适配。架构见[Technical Design §5](TECHNICAL_DESIGN.md#frontend-architecture) |
-| MCP Apps | 11份v4资源、UI-only Bridge及完整共享应用已在本机提供；旧卡片/原请求迁移、重挂载、同路由重试与外部结果草稿保护有SDK替身证据。稳定恢复仍依赖Host保留sessionStorage和工具调用ID |
-| 迁移入口 | 默认只读、限定隔离store_test、旧交易清理与受控库存重置、失败回滚、重连阻塞、新结构拒绝重清均有真实验证。独立tmpfs容器完成Prisma旧ledger→清理→新迁移全路径，容器已删除 |
-| 实际环境 | Human已明确授权并完成本机store切换：清空旧1车，第七迁移完成，四交易表0、库存30SKU、预留0；新实施版本已在3000/3002运行 |
-| 构建与回归 | 完整共享增量：69单测通过、53环境依赖跳过，最终桌面/移动浏览器50/50、真实MCP只读资源探测2/2；受影响类型/lint及API/Apps构建通过，Web使用webpack生产构建。默认Turbopack受本机端口权限阻断。此前Docker/真实DB验证仅适用于原对应版本，详见Tasks §8/§10，不冒称本轮重跑 |
-| 审查与验收 | 原各实现组审查记录保留；完整共享增量独立Review发现5项，已核实修复并以定向回归验证，未冒称第二轮独立批准。真实三入口生单→Human支付→查同单已完成；9.1仍缺真实Host异常恢复及部分Apps接续/分享目标证据，最终残余风险接受及正式Spec同步仍未完成 |
+| 交易模型与共享核心 | 持久车、整行转单、固定金额、15分钟预留、原单模拟支付/取消/到期、多单额度与统计已实现；真实PostgreSQL事务、并发、幂等、回滚和释放证据见结算Tasks |
+| 普通Web / MCP / WebMCP / Apps | 共享购物应用和交易语义；Agent明确购买后准备完整订单，Human在网页或内嵌UI支付原单；型号选择不等于购买或支付批准 |
+| 多目标搜索 | 一次最多5组、默认每组4项，同卡按目标纵向展示，组内紧凑响应式网格；后台查询及原卡分页不新增展示卡片 |
+| 语言与选型 | 简繁规范化及受控中英文别名；保留预算、品牌和规格约束。原生表单依实际客户端能力，能力不足使用对话兜底，普通搜索不强制选型 |
+| 协议与资源 | SDK v2，显式支持2026-07-28并保留旧协议兼容；当前只公布搜索及最终结算两份v8资源，精确保留v4～v7最终资源别名 |
+| 实际环境 | 当前工作区经pnpm start提供Web3000/API及MCP3002，使用既有本机store；此次收尾不迁移、清库、seed或执行购买 |
+| 验证 | 最新技术边界61项、桌面/移动浏览器10项全部通过且无跳过；实际搜索/选型调用前后库存、车、操作记录、订单和订单行五表摘要不变。复用无代码变化的类型、lint、构建及独立Review证据 |
+| 构建限制 | API/Apps及Web webpack生产构建通过；默认Turbopack曾受环境端口权限阻断，不将替代构建写成默认路径通过。Docker及历史交易测试仅代表各自记录版本 |
+| 人工验收与证据 | Human明确确认「我的部分都已经通过了」，人工验收结论已接受。未采集的Host逐项版本、原生表单/拒绝取消/断连轨迹不补造，不把SDK或浏览器夹具记为真实Host直接证据 |
+| 规格收尾 | 先同步结算12项能力，再追加搜索/选型16项要求；旧Purpose已对齐，两个Change归档于2026-10-31。旧历史批准与原归档记录保留 |
+| Git交付 | 当前codex/grouped-search-spec包含整合及收尾；本轮尚未合并main、推送或发布，后续须对应授权 |
 
-Human已授权同一Change持续实施、普通提交及本机store清理切换；未授权Push、Merge或公网发布。T-08～T-11及本Change批准差异约束实现；不将代码、测试或审查通过写成整体产品基线Approved。
+保留的适用边界：Demo的ID接续与分享页展示不提供生产级身份/访问隔离；Host存储、稳定工具调用ID及能力影响恢复和表单呈现；本轮不扩展任意翻译、真实支付、账户隐私或生产发布。Human验收接受不等于所有客户端组合均取得直接实测证据，也不自动将全局Draft基线改为整体Approved。
 
-当前Change31/33，剩余9.1/9.3；Human已明确授权在实施分支提交完整共享增量及文档整合。实际提交与Git checkpoint结果以Git及交付对话为准，不将提交视为最终验收或归档。
-
-## 待Human参与
-
-- 本机切换已完成。新流程产生数据后只能停写并前向修复，不能重清新单或恢复main旧写服务；当前运行来自实施worktree，分支尚未合并。
-- 三入口Human支付主流程已通过，详见当前Change Tasks；补真实Host异常恢复及Apps接续/分享目标证据。视觉效果由Human自行查看验收，自动化替身不抵扣真实Host缺口。
-- 接受或裁决Demo身份/分享边界、Host存储/链接能力等剩余限制；按9.3先审12项正式Spec合并预览，再授权同步与后续收尾。不提前归档。
-
-历史批准与旧流程复核保留于 [技术方案历史](archive/TECHNICAL_DESIGN_HISTORY.md) 和 [OpenSpec归档](../../openspec/changes/archive/)，不作为新流程当前使用说明。
+历史方案见[技术方案历史](archive/TECHNICAL_DESIGN_HISTORY.md)；无关的local-dev-delivery-build仍保持原状态，不随本轮扩大归档范围。

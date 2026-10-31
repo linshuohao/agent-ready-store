@@ -1,10 +1,10 @@
 # Agent-Ready Store — Product Design
 
 - **Status：Draft v0.3 / 订单生命周期体验修订，待Human批准。** 2026-10-31（Asia/Shanghai）。
-- **依据：** [Requirements v0.3目标稿](REQUIREMENTS.md)、[本轮产品决定限定传播](../../DECISIONS.md#checkout-lifecycle-20261031)、[Technical Design](../engineering/TECHNICAL_DESIGN.md)及[当前Change](../../openspec/changes/checkout-lifecycle-redesign/proposal.md)。Human只授权传播、独立规划审查与修订，不开发。
+- **依据：** [Requirements v0.3目标稿](REQUIREMENTS.md)、[本轮产品决定限定传播](../../DECISIONS.md#checkout-lifecycle-20261031)、[Technical Design](../engineering/TECHNICAL_DESIGN.md)及[当前Change](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/proposal.md)。规划阶段仅授权传播与审查；后续实施与本轮Human验收已完成，授权和证据见归档Tasks。
 - **历史批准：** v0.2批准、UX选择及视觉验证全文保存在[传播前快照](archive/2026-10-31-PRODUCT_DESIGN.md)。既有视觉语言及可访问性方向沿用；本稿不把旧流程演示或旧批准扩为新流程验收。
 - **限定替代：** 旧Checkout与成交页的业务分离收敛为同一orderId的状态展示；持续车、整行选择、多单、15分钟预留、长期ID接续替代旧整车准备及凭证到期。视觉资产保持原状，不以过时示意批准新契约。
-- **Pending：** 本轮独立Planning Review与定向复核已通过，处理记录归同一Change Tasks；Human整体规划批准、实施授权和真实界面/Host验收分别待完成。
+- **Pending：** 本轮独立Planning Review与定向复核已通过，处理记录归同一Change Tasks；后续限定规划批准、实施及Human验收已完成；本稿不因此自动变为全局整体Approved。
 
 ## 1. 设计目标与资产入口
 
@@ -89,7 +89,7 @@ Agent：咨询只读，明确加购只改车，明确购买在完整目标及预
 
 旧视觉稿的1440×1000及390×844等检查、截图、日志异常和未完成可访问性项目见[历史证据](archive/2026-10-31-PRODUCT_DESIGN.md#7-design-review验收与实际证据)，本轮不重跑、不冒称新流程通过。新流程以真实Web桌面/移动、键盘/辅助反馈以及MCP增强/兼容模式与WebMCP实际Human支付分别验收；替身Bridge、自动化和真实Host分开记录。
 
-本轮独立规划审查与修订证据归[Tasks](../../openspec/changes/checkout-lifecycle-redesign/tasks.md)，它审查体验约束，不是页面渲染或Human验收。
+本轮独立规划审查与修订证据归[Tasks](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/tasks.md)，它审查体验约束，不是页面渲染或Human验收。
 
 ## 8. 限制、未决与下一步
 
