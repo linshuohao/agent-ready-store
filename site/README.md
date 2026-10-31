@@ -1,6 +1,6 @@
-# 本地文档与展示站
+# 文档与展示站
 
-VitePress 1.6.4；独立包与锁文件，不影响商城构建。仅本地预览，未发布。
+VitePress 1.6.4；独立包与锁文件，不影响商城构建。[线上入口](https://agent-ready-store-docs.vercel.app)，本地预览仍可使用。
 
 在本目录执行 `pnpm --ignore-workspace install --frozen-lockfile --allow-build esbuild` 安装依赖。仓库根执行 `pnpm docs:build`、`pnpm docs:preview --port 4178`，访问 http://localhost:4178 。`pnpm docs:check` 检查静态产物链接与锚点；`node site/scripts/check.mjs --negative` 验证检查器可拒绝损坏链接。
 
@@ -10,7 +10,7 @@ VitePress 1.6.4；独立包与锁文件，不影响商城构建。仅本地预�
 
 Demo 内容与两张真实截图由独立展示目录选定版本接入本站（2026-10-31），未修改来源 worktree；此处是后续最小 Demo 的维护位置。需求与演进、技术方案、AI 工作流已接入 /presentation.html。
 
-当前限制：只验证根路径部署；已接入 109 份正文，包括 13 份现行 Spec 与 79 份历史记录；本地保留 delivery、presentation 及工作流 HTML 的已知章节跳转。代码高亮暂为可读代码块，未接入逐语言着色；Mermaid 懒加载渲染且本地打包，较大图表依赖会产生构建体积提示。无远程发布与原件分享。
+当前限制：只验证根路径部署；已接入 109 份正文，包括 13 份现行 Spec 与 79 份历史记录；本地保留 delivery、presentation 及工作流 HTML 的已知章节跳转。代码高亮暂为可读代码块，未接入逐语言着色；Mermaid 懒加载渲染且本地打包，较大图表依赖会产生构建体积提示。公开产物仅包含清单内文档，不分发原件或凭证。
 
 视觉保持商城浅色风格，不提供主题切换。`/library.html` 为文档目录，来源与状态随每篇正文展示。
 
@@ -44,3 +44,17 @@ AI 工作流补充参考用户提供的 ai_native_engineering_manual.html、ai_n
 `pnpm docs:build` 自动构建并检查产物链接；`pnpm docs:check` 运行源链接测试及断链、禁发文件、符号链接反例。安装仓库根开发依赖后执行 `pnpm exec playwright install chromium`，再运行 `pnpm docs:test`：启动临时预览并检查所有正文图示、完整展示链路、旧入口、刷新/返回和四种窗口宽度。使用系统 Chrome 可设置 `DOCS_BROWSER_CHANNEL=chrome`。
 
 构建需要正常 Git checkout 和完整文件历史，用于将历史材料中已删除的源码链接定位到最后存在的版本。展示摘要中保留的源码外链固定在原选定版本 3275e19，不声称为最新源码；生成的当前文档源码链接则使用构建 revision。未发布，不验证非根部署前缀；该项随部署方案另行处理。
+
+## Vercel 发布
+
+2026-10-31 经 Human 授权上线。项目 `agent-ready-store-docs` 与商城、API 独立，连接同仓库 main，Node.js 24.x，根目录为仓库根，输出 `site/dist`，关闭 Preview 部署。配置保存在 Vercel 项目设置。
+
+安装命令：`npm install --global pnpm@12.11.2 && cd site && pnpm install --frozen-lockfile`。
+
+构建命令：
+
+```sh
+git fetch --depth=2147483647 https://github.com/linshuohao/agent-ready-store.git "$VERCEL_GIT_COMMIT_SHA" && git checkout --detach FETCH_HEAD && pnpm docs:build && pnpm docs:check
+```
+
+历史文档会引用已删除源码，因此云端需补齐当前部署提交的历史；默认浅检出不足。GitHub Actions 负责业务测试与镜像验证，Vercel Git 集成独立自动发布；目前没有等待 Actions 成功才发布的门禁。文档构建自身必须通过链接、锚点与禁止文件检查。
