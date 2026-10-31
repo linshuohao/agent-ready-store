@@ -39,6 +39,8 @@ jobs:
       MCP_SERVICE_TOKEN: ci-integration-token-long-enough
       MCP_ALLOWED_HOSTS: localhost:3003,127.0.0.1:3003
       WEB_ORIGIN: http://localhost:3004
+      API_INTERNAL_URL: http://127.0.0.1:3003
+      WEB_BASE_URL: http://localhost:3004
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -109,6 +111,37 @@ jobs:
         run: |
           pnpm test --no-file-parallelism
           node --test scripts/checkout-cutover.test.mjs scripts/checkout-cutover-db.test.mjs
+
+      - name: Install browser
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Initialize isolated browser database
+        env:
+          DATABASE_URL: postgresql://store_test:test_only@localhost:5432/store_e2e_test
+        run: |
+          docker exec ${{ job.services.postgres.id }} psql -U store_test -d postgres -c 'CREATE DATABASE store_e2e_test'
+          pnpm db:migrate
+          pnpm db:seed
+
+      - name: Run critical shopping browser tests
+        env:
+          DATABASE_URL: postgresql://store_test:test_only@localhost:5432/store_e2e_test
+        run: |
+          set -o pipefail
+          pnpm test:e2e:ci 2>&1 | tee /tmp/browser-tests.log
+
+      - name: Upload verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verification-evidence
+          path: |
+            test-results/
+            playwright-report/
+            /tmp/api.log
+            /tmp/browser-tests.log
+          if-no-files-found: ignore
+          retention-days: 7
 
   delivery:
     name: Delivery image
