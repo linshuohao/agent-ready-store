@@ -77,6 +77,9 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: Verify serverless entrypoint
+        run: node --test scripts/vercel-entrypoint.test.mjs
+
       - name: Migrate and initialize test database
         run: |
           pnpm db:migrate
@@ -84,7 +87,7 @@ jobs:
 
       - name: Run API integration tests
         run: |
-          PORT=3003 HOST=127.0.0.1 node apps/api/dist/main.js >/tmp/api.log 2>&1 &
+          ORDER_EXPIRY_MODE=request PORT=3003 HOST=127.0.0.1 node apps/api/dist/main.js >/tmp/api.log 2>&1 &
           api_pid=$!
           trap 'kill "$api_pid" 2>/dev/null || true' EXIT
           for attempt in $(seq 1 30); do

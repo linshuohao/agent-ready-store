@@ -37,3 +37,7 @@ Demo的ID接续和分享页不提供生产级身份/访问隔离；Host存储、
 Requirements / Product Design表达产品与体验结果，Technical Design表达当前架构，DECISIONS / ENGINEERING_DECISIONS解释取舍，OpenSpec保存具体变更及其实施验收，AI_NOTES精选协作事件。设计原型和Workflow讲解页不是实际产品证据；Showcase HTML不是题目硬性要求，但项目既有最终展示约定仍有效；现已提供[展示与答辩入口](../../presentation/index.html)，含10屏主讲与4屏备查；它是摘要与证据导航，不替代产品、CI或真实Agent证据。
 
 面试阅读顺序：运行README → 业务决策 → 技术方案 → AI_NOTES → 按追问查看Spec、测试与历史。CI已有当前修复版本的通过证据；仍需补充真实购物可观看材料。
+
+## 云端 Demo
+
+2026-10-31：Vercel 前后端与 Neon Free 已上线，运行版本 `266489a`；对应 Actions 的 Verify / Delivery image 均通过。公开入口、云端购物与 MCP 验证、请求清理限制统一见[部署说明](DEPLOYMENT.md#验证结果)。部署 PR #3 已通过 Merge Commit `61b2e7d` 合入 main；上述线上运行版本与 Git 合并状态分别记录。

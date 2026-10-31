@@ -1,5 +1,6 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 import {
   Server,
   createMcpHandler,
@@ -69,6 +70,7 @@ export function attachMcp(
   app: Express,
   catalog: CatalogService,
   carts: CartService,
+  beforeToolCall: () => Promise<void> = async () => {},
 ) {
   const token = process.env.MCP_SERVICE_TOKEN;
   const hosts = process.env.MCP_ALLOWED_HOSTS?.split(',');
@@ -149,7 +151,9 @@ export function attachMcp(
             uri: params.uri,
             mimeType: 'text/html;profile=mcp-app',
             text: await readFile(
-              new URL(`../mcp-app/${resource.filename}`, import.meta.url),
+              process.env.MCP_APPS_PATH
+                ? resolve(process.env.MCP_APPS_PATH, resource.filename)
+                : new URL(`../mcp-app/${resource.filename}`, import.meta.url),
               'utf8',
             ),
             _meta: {
@@ -329,6 +333,7 @@ export function attachMcp(
     }));
     server.setRequestHandler('tools/call', async (request, ctx) => {
       const r = await result(async () => {
+        await beforeToolCall();
         const input = request.params.arguments ?? {};
         switch (request.params.name) {
           case 'resolve_product_choices':

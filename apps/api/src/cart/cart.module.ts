@@ -7,7 +7,7 @@ import { OrderExpiryWorker } from './order-expiry.worker.js';
 @Module({
   imports: [CatalogModule],
   controllers: [CartController],
-  exports: [CartService],
+  exports: [CartService, OrderExpiryWorker],
   providers: [
     OrderExpiryWorker,
     {

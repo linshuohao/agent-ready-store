@@ -16,3 +16,6 @@ test-results/
 
 # Local Codex MCP connection (machine-specific paths).
 /.codex/config.toml
+
+# Local Vercel project links and pulled environment secrets.
+.vercel/

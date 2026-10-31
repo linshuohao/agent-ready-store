@@ -91,7 +91,7 @@ Catalog、Cart、Order、Inventory、Pricing是逻辑职责；当前并无独立
 | [CatalogController](../../apps/api/src/catalog/catalog.controller.ts) / [CartController](../../apps/api/src/cart/cart.controller.ts) | HTTP输入、来源校验、通道派生与结果映射；业务规则调用服务，不在Controller重复计价或事务 |
 | [attachMcp](../../apps/api/src/mcp/mcp.adapter.ts) | main从Nest取得CatalogService/CartService后挂载MCP；工具与Apps资源复用现有服务，接入参数见[MCP_CONNECT](MCP_CONNECT.md) |
 | [pricing.ts](../../apps/api/src/cart/pricing.ts) | 唯一计价实现，被交易用例消费；精度与锁价约束见[交易核心](CHECKOUT_CORE.md#62-库存期限与计价事实) |
-| [OrderExpiryWorker](../../apps/api/src/cart/order-expiry.worker.ts) | 生命周期定时调用CartService.expireOrders；业务裁决仍在服务事务内，不由worker自行释放库存 |
+| [OrderExpiryWorker](../../apps/api/src/cart/order-expiry.worker.ts) | 默认生命周期定时调用CartService.expireOrders；线上Demo按业务请求触发，见[部署说明](DEPLOYMENT.md#到期清理与限制)；业务裁决仍在服务事务内，不由worker自行释放库存 |
 | [database.ts](../../apps/api/src/infrastructure/database/database.ts) / [contracts](../../packages/contracts/src/index.ts) | 前者提供持久化连接，后者提供共享校验与DTO；协议层返回公开投影，不能返回Prisma实体或把数据库连接带入前端 |
 
 日志可定位到期扫描失败及失败orderId；库存积压、预留账实差异的只读检查入口见[交易核心运行段](CHECKOUT_CORE.md#数据库运行与隔离验证)。监控告警、备份恢复与生产SLA目前未形成交付保证，未来如纳入范围须明确目标与验证，不从已有日志推定具备完整运维能力。

@@ -7,9 +7,14 @@ export class CatalogService {
   readonly catalog: Catalog;
   readonly db: ReturnType<typeof database>;
   constructor() {
-    if (!process.env.DATABASE_URL || !process.env.CATALOG_PATH)
-      throw new Error('DATABASE_URL and CATALOG_PATH required');
-    this.catalog = new Catalog(readFileSync(process.env.CATALOG_PATH, 'utf8'));
+    if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL required');
+    this.catalog = new Catalog(
+      readFileSync(
+        process.env.CATALOG_PATH ??
+          new URL('../../dist/catalog-data/products.json', import.meta.url),
+        'utf8',
+      ),
+    );
     this.db = database(process.env.DATABASE_URL);
   }
   async stock() {
