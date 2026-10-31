@@ -56,7 +56,10 @@ attachMcp(
   app.get(CartService),
   () => expiry.beforeRequest(),
 );
-await app.listen(
+// Vercel captures listen without running its callback during module import.
+// Finish route setup, then let the platform start the captured HTTP server.
+await app.init();
+void app.listen(
   Number(process.env.PORT ?? 3001),
   process.env.HOST ?? '127.0.0.1',
 );

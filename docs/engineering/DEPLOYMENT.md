@@ -29,8 +29,8 @@
 | `MCP_SERVICE_TOKEN` | 至少24字符的随机令牌，仅后端及受信任 MCP 客户端使用 |
 | `WEB_ORIGIN` | `https://agent-ready-store.vercel.app`；构建 MCP Apps 时也使用它 |
 | `MCP_ALLOWED_HOSTS` | `agent-ready-store-api.vercel.app` |
-| `CATALOG_PATH` | `dist/catalog-data/products.json` |
-| `MCP_APPS_PATH` | `dist/mcp-app` |
+| `CATALOG_PATH` | `apps/api/dist/catalog-data/products.json` |
+| `MCP_APPS_PATH` | `apps/api/dist/mcp-app` |
 | `ORDER_EXPIRY_MODE` | `request` |
 | `HOST` | `0.0.0.0` |
 
