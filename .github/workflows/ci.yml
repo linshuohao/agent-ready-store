@@ -135,8 +135,8 @@ jobs:
             test ! -e /app/apps/api/src
             test -f /app/apps/api/dist/main.js
             test -f /app/apps/web/.next/BUILD_ID
-            test -f /app/apps/api/dist/mcp-app/search-products-v6.html
-            test -f /app/apps/api/dist/mcp-app/create-order-v6.html
+            test -f /app/apps/api/dist/mcp-app/search-products-v7.html
+            test -f /app/apps/api/dist/mcp-app/create-order-v7.html
             test "$(find /app/apps/api/dist/mcp-app -name "*.html" | wc -l)" -eq 2
           '
       - name: Initialize isolated delivery database

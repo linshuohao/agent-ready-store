@@ -94,9 +94,9 @@ export function attachMcp(
     const uiTools = ['search_products', 'create_order'];
     const resources = uiTools.map((tool) => ({
       tool,
-      uri: `ui://store/${tool.replaceAll('_', '-')}-v6.html`,
-      filename: `${tool.replaceAll('_', '-')}-v6.html`,
-      cachedUris: ['v4', 'v5'].map(
+      uri: `ui://store/${tool.replaceAll('_', '-')}-v7.html`,
+      filename: `${tool.replaceAll('_', '-')}-v7.html`,
+      cachedUris: ['v4', 'v5', 'v6'].map(
         (version) => `ui://store/${tool.replaceAll('_', '-')}-${version}.html`,
       ),
     }));

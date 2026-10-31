@@ -11,7 +11,7 @@ import {
 import '@store/commerce-ui/application.css';
 declare const __CHECKOUT_ORIGIN__: string;
 const app = new App(
-  { name: 'Agent-Ready Store', version: 'commerce-shared-v6' },
+  { name: 'Agent-Ready Store', version: 'commerce-shared-v7' },
   {},
   { autoResize: true },
 );

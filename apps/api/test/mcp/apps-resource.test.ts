@@ -21,13 +21,13 @@ const token = process.env.MCP_SERVICE_TOKEN;
         (tool) => tool.name === 'search_products',
       );
       expect(tool?._meta?.ui).toMatchObject({
-        resourceUri: 'ui://store/search-products-v6.html',
+        resourceUri: 'ui://store/search-products-v7.html',
       });
       expect(tool?._meta?.['ui/resourceUri']).toBe(
-        'ui://store/search-products-v6.html',
+        'ui://store/search-products-v7.html',
       );
       const resource = await client.readResource({
-        uri: 'ui://store/search-products-v6.html',
+        uri: 'ui://store/search-products-v7.html',
       });
       const html = resource.contents[0];
       expect(html.mimeType).toBe('text/html;profile=mcp-app');
@@ -91,12 +91,12 @@ const token = process.env.MCP_SERVICE_TOKEN;
           },
         });
       }
-      // Cached final cards may still reference v4/v5; resolve only these exact known URIs.
+      // Cached final cards may still reference v4/v5/v6; resolve only these exact known URIs.
       for (const name of ['search-products', 'create-order']) {
         const current = await client.readResource({
-          uri: `ui://store/${name}-v6.html`,
+          uri: `ui://store/${name}-v7.html`,
         });
-        for (const version of ['v4', 'v5']) {
+        for (const version of ['v4', 'v5', 'v6']) {
           const uri = `ui://store/${name}-${version}.html`;
           const cached = await client.readResource({ uri });
           expect(cached.contents).toEqual(
@@ -131,7 +131,7 @@ const token = process.env.MCP_SERVICE_TOKEN;
       jsonrpc: '2.0',
       id: 1,
       method: 'resources/read',
-      params: { uri: 'ui://store/create-order-v6.html' },
+      params: { uri: 'ui://store/create-order-v7.html' },
     };
     const headers = {
       'Content-Type': 'application/json',
