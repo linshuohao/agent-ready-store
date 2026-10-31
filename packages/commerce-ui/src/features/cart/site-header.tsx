@@ -1,0 +1,42 @@
+'use client';
+import { Link } from '../../runtime';
+import { usePathname } from '../../runtime';
+import { cartIdInput } from '@store/contracts';
+import { useCartOperations } from './provider';
+
+export function SiteHeader() {
+  const { currentCartId } = useCartOperations();
+  const path = usePathname().split('/');
+  const routeCart =
+    path[1] === 'cart' && cartIdInput.safeParse(path[2]).success
+      ? path[2]
+      : null;
+  const cartId = routeCart ?? currentCartId;
+  return (
+    <header className="site-header">
+      <div className="site-header-inner">
+        <Link className="site-brand" href="/">
+          AGENT / STORE
+        </Link>
+        <span className="site-tagline">為人與 AI 助理設計</span>
+        {!['order-details', 'orders', 'checkout'].includes(path[1]) && (
+          <nav aria-label="購物導覽">
+            <Link
+              href={cartId ? `/orders?cartId=${cartId}` : '/orders'}
+              prefetch={false}
+            >
+              訂單列表
+            </Link>
+            <Link
+              className="site-cart-link"
+              href={cartId ? `/cart/${cartId}` : '/cart'}
+              prefetch={false}
+            >
+              購物車
+            </Link>
+          </nav>
+        )}
+      </div>
+    </header>
+  );
+}

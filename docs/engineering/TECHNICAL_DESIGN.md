@@ -1,6 +1,6 @@
 # Agent-Ready Store — Technical Design
 
-**状态：商店完整目标技术方案（2026-10-31，Asia/Shanghai），本轮进行结算重构基线传播与独立规划审查，Human已授权提交本次文档，未授权实施、合并或推送。** 本文统一描述既有架构与已采用的订单生命周期重设计，不是新的整体Approved声明。商品发现等已有实现继续复用，订单重设计尚未实施；当前交付事实见[DELIVERY_STATUS](DELIVERY_STATUS.md)，不能将目标方案整体表述为已经交付。
+**状态：商店当前技术方案（2026-10-31，Asia/Shanghai）。** 订单生命周期重构与Web/Apps完整应用复用已按Human授权实施，本文描述当前采用的架构；当前Change仍待真实Host/Human剩余验收、最终接受及正式Spec同步，不是新的整体Approved声明。T-11的完整复用限定替代已有明确Human批准；授权与历史批准分别追溯至[工程决策](ENGINEERING_DECISIONS.md)及[Change Tasks](../../openspec/changes/checkout-lifecycle-redesign/tasks.md)，实际交付事实见[DELIVERY_STATUS](DELIVERY_STATUS.md)。
 
 <a id="order-lifecycle-architecture"></a>
 ## 阅读入口
@@ -22,7 +22,7 @@
 
 商店同时服务直接浏览的Human和通过工具操作的Agent。用户从列表查询、筛选和比较商品，查看规格与评论，在持续购物车中准备商品，按本次选择创建固定订单，再由Human完成模拟支付；后续可以查询原单、继续选购或分享单订单。目录发现、解释价格和故障恢复与成交本身同样属于完整体验。
 
-网站采用Next.js App Router与React；NestJS承载薄模块化API和MCP适配；Prisma/PostgreSQL保存购物车、订单和库存事实；商品与评论继续读取只读JSON。pnpm Monorepo组织Web、API、Apps、共享契约与展示代码，不增加独立库存服务或支付系统。
+网站采用Next.js App Router与React；NestJS承载薄模块化API和MCP适配；Prisma/PostgreSQL保存购物车、订单和库存事实；商品与评论继续读取只读JSON。pnpm Monorepo组织Web、API、Apps、共享契约与完整购物应用，不增加独立库存服务或支付系统。
 
 例：车里有A×3、B×2，用户只买A。生单后A整行移出并固定金额，B仍留车可编辑；用户可以继续把B生成第二笔订单，同时第一笔订单等待支付。Agent完成生单后直接展示订单，用户一次点击模拟支付，不必先等第一笔付款或新建另一辆车。
 
@@ -32,7 +32,7 @@
 
 抽象只服务于现有消费者：Web、WebMCP、基础MCP和Apps复用同一业务用例；入口适配器只翻译协议和呈现结果。暂不建流程引擎、库存微服务、通用Repository框架、事件总线或插件体系。可扩展性来自“业务规则不依赖Host和页面”，而不是预先增加未使用的接口。
 
-本方案延续[T-01～T-06](ENGINEERING_DECISIONS.md#技术决策归档--2026-10-29)中未被替代的技术栈、目录、前端与运行边界；T-08～T-11只改变订单生命周期、Demo接续与相应协调。列表、详情、评论、购物车和订单共同组成商店，不因本次交易重构退化为单独支付演示。
+本方案延续[T-01～T-06](ENGINEERING_DECISIONS.md#技术决策归档--2026-10-29)中未被替代的技术栈、目录、前端与运行边界；T-08～T-11及T-11完整复用限定替代约束订单生命周期、Demo接续及共用应用边界。列表、详情、评论、购物车和订单共同组成商店，不因本次交易重构退化为单独支付演示。
 
 ### 1.1 系统全景与请求路径
 
@@ -42,12 +42,13 @@ Agent接入分为 MCP 与 WebMCP。MCP Apps 是 MCP 的交互式 UI 增强，复
 
 ```mermaid
 flowchart TB
+    Shared[commerce-ui：同一购物应用源码]
     subgraph Web[商城浏览器]
-        HumanUI[React页面与交互]
+        HumanUI[共享应用的Web实例]
         WM[WebMCP页面工具]
-        Commands[共享Commands]
-        HumanUI --> Commands
-        WM --> Commands
+        WebHTTP[HTTP适配]
+        HumanUI --> WebHTTP
+        WM --> HumanUI
     end
     subgraph Next[Next.js服务端]
         RSC[公开首屏RSC]
@@ -55,27 +56,31 @@ flowchart TB
     end
     subgraph Host[Agent Host]
         Agent[MCP Agent]
-        Apps[MCP Apps UI扩展与Bridge]
+        Apps[共享应用的Apps实例]
+        Bridge[Host Bridge适配]
+        Apps --> Bridge
     end
+    Shared -. 同一实现分别挂载 .-> HumanUI
+    Shared -. 同一实现分别挂载 .-> Apps
     subgraph API[NestJS单一业务进程]
         HTTP[HTTP Controllers]
         MCP[同一MCP Server：工具与Apps资源]
-        Core["Catalog / Cart / Order<br/>共享用例"]
+        Core[Catalog / Cart / Order共享用例]
         Pricing[唯一计价规则]
         HTTP --> Core
         MCP --> Core
         Core --> Pricing
     end
-    Commands --> Proxy
+    WebHTTP --> Proxy
     Proxy --> HTTP
     RSC --> HTTP
     Agent --> MCP
-    Apps --> MCP
+    Bridge --> MCP
     Core --> Catalog[只读商品与评论目录]
     Core --> DB[(PostgreSQL / Prisma)]
 ```
 
-图中是调用方向，响应沿原链返回；Commands、Adapter和用例是代码职责，不是新增部署进程。浏览器只访问同源API，Next负责公开首屏及透明转发，MCP直接进入Nest；MCP适配器调用同一用例，不在服务内部绕回HTTP。Apps通过Host Bridge进入服务，与网站不共享React上下文或Cookie。
+实线表示运行时调用，虚线表示源码复用，不表示两个环境共用内存或会话。Web与Apps各自挂载同一购物应用，HTTP与Host Bridge适配同一前端操作接口；浏览器只访问同源API，Next负责公开首屏及透明转发，MCP适配器直接调用同一后端用例。Apps通过Host Bridge进入服务，不直接访问网站HTTP，也不依赖Next、网站Cookie或Web的React上下文。独立环境只保留协议、导航、存储及工具结果/页面工具接入，完整边界见§5。
 
 Human可在网站或Apps点击模拟支付；Agent工具只承接查询、选购、生单、查单和取消。服务端统一裁决业务事实。Demo按ID接续而不验证自然人身份，UI动作与Agent工具的区分是产品交互边界，不宣称具备生产级授权隔离。
 
@@ -240,30 +245,30 @@ stateDiagram-v2
 <a id="frontend-architecture"></a>
 ## 5. 前端架构与Agent接入
 
-前端将§2的领域事实组织成§3的用户旅程，并把§4的业务状态转换成可理解、可恢复的交互。阅读本节可以追踪一次改量、生单或支付如何穿过组件、页面协调、Commands与服务端，再更新页面。以下组件名表达职责，实施时沿现有feature组织，不要求逐项新建文件、Hook或共享包。
+前端以`packages/commerce-ui`中的同一购物应用实现Web与Apps的流程、交互和视觉。商品列表/详情/评论、购物车、订单列表/详情、导航外壳、控件、样式、商品示意资源、Hooks和Commands均只有一份；两端不各写一套购物页面或状态机。WebMCP调用Web实例中的同一Commands和协调层。
 
 ```mermaid
 flowchart TB
-    subgraph WebEnv[Web与WebMCP]
-        direction TB
-        Page[页面与交互组件] --> Hook[Hooks / 页面协调]
-        WM[WebMCP Adapter] --> Cmd[共享Commands]
-        Hook --> Cmd
-        WM -. 结果回调 .-> Hook
-        Hook --> Q[查询副本 / 局部状态]
-        Cmd --> API[API Client]
+    Web[Web薄入口：Next路由与公开首屏] --> App
+    Apps[Apps薄入口：Host初始化与工具结果] --> App
+    subgraph Shared[packages/commerce-ui：唯一应用实现]
+        App[CommerceApplication] --> Pages[共享页面、导航、控件与CSS]
+        Pages --> Hooks[Hooks与交互协调]
+        Delivery[外部结果接续协调] --> Hooks
+        Hooks --> Commands[CartCommands / OrderCommands]
+        WM[WebMCP挂载点] --> Commands
+        Commands --> Transport[注入的Transport接口]
+        Hooks --> Runtime[注入的导航与存储接口]
     end
-    subgraph AppsEnv[Apps运行环境]
-        direction TB
-        Apps[Apps视图与协调] --> Host[Host Adapter]
-    end
-    Page -. 组合展示 .-> Pure[纯展示组件 / 展示模型]
-    Apps -. 兼容时复用 .-> Pure
-    API --> Backend[后端购物用例]
-    Host --> Backend
+    Transport --> HTTP[Web HTTP适配]
+    Transport --> Bridge[Apps Bridge适配]
+    Runtime -. 环境实现 .-> WebAdapter[Next导航 / localStorage]
+    Runtime -. 环境实现 .-> HostAdapter[内嵌导航 / sessionStorage / 显式分享]
+    HTTP --> Backend[后端唯一购物用例]
+    Bridge --> Backend
 ```
 
-页面与WebMCP调用同一组无React依赖的Commands；Hooks/页面协调层负责请求归属、查询副本、输入保护与导航。Apps保持独立环境控制器，通过Host Adapter复用后端用例和适用展示组件。图中的层次不代表新的Store、服务或框架；前端不重写金额、库存或订单状态规则。
+图表达代码职责与注入关系；实际每个Web或Apps实例有自己的Provider、查询副本、草稿、未决请求与导航位置。适配器不实现商品、选购、订单恢复或支付状态机，也不重新定义控件、页面布局和视觉；后端仍唯一裁决金额、库存与订单终态。目录独立与构建独立不构成重复实现界面的理由。
 
 ### 5.1 页面协作、路由与上下文
 
@@ -272,7 +277,7 @@ flowchart TD
     List[列表：URL查询与分页] --> Detail[详情：规格与评论]
     Detail -->|加购后查看| Cart[原车：改量与选择]
     Cart -->|创建成功| Order[统一订单：固定摘要与状态]
-    Order -->|继续原车购物| Cart
+    Order -->|继续选购并保留原车| List
     Order -->|显式分享入口| Share[单订单分享视图]
     Agent[Agent明确购买] -->|完整准备并生单| Order
     External[打开另一车的订单] --> View[先只展示原订单]
@@ -296,7 +301,9 @@ flowchart TD
 
 导航与业务成功分开：生单成功但导航失败时显示原订单入口；用户已主动离页时，迟到结果仍归原目标，不能强制跳回订单。仅打开WebMCP不导航；明确加购通常展示车，明确购买在内部准备后直达订单，不插入车页中转。用户要求停留当前页时遵循该意图。
 
-### 5.2 页面容器、业务组件与展示复用
+<a id="shared-commerce-application"></a>
+<a id="52-页面容器业务组件与展示复用"></a>
+### 5.2 完整共享应用、组件与环境接口
 
 ```mermaid
 flowchart TB
@@ -314,8 +321,9 @@ flowchart TB
     end
     CH --> Cmd[无React的Commands / API Client]
     OH --> Cmd
-    Cmd --> API[共享后端用例]
-    CH -. 接受的CartView .-> Header[Header车数量]
+    Cmd --> Transport[实例级HTTP或Bridge适配]
+    Transport --> API[共享后端用例]
+    CH -. 接受的CartView .-> Header[Header当前车导航]
     Rows -. 操作意图 .-> CH
     Actions -. Human动作 .-> OH
 ```
@@ -324,7 +332,7 @@ flowchart TB
 
 | 层 / 代表职责 | 输入、输出与协作 | 维护边界 |
 | --- | --- | --- |
-| App Router页面壳 | 解析路由、读取公开首屏、组合Client入口 | 不导入Prisma/计价，不在渲染或预取时写购物事实 |
+| Web / Apps薄入口 | Web解析Next路由并读取公开首屏；Apps验证Host工具结果并定位共享路由 | 两端挂载同一CommerceApplication，不导入Prisma/计价，不在渲染、工具结果接续或预取时写购物事实 |
 | CartPage及页面Hook | 消费CartView、选择、草稿和请求状态；协调保存、报价、生单和返回导航 | 统一处理结果，子组件不各自维护另一份车版本 |
 | CartItems / CartItemRow | 展示已保存数量，编辑局部草稿；回调绝对设量、移除、勾选意图 | 草稿与已保存值可区分，失效行有原因，不把未提交输入显示成已写入 |
 | SelectionSummary / OrderList | 展示服务端选中预估、选择问题和原车关联订单入口 | 不按整车金额推导所选金额，不把待支付列表当独立业务事实库 |
@@ -332,11 +340,25 @@ flowchart TB
 | OrderSummary / OrderStatus / OrderActions | 固定快照、状态标签、倒计时、明确动作回调 | 不自行决定支付可用性、重算金额或调用Host |
 | ProductCard / ReviewList / MoneyBreakdown | 公开商品、独立评论页、服务端金额明细及展示模式 | 通过props和回调复用；不泄漏内部字段，不把评论指令当操作 |
 | Commands / API Client | 明确目标、请求键、版本与载荷；返回结构化成功或失败 | 普通TypeScript函数，不依赖React、DOM、Router或QueryClient |
-| WebMCP / Apps环境适配 | 页面工具生命周期或Bridge调用，转换输入/输出并交给各自协调层 | 不复制Commerce规则，不跨Host共享React上下文 |
+| CommerceRuntime / 环境适配 | 请求、当前位置、导航、存储、显式分享、页面工具挂载和外部结果投递 | 只翻译运行环境能力；结果交共享协调层接受，不复制购物交互或跨Host共享React上下文 |
 
-Header与行数量读取同一个被接受的CartView，不从草稿分别累加；订单各组件读取同一份OrderView，支付结果由外层一次接受后共同呈现。
+Header根据当前车指针构建导航，车行数量来自被接受的CartView，不把草稿当已保存值；订单各组件读取同一份OrderView，支付结果由外层一次接受后共同呈现。
 
-复用现有`packages/commerce-ui`中适用能力。Web与Apps可以共享纯React展示及格式化，但路由、查询控制器、Host SDK、页面焦点由环境保留。只有运行时兼容且存在真实消费者才抽共享包，不为统一外观引入万能购物组件或通用注册框架。
+完整共享范围包含页面组合与状态协调，不能以共用商品卡、金额组件或部分CSS代替。具体源码职责如下：
+
+| 代码位置 | 当前职责 |
+| --- | --- |
+| `packages/commerce-ui/src/application.tsx` | 组合共享Provider、导航、页面与外部结果接续；Apps内嵌路由选择同一页面 |
+| `packages/commerce-ui/src/features/` | 商品/评论、车与订单页面、Hooks、Commands、反馈和恢复逻辑；Web原feature路径只保留薄导出 |
+| `packages/commerce-ui/src/components/ui/` | 唯一的Button、Checkbox、Input与Label实现 |
+| `packages/commerce-ui/src/application.css`、`style.css`、`artwork.ts` | 唯一的基础/响应式样式、商城组件规则及本地商品示意；两端使用同一完整CSS入口 |
+| `packages/commerce-ui/src/runtime.tsx`、`transport.ts` | 实例级环境接口与HTTP实现；共享业务组件不导入Next或Host SDK |
+| `apps/web/src/commerce-runtime.tsx`、App Router薄页面 | 注入Next导航、HTTP、localStorage和WebMCP，公开商品首屏从服务端传入共享页面 |
+| `apps/mcp-app/src/main.tsx`、`bridge-adapter.ts` | Host连接/工具结果、Bridge协议映射、内嵌导航、sessionStorage和可信分享；无独立购物Controller/View/CSS |
+
+请求适配使用`Transport(path, body?) → Promise<Response>`，由共享Commands统一验证响应、目标ID并协调原请求恢复；Bridge只把请求映射到所属Server工具和标准结果。`CommerceRuntime`提供位置/导航、存储、分享、WebMCP挂载及外部结果订阅，不持有另一套购物事实。Web使用Next导航与HTTP，Apps使用内嵌位置和Bridge；同一路由重试可触发新读取，不因位置字符串未变而失效。
+
+两端沿用同一视觉、文案、草稿保护、冲突显式刷新、未知恢复和订单终态规则。Host窄视口由同一响应式CSS处理，不能另写简化版控件或摘要布局。前端实例和持久存储仍隔离，复用源码不表示共享会话、身份或React状态。
 
 ### 5.3 状态归属与保存范围
 
@@ -366,7 +388,9 @@ flowchart TD
 | effectiveStatus / allowedActions | 服务端投影 | UI消费业务动作条件，再叠加本目标的提交中/未知等交互限制 |
 | 倒计时、格式化文字 | 展示层 | 到点只禁用新支付并查事实，不写闭单终态、不改金额 |
 
-沿用React state/ref/context与请求函数，不因使用“查询副本”或“查询键”引入TanStack Query。当前车Provider只承接跨页面确需共享的指针、车结果与操作协调，不吸收全部订单、搜索、表单或支付状态。每个订单有自己的请求状态，不能以一个全局busy阻塞继续购物。
+Web和Apps都沿用同一React state/ref/context与请求函数，不因使用“查询副本”或“查询键”引入TanStack Query。当前车Provider只承接跨页面确需共享的指针、车结果与操作协调，不吸收全部订单、搜索、表单或支付状态。每个订单有自己的请求状态，不能以一个全局busy阻塞继续购物。
+
+Web的localStorage与Apps的sessionStorage由运行环境注入同一存储接口。Apps以稳定工具调用ID保存卡片路由，并把旧卡片实体映射和未知原请求迁入共享恢复材料；缺少存储/关联信息时明确提示，不静默换键、另建车或支付。共享外部结果协调层在有草稿或在途动作时保留当前页面，待用户处理后显式查看新结果。同版本重读不使草稿失效，确有版本变化或结果未知时仍要求核对。
 
 ### 5.4 交互状态与可继续的动作
 
@@ -488,7 +512,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     actor H as Human
-    participant UI as OrderPage或Apps控制器
+    participant UI as 共享OrderPage与OrderCommands
     participant API as 支付与查询用例
     UI->>API: 读取原orderId
     API-->>UI: 固定摘要、状态、allowedActions
@@ -515,7 +539,7 @@ sequenceDiagram
 | 跨端接续 | 结果处理 | 呈现与恢复 |
 | --- | --- | --- |
 | WebMCP | 调相同Command，按车/订单目标接受结果 | 未切走才导航；仅启用工具不跳页 |
-| Apps | Bridge控制器消费相同契约，隔离实例 | 内嵌呈现，重挂载读取原orderId |
+| Apps | 同一共享页面/Commands经Bridge适配，实例隔离 | 内嵌导航；重挂载读取原orderId，不另写协调流程 |
 | 基础MCP | 返回固定摘要与原订单入口 | Human打开网页，不声称Host已自动打开 |
 | 当前车与订单来源不同 | 先只展示原订单 | 继续购物才确认切换指针，不合并两车 |
 
@@ -525,20 +549,20 @@ sequenceDiagram
 
 | 能力 / 交互形态 | Web | WebMCP页面工具 | MCP：无Apps兼容模式 | MCP：Apps UI增强模式 |
 | --- | --- | --- | --- | --- |
-| 商品/详情/评论 | 页面与HTTP | 按页面注册查询工具 | 查询工具返回结构化公开数据 | Host结果与展示组件 |
-| 恢复车/逐项编辑 | 当前车、显式操作 | 复用相同Commands、携带目标车 | MCP调用共享Cart用例 | Bridge调用，隔离实例快照 |
-| 选中预估/创建订单 | 选行与UI生单 | 明确购买后调用并导航 | 生单后返回摘要和网页入口 | Agent或专用UI生单后内嵌展示 |
-| 支付 | Human UI | 网页Human UI，工具无支付 | Human打开网页完成 | Human在卡片内点击 |
-| 查单/取消 | 指定orderId的UI动作 | 工具读取/取消原单 | 工具读取/取消原单 | 实例绑定原单，分享视图无取消 |
-| 结果恢复 | 原请求键/原订单 | 不抢新导航、不换键 | 不假定Host已打开页面 | 重挂载先读原单、不重生单 |
+| 商品/详情/评论 | 共享页面，经HTTP读取 | 按页面注册查询工具 | 查询工具返回公开数据 | 同一共享页面，经Bridge读取 |
+| 恢复车/逐项编辑 | 共享Provider、Hook与Commands | 调用Web实例同一协调层 | MCP调用共享Cart用例 | 同一Provider、Hook与Commands，独立实例及存储 |
+| 选中预估/创建订单 | 同一选行、生单与恢复流程 | 明确购买后调用并导航 | 生单后返回摘要和网页入口 | 同一流程，经APPS专用入口生单并内嵌导航 |
+| 支付 | 共享OrderPage内Human点击 | 网页Human点击，工具无支付 | Human打开网页完成 | 同一OrderPage内Human点击，经UI专用Bridge支付 |
+| 查单/取消 | 共享订单列表/详情及动作 | 工具读取/取消指定原单 | 工具读取/取消指定原单 | 同一页面、动作和终态协调；分享视图同样无取消 |
+| 结果恢复 | 同一原请求键/原单恢复规则 | 不抢新导航、不换键 | 不假定Host已打开页面 | 同一规则，加Host工具结果验证与卡片位置接续 |
 
-| 层 | 共享范围 | 保留在环境内 |
+| 层 | 唯一共享实现 | 环境边界 |
 | --- | --- | --- |
 | contracts | DTO、运行时schema、错误语义 | 不依赖React、Prisma、Router或Host SDK |
-| Nest用例 | 计价、库存、生命周期、幂等 | 不管理浏览器指针、焦点或页面导航 |
-| Web Commands | Web按钮与WebMCP共用HTTP操作 | Hooks管理查询与反馈，Adapter管理工具生命周期 |
-| 展示组件 / 展示模型 | 金额明细、商品卡、固定订单摘要和状态标签 | 页面外壳、网络、支付调用与Host适配不强行共享 |
-| Apps控制器 | 经Bridge消费同一契约和用例 | 实例归属、Host通知、重挂载与UI动作协调 |
+| Nest用例 | 计价、库存、生命周期、幂等 | 不管理前端指针、焦点或页面导航 |
+| commerce-ui完整应用 | 页面、控件、样式/资源、Hooks/Commands、草稿/未知/终态及外部结果协调 | 每个实例独立状态，不导入Next/Host SDK，不跨Host共享会话 |
+| Web适配 | 消费完整共享应用；WebMCP复用同一实例 | Next路由/公开首屏、同源HTTP、localStorage及页面工具生命周期 |
+| Apps适配 | 消费完整共享应用；不保留独立购物Controller | Bridge协议、Host工具结果/稳定调用ID、内嵌导航、sessionStorage及可信分享 |
 
 Server MCP通过Streamable HTTP调用共享用例，返回结构化公开数据及可读摘要，不在服务内部绕回HTTP。WebMCP按当前页面注册/清理工具，不复制Server工具全集；旧页面回调不能更新新页。Apps静态资源不嵌交易上下文或秘密，运行时由Bridge交付数据，不依赖网站Cookie、Next Router或RSC。
 
@@ -558,7 +582,7 @@ flowchart TD
     Error -->|显式重试| Resolve
 ```
 
-图只表达网站接管顺序，Apps由Host初始化；首屏有HTML不等于交易上下文已就绪。
+图表达Web首屏接管顺序，最终进入共享应用。Apps由Host验证工具结果、恢复原路由并通过Bridge读取目标，再进入同一套页面与交互协调；两者不共享运行时状态。首屏有HTML或Host已呈现卡片都不等于交易上下文已就绪。
 
 列表RSC解析URL并读取公开商品首屏，详情RSC提供商品与规格；搜索控件、评论分页、数量输入和交易动作由Client协调。服务端只传可序列化公开DTO，不传原始商品对象、Decimal实例或秘密。Client Component仍可能参与首屏渲染，不能等同于“只在浏览器出现”。
 
@@ -568,7 +592,7 @@ flowchart TD
 
 ### 5.9 响应式、可访问性与性能边界
 
-沿用Product Design的繁体中文、黑白极简与响应式方向。列表/详情保证商品、规格和可购买原因可读；车页在桌面与窄屏都保留数量、选择、预估及错误关联；订单页完整展示单价、优惠、运费和应付，不能为缩短页面隐藏Human支付所需信息。Apps按Host实际可用空间组合摘要与动作，不强搬整页网站布局。
+沿用Product Design的繁体中文、黑白极简与响应式方向。列表/详情保证商品、规格和可购买原因可读；车页在桌面与窄屏都保留数量、选择、预估及错误关联；订单页完整展示单价、优惠、运费和应付，不能为缩短页面隐藏Human支付所需信息。Web与Apps使用同一完整页面组合、导航与控件；Apps的iframe视口按同一响应式规则适配Host可用宽度，不另做一套摘要布局或视觉样式。
 
 搜索、数量和勾选控件有标签与可见焦点；键盘可完成选择、保存及支付，错误通过文字和可感知反馈关联原目标。异步更新不无故跳焦点；导航或弹窗的焦点由页面协调层处理，纯展示组件不抢焦点。倒计时只提示期限，屏幕阅读反馈应突出状态变化而非持续打断。真实键盘、读屏、缩放及Host限制属于实施验收，静态文档不证明通过。
 
@@ -699,6 +723,6 @@ HTTP与MCP继续校验适用的输入、网络来源和服务接入边界；Demo
 
 详细新增验收场景集中于OpenSpec Design §12，实施Tasks、真实Host记录、CI具体run与Human验收才提供运行证据；配置存在、脚本模拟、静态图或历史通过计数不能代替当前验证。进度集中在交付状态，本文不重复维护里程碑清单。
 
-本轮已在同一Change补齐Delta Specs/Tasks并传播产品决策与基线的限定差异；审查记录及未完成审批见该Change Tasks。正式实施前仍须Human规划批准和实施授权；旧D-01、D-04～D-07、D-21～D-24及T-05/T-07不因本文整合被追溯改写。本轮禁售范围已由Human澄清；独立规划审查发现的契约缺口按同一Change修订，Host接续、库存竞态与释放时延仍待实施验证。
+同一Change已记录规划批准、实施授权、交易核心与完整共享应用的实现/审查/验证；当前剩余真实Host/Human验收及正式Spec同步见Tasks，不以本方案或自动化通过替代最终接受。旧D-01、D-04～D-07、D-21～D-24及T-05/T-07的批准不追溯改写；T-11完整复用限定替代有独立Human确认来源。
 
-未来切换采用清空旧流程数据、统一进入新流程的已选方向，不回填旧单或维持双流程；保留目录/评论，库存按受控种子初始化。具体范围、环境核对与步骤仍在Change，本文不授权执行清理。新流程下的长期保留、取消和到期也不沿用该一次性切换清理。
+旧流程一次性切换已按Human具体授权执行，证据留当前Change Tasks；该事实不授权重清、再次seed或回退旧写服务。后续升级保持新车、订单和库存事实，按兼容数据的构建与服务更新执行；新流程长期保留、取消和到期不沿用一次性切换清理。

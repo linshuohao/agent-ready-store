@@ -1,1 +1,1 @@
-export { formatMoney } from '@store/commerce-ui';
+export * from '@store/commerce-ui/lib/money';

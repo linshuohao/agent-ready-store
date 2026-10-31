@@ -4,7 +4,37 @@
   "type": "module",
   "exports": {
     ".": "./src/index.tsx",
-    "./style.css": "./src/style.css"
+    "./style.css": "./src/style.css",
+    "./application": "./src/application.tsx",
+    "./runtime": "./src/runtime.tsx",
+    "./transport": "./src/transport.ts",
+    "./application.css": "./src/application.css",
+    "./components/ui/label": "./src/components/ui/label.tsx",
+    "./components/ui/button": "./src/components/ui/button.tsx",
+    "./components/ui/checkbox": "./src/components/ui/checkbox.tsx",
+    "./components/ui/input": "./src/components/ui/input.tsx",
+    "./features/cart/commands": "./src/features/cart/commands.ts",
+    "./features/cart/add-button": "./src/features/cart/add-button.tsx",
+    "./features/cart/cart-orders": "./src/features/cart/cart-orders.tsx",
+    "./features/cart/site-header": "./src/features/cart/site-header.tsx",
+    "./features/cart/cart-page": "./src/features/cart/cart-page.tsx",
+    "./features/cart/use-cart-page": "./src/features/cart/use-cart-page.ts",
+    "./features/cart/lifecycle-commands": "./src/features/cart/lifecycle-commands.ts",
+    "./features/cart/money-breakdown": "./src/features/cart/money-breakdown.tsx",
+    "./features/cart/feedback": "./src/features/cart/feedback.tsx",
+    "./features/cart/provider": "./src/features/cart/provider.tsx",
+    "./features/checkout/order-page": "./src/features/checkout/order-page.tsx",
+    "./features/checkout/orders-page": "./src/features/checkout/orders-page.tsx",
+    "./features/checkout/order-commands": "./src/features/checkout/order-commands.ts",
+    "./features/checkout/order-memory": "./src/features/checkout/order-memory.tsx",
+    "./features/checkout/use-order-page": "./src/features/checkout/use-order-page.ts",
+    "./features/product-discovery/components/search-form": "./src/features/product-discovery/components/search-form.tsx",
+    "./features/product-discovery/components/product-card": "./src/features/product-discovery/components/product-card.tsx",
+    "./features/product-discovery/components/reviews": "./src/features/product-discovery/components/reviews.tsx",
+    "./lib/utils": "./src/lib/utils.ts",
+    "./lib/money": "./src/lib/money.ts",
+    "./catalog-page": "./src/catalog-page.tsx",
+    "./product-page": "./src/product-page.tsx"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -12,11 +42,20 @@
   },
   "dependencies": {
     "@store/contracts": "workspace:*",
-    "react": "19.3.0"
+    "react": "19.3.0",
+    "@base-ui/react": "^1.9.0",
+    "class-variance-authority": "^0.7.1",
+    "cn": "^0.5.0",
+    "lucide-react": "^1.62.0",
+    "zod": "4.6.7",
+    "tw-animate-css": "^1.4.0",
+    "shadcn": "^4.23.0",
+    "react-dom": "19.3.0"
   },
   "devDependencies": {
     "@types/react": "^19",
     "react-dom": "19.3.0",
-    "@types/react-dom": "^19"
+    "@types/react-dom": "^19",
+    "tailwindcss": "^4.3.3"
   }
 }

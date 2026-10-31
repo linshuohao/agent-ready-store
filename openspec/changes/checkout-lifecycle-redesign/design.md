@@ -1,10 +1,10 @@
 # Design
 
-**v0.13 — 购物车、待支付订单与库存生命周期；当前进入共享交易核心实施。**
+**v0.14 — 购物车、待支付订单与库存生命周期；Web与Apps完整共用购物应用已实施，等待剩余验收与规格同步。**
 
-2026-10-31本轮Human已明确授权按同一Change实施数据模型、共享契约和交易核心及验证，来源与限定范围见[Tasks](tasks.md)。以下“仅设计/未授权实施”保留前次规划轮次事实，由本次明确授权限定替代；正式Spec同步、实际环境切换及最终Human验收仍未完成。
+2026-10-31本轮Human已明确授权按同一Change实施数据模型、共享契约和交易核心及验证，来源与限定范围见[Tasks](tasks.md)。以下“仅设计/未授权实施”保留前次规划轮次事实，由本次明确授权限定替代；实际环境切换已按后续明确授权完成；正式Spec同步及最终Human验收仍未完成，最新共享应用设计确认与实施见§13及Tasks §10。
 
-2026-10-31，Asia/Shanghai。依据 [Proposal](proposal.md)；本轮核对基线 `main@436ac33`（初始设计调查基线为 `main@0ece77a`）。本轮补齐规划，未执行业务实验、开发或迁移。此前Human确认的规则列于§0，采用的技术默认值列于§11；本轮新增范围澄清见§6，仍未授权实施。
+2026-10-31，Asia/Shanghai。依据 [Proposal](proposal.md)；本轮核对基线 `main@436ac33`（初始设计调查基线为 `main@0ece77a`）。该基线属于规划阶段调查记录；其后的实施/受控切换及完整复用均已取得对应授权并记录在Tasks。Human规则列于§0、技术采用来源列于§11，当前差异见§6、§9及§13。
 
 架构总览与分层正文见[Technical Design架构总览](../../../docs/engineering/TECHNICAL_DESIGN.md#order-lifecycle-architecture)，选择理由与限定替代关系见[T-08～T-11](../../../docs/engineering/ENGINEERING_DECISIONS.md#order-lifecycle-decisions)。本文件保留变更级接口、事务、恢复和验收细节，不复制全局架构正文。
 
@@ -47,7 +47,7 @@ Human已授权按审查建议统一整理设计：关闭不回车、订单行固
 | 准备 | [CartService.preparePurchase/purchaseView](../../../apps/api/src/cart/cart.service.ts)：整车摘要，准备递增 Cart.checkoutEpoch，Review 绑定 cartVersion/epoch/原车期限 | 新准备/车编辑让旧 Review stale |
 | Web/Handoff | [CheckoutPage](../../../apps/web/src/features/checkout/checkout-page.tsx)、review/submit：按 cartId 审阅和购买 | 点击确认才建 Order，没有“先订单、后支付” |
 | WebMCP | [PageTools](../../../apps/web/src/features/webmcp/page-tools.tsx)：已有 prepare_checkout 并 push 到 `/checkout/{cartId}?reviewId=…`，可查询购买状态 | 准备仍整车；加购自身无导航；router.push 不证明目标已显示 |
-| Apps | [controller.ts](../../../apps/mcp-app/src/controller.ts)：准备、UI 材料支付和原 review 恢复已实现 | 当前控制器围绕一辆车/一份 purchase，需精确绑定多笔 orderId |
+| Apps（旧调查快照） | 当时的`controller.ts`围绕准备、UI材料支付和原review恢复；该文件已在完整共享应用迁移中删除，原代码保留于Git调查基线 | 本列仅描述重构前限制；当前薄入口见[main.tsx](../../../apps/mcp-app/src/main.tsx)，完整共享方案见Technical Design §5 |
 | 基础 MCP | [adapter](../../../apps/api/src/mcp/mcp.adapter.ts)：basic-mcp prepare 只给预览，原生确认/提交/取消返回 NATIVE_CONFIRMATION_UNAVAILABLE | 真实 Host 原生确认与会话关联仍阻塞 |
 | 库存 | Inventory.quantity 在 commitPurchase 最终事务才扣减；[CatalogService](../../../apps/api/src/catalog/catalog.service.ts)直接投影 quantity | 无预留、可售量与释放任务 |
 | 优惠 | [pricing.ts](../../../apps/api/src/cart/pricing.ts)按车 origin 决定 AI 折扣 | 持续复用 AGENT 车会错误延续后续人工生单资格 |
@@ -256,8 +256,8 @@ Agent接入分为 MCP 与 WebMCP。MCP Apps 是 MCP 的交互式 UI 增强，复
 
 - 创建响应同时返回OrderView与剩余CartView；客户端不猜减行/递增版本，按§6.1的cartId/version安装。订单与动作结果按orderId及已提交终态隔离，较早查询不得覆盖新查询，不能仅因请求序号丢弃迟到支付成功。
 - 2026-10-31 Human验收修订：普通Web新增独立`/orders?cartId=…`订单列表页，集中展示待支付及历史订单；购物车与订单详情不嵌入列表，只保留导航。生单成功在原页面仍有效且无待保护草稿时直接进入原订单，并显示动画提示；迟到结果不抢导航。支付按钮文案为「確認支付」，支付/取消确认终态后显示提示并将焦点和滚动移至页首；保留底部Demo不扣款说明及减弱动画支持。复用现有Checkbox、Button、commerce-actions与反馈组件。
-- 2026-10-31 Apps验收修订：内嵌订单使用「確認支付」，由Human通过UI专用Bridge点击；待支付/历史订单使用有间距的链接。商品卡片复用Web本地示意图。正常状态不展示「只讀重新載入」和重复快照提示；冲突弹窗说明原因，显式刷新后取得最新数据，丢弃草稿前说明影响；未知结果保留原操作查询/重试。资源界面升级须更新URI版本，避免Host复用旧界面。
-- 共享呈现约定：Web与Apps从`@store/commerce-ui/style.css`导入同一按钮、卡片和间距规则；报价复用`MoneyBreakdown`，按钮组复用`CommerceActions`，不在Host重复定义`.cart-totals`/`.commerce-actions`。卡片或文案到操作区24px、组内12px；卡片内边距桌面24px/窄屏20px、圆角8px，常规按钮最小高度44px。主操作深色，次操作描边；商品卡片与详情内容使用显式纵向间距，错误恢复与确认分支也遵循同一规则。Host仅保留页面布局和必要特殊控件样式。
+- 2026-10-31 Apps阶段验收修订曾采用独立冲突弹窗与商品视图；该阶段记录保留在Tasks，当前由Human确认的完整共享应用替代（§13）。Apps与Web现使用同一订单页、商品/车/订单列表和冲突/未知恢复交互，不继续维护单独的Apps弹窗、布局或样式。资源升级仍须同步URI版本，避免Host复用旧界面。
+- 完整复用约定：两端共用页面、控件、样式/资源及Hooks/Commands，不以仅共用MoneyBreakdown、CommerceActions或style.css视为完成。唯一CSS入口为`@store/commerce-ui/application.css`；运行环境不另定义购物布局、控件和视觉。架构正文、源码归属及环境接口见[Technical Design §5.2](../../../docs/engineering/TECHNICAL_DESIGN.md#shared-commerce-application)，本Change只维护本轮替代与验收。
 - 统一路由`/orders/{orderId}`；旧`/checkout/{cartId}`和`/orders/{cartId}`不做数据映射，提示重新进入新会话。分享入口遵循单订单视图，不能沿用旧order-read只读凭证流程。
 - 生单与支付/取消未知分别保存目标及恢复标记，页面重挂载读原单；导航失败保留原orderId，不能生成新创建请求。选择不是持久服务端事实，不用页面默认勾选替代Agent本次明确目标。
 - 选中报价使用§8.2只读用例；版本、选择或数量变化使旧预估不再代表当前目标。生单后展示Order固定快照，后续价格变动不再触发原单重报价。
@@ -343,3 +343,13 @@ Human已授权按上一轮建议统一修改、不逐项确认。本节记录采
 目标与旧正式Spec有大幅模型差异：涉及Review、TTL、车能力、同车唯一订单的旧要求以明确REMOVED及完整新ADDED要求替代；目录库存投影及创建统计仅MODIFIED受影响块，保留其余要求。归档时另核对既有Purpose及阶段说明，不能留下新旧模型并存。正式Spec本轮不直接改写。
 
 实施顺序及每项完成证据只在Tasks维护。第一条可运行纵向链为共享数据/用例→普通Web同单生单/支付→MCP/WebMCP→Apps，随后受控切换和真实入口验收；每组自己的测试随组交付。不得将未验证的5秒释放目标、Host兼容或Demo边界当作已通过。
+
+## 13. Web与Apps完整应用复用（2026-10-31 Human确认）
+
+Human明确要求「不要局部复用，我们要完整复用。我们的流程、交互、视觉都是一致的」，并确认以Web为基准、完整页面/交互协调迁入共享层、删除Apps独立界面/购物Controller/CSS的设计，授权直接更新并实施。此要求替代此前仅兼容时共享展示及Apps独立购物协调的范围；T-11限定替代记录批准来源，旧阶段事实留Tasks和Git历史。
+
+完整架构、流程图、共享源码与环境接口统一在[Technical Design §5](../../../docs/engineering/TECHNICAL_DESIGN.md#frontend-architecture)，§5.2是唯一实现边界正文。本Change的`mcp-app-shopping` Delta规定完整复用及外部结果/恢复验收；Tasks §10维护实施和验证，不在此复制全局设计。
+
+本次迁移保留APPS初始化/生单通道、UI专用支付及可信原订单分享；旧工具调用ID/卡片映射和未决原请求迁入共享恢复材料。同版本前台读取保留草稿、异版本显式刷新；外部跨车结果先经共享协调层保护现有草稿/在途动作；暂不可用保留原键，同一路由重试可以重新读取。交易核心、数据库及金额/库存契约不变。
+
+实施已完成；当前资源v4、原请求恢复及两端回归证据见Tasks §10。真实Host/Human最终验收、残余风险接受及正式Spec同步仍按9.1/9.3处理，替身测试和文档整合不构成最终验收或归档授权。

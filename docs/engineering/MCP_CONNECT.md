@@ -58,11 +58,13 @@ WebMCP 使用同源 JSON 的 `POST /api/v1/shopping/webmcp/carts` 和 `POST /api
 
 ## Apps 资源与 UI Bridge
 
-11个隔离静态HTML资源关联search_products/get_product、建车/读车/逐行操作、创建/查询/列表/取消订单；评论及估价不关联资源。使用ext-apps 1.1.2与MCP SDK 1.32.2，资源只含构建代码，不含交易数据或服务凭证。API构建后须构建Apps；资源URI白名单禁止任意文件读取，资源同样需要服务认证。
+当前资源URI版本为`v4`、应用revision为`commerce-shared-v4`。11个隔离静态HTML资源关联search_products/get_product、建车/读车/逐行操作、创建/查询/列表/取消订单；评论及估价不关联资源。使用ext-apps 1.1.2与MCP SDK 1.32.2，资源只含构建代码，不含交易数据或服务凭证。API构建后须构建Apps；资源URI白名单禁止任意文件读取，资源同样需要服务认证。
 
 `apps_get_or_create_cart`、`apps_create_order`和`apps_pay_order`仅标记为`ui.visibility:["app"]`，供所属Host的UI Bridge调用；前两项采用APPS通道，支付只作用于明确orderId。Host应从模型目录隐藏这三项；协议元数据本身不是身份/授权隔离。Demo信任Host，不证明调用者为Human，也不防御持有服务Token的恶意客户端。Agent不得调用支付或代点UI。
 
 内嵌订单使用固定摘要，Human点击后直接通过Bridge支付，不发Agent消息、不自动外跳。显式分享只允许构建时WEB_ORIGIN下的`/orders/{orderId}?view=share`；Host拒绝时保留原单，不生成新单。浏览器存储受Host隔离策略影响；同会话可恢复原请求，缺失稳定卡片身份或存储时明确降级，真实Host重挂载能力仍须验收。
+
+Web与Apps使用同一完整购物应用；共享源码、界面/交互边界和环境接口统一见[Technical Design §5.2](TECHNICAL_DESIGN.md#shared-commerce-application)。修改共享代码后两端均须构建；API元数据与静态资源版本必须一致，更新后重新发现工具，避免Host旧资源缓存。旧卡片ID映射与未知原请求会迁入共享恢复材料，不自动支付；相同页面重试和外部工具结果保护由共享应用处理。
 
 ## 验证边界
 

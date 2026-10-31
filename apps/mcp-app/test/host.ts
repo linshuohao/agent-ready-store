@@ -24,7 +24,11 @@ let cart: ShoppingCartView = {
 let order: OrderView | null = null;
 const calls: string[] = [],
   opens: string[] = [];
-const controls = { failPayOnce: false, conflictOnce: false };
+const controls = {
+  failPayOnce: false,
+  conflictOnce: false,
+  failProductOnce: new URL(location.href).searchParams.has('failDiscovery'),
+};
 const productMode = new URL(location.href).searchParams.has('product');
 const productDetail = {
   id: 'P001',
@@ -86,6 +90,42 @@ const bridge = new AppBridge(
 bridge.oncalltool = async ({ name, arguments: args }) => {
   calls.push(name);
   if (name === 'get_cart') return ok(cart);
+  if (name === 'get_product') {
+    if (controls.failProductOnce) {
+      controls.failProductOnce = false;
+      return {
+        structuredContent: {
+          ok: false,
+          error: { code: 'TEMPORARY_UNAVAILABLE' },
+        },
+        content: [],
+        isError: true,
+      };
+    }
+    return ok(productDetail);
+  }
+  if (name === 'search_products') {
+    const {
+      description: _,
+      specs: __,
+      reviewOverview: ___,
+      ...product
+    } = productDetail;
+    return ok({
+      items: [product],
+      total: 1,
+      nextOffset: null,
+      catalogRevision: 'fixture',
+    });
+  }
+  if (name === 'list_product_reviews')
+    return ok({
+      productId: 'P001',
+      items: [],
+      total: 0,
+      nextOffset: null,
+      catalogRevision: 'fixture',
+    });
   if (name === 'quote_selection')
     return ok(
       summary(
@@ -211,6 +251,10 @@ Object.assign(window, {
     calls,
     opens,
     controls,
+    deliverCart: async (cartId: string) => {
+      await bridge.sendToolInput({ arguments: { cartId } });
+      await bridge.sendToolResult(ok({ ...cart, cartId }));
+    },
     remount: () => {
       iframe.srcdoc = resourceHtml;
     },

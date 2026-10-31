@@ -1,5 +1,9 @@
 # Tasks
 
+### 当前完整复用增量（2026-10-31）
+
+Human确认并授权完整复用设计后，§10三项已实施与验证，当前31/33；9.1真实入口剩余验收和9.3最终接受/正式Spec同步仍未完成。Web与Apps现共用同一购物应用；旧阶段的独立Apps/局部复用描述由Design §13及T-11限定替代更新。Human本轮已明确授权提交本次完整共享应用与文档整合；提交及Git checkpoint以实际Git/Guard结果为准，9.1/9.3未完成前不关闭Change，未Push/Merge或归档。
+
 ### 最新实际切换记录（2026-10-31）
 
 - Human对本机store清理1辆旧车、重置30SKU并迁移明确回答“是的，清理数据”；8.2已完成，当前28/30。9.1真实Host/Human和9.3最终验收仍待完成，未Push/Merge或公网发布。
@@ -260,3 +264,22 @@ Human明确：“授权之后往下推进，如果没有什么需要我审批的
 - 自动验证：Apps桌面/移动10/10通过，新增实际几何断言确认报价到生单24px、按钮到说明12px、订单按钮间12px及主次背景。Web商品/购物反馈/导航回归36通过、8条件跳过（不计通过）；真实MCP只读资源/安全探测2/2通过。API/Apps build、各受影响包typecheck/lint及Web生产build通过；构建曾发现导入移动了use-client指令，已恢复文件首部并移除重复表达式后通过。
 - 资源升级v3避免Host复用v2；本地服务按原环境更新，无支付/数据清理/迁移。视觉验收按Human明确要求由Human自行查看，不新增AI视觉检查或将自动化称为Human验收。聚焦自查，不冒称独立Review；9.1/9.3保持原未完成状态。依既有连续提交授权提交，不Push/Merge。
 - 最终补齐错误恢复分支后，Web定向6/6通过，Web lint、Prettier、OpenSpec strict validate和diff检查通过；本地已提供v3购物车卡片供Human勾选后查看报价/按钮间距。
+
+## 10. Web与Apps完整应用复用（Human已确认并授权实施）
+
+- [x] 10.1 将Web商品/评论、车、订单列表/详情、基础控件/导航/样式/资源及交互协调迁入commerce-ui，注入请求/导航/存储；Web保留薄路由/首屏及WebMCP适配。验证：原Web流程回归，共享模块无Next依赖，两端同一控件和CSS入口。
+- [x] 10.2 Apps通过Bridge/工具结果适配接入同一应用，删除旧View/购物Controller/独立CSS；保留原ID接续、APPS入口、UI专用支付及固定可信分享。验证：SDK替身覆盖完整流程、原键恢复/错误/错实体/重挂载，无网站HTTP和自动支付。
+- [x] 10.3 完成共享/适配回归、两端构建和一次独立代码审查，记录真实结果与Host/Human验收缺口；不以自动化抵扣9.1/9.3。
+
+### §10实施、审查与运行证据（2026-10-31）
+
+- 文档整合：完整共享应用已融入Technical Design §1/§5/§7的正文、流程图与职责表，移除末尾补丁和仍指向独立Apps控制器/局部复用的当前描述；README、Product Design、CHECKOUT_CORE、MCP_CONNECT、DELIVERY_STATUS及本Change引用同步。T-11保留旧决策与明确限定替代，架构正文集中在Technical Design；本轮只更新文档，复用§10已有代码/运行验证，不重复业务测试，不修改历史归档或正式Spec验收状态。
+- 沿用commerce-ui迁入Web现有页面、Hooks/Commands、基础控件、导航外壳和CSS；Web保留薄Next路由、SSR公开读取和WebMCP挂载。Apps删除997行购物Controller、独立View/CSS/按钮/图片组件，改为Bridge协议、工具投递/内嵌路由及sessionStorage适配。两端商品图仅从共享artwork.ts构建，旧Web重复SVG资源移除；依赖仅移动/声明仓库已使用版本，lockfile无包版本升级。
+- 共享购物流程不依赖Next，HTTP与Bridge为实例级注入，不做跨Host共享React状态。初始化/生单使用APPS入口、支付仅UI专用apps_pay_order；工具投递只读恢复原ID。共享DeliveryCoordinator保护外部结果切换时的草稿/在途动作。相同保存版本的前台重读保留草稿而不误报冲突，不同版本仍显式刷新。
+- 独立只读审查由/root/shared_app_review完成（HEAD 9ddad1f+本轮未提交Diff，含未跟踪文件）。确认完整共享结构，但发现5项：暂不可用清除原请求键、旧商品卡初始化/卡片映射恢复缺口、外部跨车投递丢草稿、同路由无法重试、分享未绑定原orderId。逐项核实修复；暂不可用与错误订单分享新增单测先明确失败再通过，旧材料迁移补对应单测，重挂载/同页重试/外部投递补SDK浏览器回归。修复后定向验证通过；未另声称有第二轮独立批准。
+- 首次浏览器基线在旧Apps无法找到共享cart-page；新实现初轮数量保存用例出现焦点重读误报冲突，读取实际调用确认仅发生get_cart无写请求，修复共享Hook。最终Apps桌面/移动两轮28/28通过；最终生产构建全量受影响浏览器（acceptance-navigation、catalog、mcp-app）50/50通过。购物写入/支付均为接口或官方SDK Host替身，目录查询只读，不是Human支付/真实Host恢复验收。
+- 默认pnpm test69通过、53环境依赖跳过（含16项Bridge适配/恢复单测）；API/共享包/Apps typecheck及Web构建TypeScript通过，各受影响包lint、Prettier、diff和OpenSpec strict validate通过。API与Apps生产构建通过；Next默认Turbopack两次因本机PostCSS子进程端口权限失败，使用next build --webpack生产构建成功，未改默认构建配置，不把Turbopack记为通过。额外React Hooks规则复核无Hook警告，Next专用img优化提示因共享本地SVG不引入Next运行时而保留。
+- 正常依赖安装保持pnpm安全策略与安装脚本禁用，最终安全检查通过，836包均复用缓存、无下载；离线元数据不足与冻结锁文件不匹配的尝试未冒称成功，最终锁文件仅更新现有依赖归属。
+- 原实施工作树启动器及本轮3104临时Web已停止；按原root .env及scripts/local.mjs start恢复Web3000/API3002。Web首页、API健康及Web代理健康均200；使用原凭证的真实MCP只读资源/拒绝探测2/2通过，11份静态资源/工具元数据均为v4。应用revision commerce-shared-v4；get-cart-v4.html SHA256为464017478ae6a5c0b36f0d3d921fb4e35b71d508f49b9448e326b40e7c7a7091。Host需刷新连接并重新发现/调用工具加载v4。未迁移/seed/清理或自动化真实购买。
+- 复用既有交易核心/真实DB验证；本轮交易服务、schema和金额/库存事务无变化，API差异仅资源URI/文件名v4。未启动store_test集成服务，42项订单/WebMCP真实集成在只读检查轮按环境条件跳过，未计入50项通过。9.1/9.3保持未勾选，后续只补真实Host/Human缺口及正式Spec同步/归档。
+- Git：当前codex/checkout-lifecycle-implementation。授权提交前Guard按shared-commerce-implementation、已验证/已审查且Human设计批准运行，实际BLOCKED仅因持久变更缺少checkpoint commit。Human随后明确回复「提交」，授权将完整共享应用及本文档整合作为同一审查单元提交；实际提交与提交后Guard结果由Git及交付对话核对。9.1/9.3未完成，不归档；原main保持7ec9aa2且干净，未Push/Merge。

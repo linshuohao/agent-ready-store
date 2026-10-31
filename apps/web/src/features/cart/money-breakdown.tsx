@@ -1,1 +1,2 @@
-export { MoneyBreakdown } from '@store/commerce-ui';
+'use client';
+export * from '@store/commerce-ui/features/cart/money-breakdown';

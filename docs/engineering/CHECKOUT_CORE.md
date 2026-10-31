@@ -1,6 +1,6 @@
 # 结算交易核心（实施分支）
 
-本文件说明本轮已实现的共享用例及隔离验证方式。权威契约仍为 [checkout-lifecycle-redesign](../../openspec/changes/checkout-lifecycle-redesign/design.md)，进度和运行证据见同一 Change 的 [Tasks](../../openspec/changes/checkout-lifecycle-redesign/tasks.md)。这是不兼容旧购买 schema 的重构；Tasks 5.1 的普通 Web HTTP 与5.2的持久购物车页面已完成，订单支付页及其余入口仍待 Tasks 5.3～7。旧交易 HTTP 返回 410 / CHECKOUT_FLOW_REPLACED，MCP 仅发现三个目录查询工具，旧交易调用同样拒绝。不要将本分支作为完整可购物交付部署。
+本文件说明本轮已实现的共享用例及隔离验证方式。权威契约仍为 [checkout-lifecycle-redesign](../../openspec/changes/checkout-lifecycle-redesign/design.md)，进度和运行证据见同一 Change 的 [Tasks](../../openspec/changes/checkout-lifecycle-redesign/tasks.md)。这是不兼容旧购买schema的重构；交易核心、Web/MCP/WebMCP及Apps共享应用已实施，剩余真实Host/Human验收与正式Spec同步见Tasks 9.1/9.3。旧交易HTTP返回410 / CHECKOUT_FLOW_REPLACED；当前MCP工具及UI-only能力以[MCP_CONNECT](MCP_CONNECT.md)为准，不沿用旧工具清单或将实现完成当最终交付接受。
 
 ## 普通 Web HTTP 与 Next 代理
 
@@ -24,7 +24,7 @@ Next继续复用既有 `/api/v1/:path*` rewrite到服务端API_INTERNAL_URL，�
 
 ## 共享用例与输入
 
-`CartService` 是共享交易边界，输入均拒绝未知字段。通道是适配器参数 `WEB | MCP | WEBMCP | APPS`，不得从 JSON body 的 origin/aiEligible/price 派生。普通网页生单使用 WEB；MCP 服务工具使用 MCP；后续 WebMCP 专用同源路径使用 WEBMCP；Apps Bridge/工具专用路径使用 APPS。这个通道约定不是自然人或 AI 身份证明。只有 WEB 不享本单 AI 折扣，车的 agentCreated 不参与优惠。
+`CartService` 是共享交易边界，输入均拒绝未知字段。通道是适配器参数 `WEB | MCP | WEBMCP | APPS`，不得从 JSON body 的 origin/aiEligible/price 派生。普通网页生单使用 WEB；MCP 服务工具使用 MCP；WebMCP 专用同源路径使用 WEBMCP；Apps Bridge/工具专用路径使用 APPS。这个通道约定不是自然人或 AI 身份证明。只有 WEB 不享本单 AI 折扣，车的 agentCreated 不参与优惠。
 
 | 用例 | 输入及结果 |
 | --- | --- |
@@ -73,7 +73,7 @@ OrderView 保存唯一明细/金额快照，状态为 CHECKOUT / PAID，关闭�
 `/orders/{orderId}`统一读取订单并展示固定商品/规格/数量/单价、金额分项、生单通道、AI资格、截止和当前状态。支付仅由UI按钮直接调用原orderId，不生成第二笔订单；取消只关闭原单且不自动回车。同车提供继续购物与分页订单导航，已支付可刷新重读。`SiteHeader`不再从订单URL推断cartId。
 
 - 无React的`order-commands.ts`复用既有shoppingRequest；`use-order-page.ts`负责本页查询和动作状态，展示继续复用commerce-ui的金额组件，无新增依赖或金额算法。
-- 请求前将orderId和pay/cancel保存在`store.order.pending.{orderId}`；未知只查原单，显式重试限原动作，存储不可用不发送。已确认快照不因后续404消失；本地到期只禁用新支付并查询，不当作已提交关闭。5.4的完整跨页迟到结果保存、Commands/竞态矩阵仍未完成。
+- 请求前将orderId和pay/cancel保存在`store.order.pending.{orderId}`；未知只查原单，显式重试限原动作，存储不可用不发送。已确认快照不因后续404消失；本地到期只禁用新支付并查询，不当作已提交关闭。跨页迟到结果由共享OrderCommands保存，原目标终态协调及竞态验证证据见Tasks 5.4与§10，不因页面卸载丢失原操作结果。
 - 同车多单导航已实现；其他车/无当前车不自动改指针。`?view=share`先隐藏来源车、其他单及取消，页头也不显示车导航；完整本人接续确认、分享集成及最终体验仍属5.5，尚未验收。
 - 旧`/checkout/{cartId}`及`/order-details/{orderId}`只显示退出提示，不兑换fragment、不加载旧购买控制器。`/orders`动态参数仅作orderId查询，不按cartId映射；不存在时提供新流程提示及重查。旧控制器文件仍供后续迁移清理核对，不再由这些路由挂载。
 
@@ -98,3 +98,9 @@ WebMCP在商品、目录、车及非分享订单页注册当前工具；初始�
 pathname、目录查询条件和实体变化撤销旧句柄；迟到写入保存原结果，不抢回导航。目录搜索结果在layout阶段先交付，再注销旧工具，避免搜索本身返回失效错误。普通Web按钮生单始终使用WEB来源，即便该车由WebMCP建立，也不继承AI资格。无WebMCP浏览器保留普通Web操作，分享页不注册购物工具。
 
 `e2e/webmcp.spec.ts`使用document.modelContext注册替身、真实隔离API和Chrome；覆盖零写、留页/导航、草稿、未知逐项写/生单刷新恢复、旧句柄、跨路由及同目录查询迟到响应、同单UI支付和来源隔离。旧purchase-webmcp的Review/材料测试已移除，由新生命周期场景替代；不是实际WebMCP Host或Human验收。
+
+## 前端共享应用接入
+
+Web和Apps消费同一commerce-ui页面、Hooks/Commands、控件与完整CSS入口，Web原feature路径为薄导出；源码职责和运行环境接口统一见[Technical Design §5.2](TECHNICAL_DESIGN.md#shared-commerce-application)。本文HTTP/工具契约仍由协议适配进入同一后端用例，不能在两端另写购物流程或前端计价。
+
+Bridge将标准请求映射到APPS专用初始化/生单及UI专用支付工具，保留目标ID、版本和原请求键。暂不可用/未知结果不得映射为可清除未决材料的已知拒绝；卡片重挂载先恢复原位置与材料再读取。共享层承担草稿/跨车结果保护、同页重试和原订单终态协调。实际新增验证见Tasks §10，不将旧DB/Host证据算作本轮新验证。
