@@ -24,7 +24,7 @@ async function setup(page: Page, items = [{ productId: 'P001', quantity: 1 }]) {
   await expect(page.getByLabel('數量 P001', { exact: true })).toHaveValue('1');
   return cart;
 }
-test('defaults to no selection, protects drafts on focus, saves quantities and creates one pending order from full rows', async ({
+test('defaults to no selection, protects drafts on focus, saves quantities and creates one pending order from full rows @ci', async ({
   page,
 }) => {
   const cart = await setup(page, [
@@ -41,6 +41,12 @@ test('defaults to no selection, protects drafts on focus, saves quantities and c
   await expect(create).toBeEnabled();
   await page.getByLabel('數量 P001', { exact: true }).fill('2');
   await expect(create).toBeDisabled();
+  // A real external change makes this draft conflict with a newer saved version.
+  await post(page, `/carts/${cart.cartId}/operations`, {
+    operationRequestId: randomUUID(),
+    expectedCartVersion: cart.cartVersion,
+    operation: { type: 'set_quantity', productId: 'P003', quantity: 2 },
+  });
   await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   await expect(page.getByLabel('數量 P001', { exact: true })).toHaveValue('2');
   await expect(
@@ -78,7 +84,7 @@ test('defaults to no selection, protects drafts on focus, saves quantities and c
     page.getByRole('region', { name: '所有訂單' }).getByRole('link'),
   ).toHaveCount(1);
 });
-test('initialization lost response survives reload and double clicks cannot create a replacement cart', async ({
+test('initialization lost response survives reload and double clicks cannot create a replacement cart @ci', async ({
   page,
 }) => {
   let original: any;
