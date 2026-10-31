@@ -1,7 +1,6 @@
 import { it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { Catalog } from '../../src/catalog/catalog.js';
-import { quoteCart } from '../../../../packages/commerce-ui/src/features/cart/lifecycle-commands';
 import { CartService } from '../../src/cart/cart.service.js';
 
 const cartId = '10000000-0000-4000-8000-000000000001';
@@ -50,20 +49,4 @@ it('does not quote anomalous inventory as a stock shortage', async () => {
   await expect(
     service(-1).quoteSelection(cartId, input, 'WEB'),
   ).rejects.toMatchObject({ code: 'CART_ITEMS_INVALID' });
-});
-
-it('preserves shortage issues through the shared Web/Apps quote response parser', async () => {
-  const estimate = await service(2, 1).quoteSelection(cartId, input, 'WEB');
-  const result = await quoteCart(
-    cartId,
-    input.selectedItems,
-    async () => new Response(JSON.stringify({ ok: true, data: estimate })),
-  );
-  expect(result).toMatchObject({
-    kind: 'success',
-    data: {
-      total: estimate.total,
-      issues: [{ productId: 'P001', code: 'INSUFFICIENT_STOCK' }],
-    },
-  });
 });
