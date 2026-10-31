@@ -4,14 +4,17 @@ import { buttonVariants } from './components/ui/button';
 import type { Page, ProductSummary } from '@store/contracts';
 
 import { ProductCard } from './features/product-discovery/components/product-card';
+import type { CategoriesResult } from './features/product-discovery/components/category-select';
 import { SearchForm } from './features/product-discovery/components/search-form';
 
 export function CatalogPage({
   response,
   query = '',
+  categories,
 }: {
   response: import('@store/contracts').Result<Page<ProductSummary>>;
   query?: string;
+  categories?: CategoriesResult;
 }) {
   const embedded = useRuntime().surface === 'embedded';
   const params = new URLSearchParams(query);
@@ -40,7 +43,13 @@ export function CatalogPage({
           <h2 id="catalog-heading">{embedded ? '搜尋結果' : '探索商品'}</h2>
           {response.ok && <p role="status">共 {response.data.total} 件商品</p>}
         </div>
-        {!embedded && <SearchForm key={params.toString()} values={values} />}
+        {!embedded && (
+          <SearchForm
+            key={params.toString()}
+            values={values}
+            categories={categories}
+          />
+        )}
         {!response.ok ? (
           <section role="alert" className="notice">
             <h2>

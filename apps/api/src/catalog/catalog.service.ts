@@ -17,6 +17,9 @@ export class CatalogService {
     );
     this.db = database(process.env.DATABASE_URL);
   }
+  categories(input: unknown) {
+    return this.catalog.categories(input);
+  }
   async stock() {
     return new Map(
       (await this.db.inventory.findMany()).map((r) => [

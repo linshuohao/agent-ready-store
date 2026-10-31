@@ -17,6 +17,7 @@
     "db:migrate": "node scripts/local.mjs db:migrate",
     "db:seed": "node scripts/local.mjs db:seed",
     "start": "node scripts/local.mjs start",
+    "test:categories": "pnpm --filter @store/contracts build && pnpm --filter @store/api build && playwright test --config playwright.categories.config.ts",
     "test:e2e": "playwright test",
     "test:e2e:ci": "playwright test --config playwright.ci.config.ts",
     "start:docker": "docker compose up -d --no-build",

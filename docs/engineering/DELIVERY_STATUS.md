@@ -41,3 +41,7 @@ Requirements / Product Design表达产品与体验结果，Technical Design表�
 ## 云端 Demo
 
 2026-10-31：Vercel 前后端与 Neon Free 已上线，运行版本 `266489a`；对应 Actions 的 Verify / Delivery image 均通过。公开入口、云端购物与 MCP 验证、请求清理限制统一见[部署说明](DEPLOYMENT.md#验证结果)。部署 PR #3 已通过 Merge Commit `61b2e7d` 合入 main；上述线上运行版本与 Git 合并状态分别记录。
+
+## 分类发现增量（本地分支，2026-10-31）
+
+`feat/catalog-discovery`已实现共享分类API/MCP及Web分类下拉框，尚未Push、Merge或部署。Human已批准分类入口限定豁免到期扫描；其他入口维持现有行为。实际命令、审查和Host验收进度集中在[Change Tasks](../../openspec/changes/catalog-discovery/tasks.md)。真实Codex CLI已执行四类只读场景，但CLI不提供Apps卡片渲染证据；支持Apps的真实Host视觉验收及最终Human验收仍待完成，不据此宣称线上已更新。向量／混合搜索仅保留为[后续评估方向](../../openspec/changes/catalog-discovery/design.md#future-evolution)。

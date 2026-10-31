@@ -1,5 +1,5 @@
 import { OrderExpiryWorker } from './cart/order-expiry.worker.js';
-import { result } from './shared/result.js';
+import { requestMaintenance } from './request-maintenance.js';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { attachMcp } from './mcp/mcp.adapter.js';
 import { CartService } from './cart/cart.service.js';
@@ -40,16 +40,10 @@ app.use(
   },
 );
 const expiry = app.get(OrderExpiryWorker);
-app.use('/api/v1', async (req: Request, res: Response, next: NextFunction) => {
-  if (req.path === '/health') return next();
-  const maintenance = await result(() => expiry.beforeRequest());
-  if (!maintenance.ok) {
-    res.setHeader('Cache-Control', 'no-store');
-    res.status(503).json(maintenance);
-    return;
-  }
-  next();
-});
+app.use(
+  '/api/v1',
+  requestMaintenance(() => expiry.beforeRequest()),
+);
 attachMcp(
   app.getHttpAdapter().getInstance(),
   app.get(CatalogService),
