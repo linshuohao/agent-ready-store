@@ -91,7 +91,7 @@ const token = process.env.MCP_SERVICE_TOKEN;
           },
         });
       }
-      // Cached final cards may still reference v4/v5; resolve only these exact known URIs.
+      // Cached final cards may still reference v4/v5/v6; resolve only these exact known URIs.
       for (const name of ['search-products', 'create-order']) {
         const current = await client.readResource({
           uri: `ui://store/${name}-v8.html`,

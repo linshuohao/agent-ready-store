@@ -81,9 +81,12 @@ const {
   reviewOverview: _reviews,
   ...productSummary
 } = productDetail;
+const catalogItems = new URL(location.href).searchParams.has('multiple')
+  ? [productSummary, { ...productSummary, id: 'P002', name: '另一款耳機' }]
+  : [productSummary];
 const catalogData = {
-  items: [productSummary],
-  total: 1,
+  items: catalogItems,
+  total: catalogItems.length,
   nextOffset: null,
   catalogRevision: 'fixture',
 };
