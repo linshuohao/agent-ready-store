@@ -4,7 +4,7 @@ import {
   shoppingCartViewOutput,
   getOrCreateCartInput,
   persistentCartOperationInput,
-  orderSummaryOutput,
+  selectionQuoteOutput,
   orderViewOutput,
   createOrderInput,
   type ShoppingCartView,
@@ -72,7 +72,7 @@ export const quoteCart = (
 ) =>
   shoppingRequest(
     `/carts/${encodeURIComponent(id)}/quote`,
-    orderSummaryOutput,
+    selectionQuoteOutput,
     { selectedItems, constraints: { currency: 'TWD' } },
     transport,
   );

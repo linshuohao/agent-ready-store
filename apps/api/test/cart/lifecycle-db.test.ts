@@ -79,6 +79,36 @@ const catalog = new Catalog(readFileSync('references/products.json', 'utf8'));
         code: 'VALIDATION_ERROR',
       });
     });
+    it('quotes stock shortages without allowing creation or changing reservations', async () => {
+      const cart = await service.getOrCreate(
+        init([{ productId: 'P001', quantity: 2 }]),
+        'WEB',
+      );
+      await db.inventory.update({
+        where: { productId: 'P001' },
+        data: { quantity: 2 },
+      });
+      const rival = await service.getOrCreate(init(), 'WEB');
+      await service.createOrder(rival.cartId, create(rival), 'WEB');
+      const body = create(cart);
+      const quote = await service.quoteSelection(
+        cart.cartId,
+        { selectedItems: body.selectedItems, constraints: body.constraints },
+        'WEB',
+      );
+      expect(quote).toMatchObject({
+        issues: [{ productId: 'P001', code: 'INSUFFICIENT_STOCK' }],
+      });
+      await expect(
+        service.createOrder(cart.cartId, body, 'WEB'),
+      ).rejects.toMatchObject({ code: 'CART_ITEMS_INVALID' });
+      expect(await db.order.count()).toBe(1);
+      expect(
+        (await db.inventory.findUniqueOrThrow({ where: { productId: 'P001' } }))
+          .reservedQuantity,
+      ).toBe(1);
+      expect((await service.get(cart.cartId)).items[0].quantity).toBe(2);
+    });
     it('moves complete selected rows, freezes amounts and keeps cart independently editable', async () => {
       const cart = await service.getOrCreate(
         init([

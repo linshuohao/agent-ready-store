@@ -117,6 +117,17 @@ export const orderSummaryOutput = z
     total: money,
   })
   .strict();
+// A stock shortage blocks creation without invalidating the current estimate.
+export const selectionQuoteOutput = orderSummaryOutput.extend({
+  issues: z
+    .array(
+      z
+        .object({ productId, code: z.enum(['INSUFFICIENT_STOCK', 'SOLD_OUT']) })
+        .strict(),
+    )
+    .optional(),
+});
+export type SelectionQuote = z.infer<typeof selectionQuoteOutput>;
 export const orderViewOutput = z
   .object({
     orderId: id,
