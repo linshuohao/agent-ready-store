@@ -19,3 +19,7 @@ test-results/
 
 # Local Vercel project links and pulled environment secrets.
 .vercel/
+
+# Documentation build input and output
+site/.generated/
+site/dist/

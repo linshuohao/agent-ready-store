@@ -12,6 +12,18 @@ export const pageInput = z
     catalogRevision: z.string().max(128).optional(),
   })
   .strict();
+export const categoryPageInput = pageInput
+  .extend({ limit: z.number().int().min(1).max(100).default(50) })
+  .refine(
+    (value) => value.offset === 0 || value.catalogRevision !== undefined,
+    {
+      message: 'catalogRevision required for continuation',
+    },
+  );
+export interface ProductCategory {
+  value: string;
+  label: string;
+}
 export const searchInput = pageInput
   .extend({
     q: z.string().max(200).default(''),

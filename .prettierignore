@@ -18,3 +18,7 @@ test-results
 **/*.md
 
 **/next-env.d.ts
+
+# VitePress generated inputs are rebuilt from the content manifest.
+site/.generated
+site/pnpm-lock.yaml

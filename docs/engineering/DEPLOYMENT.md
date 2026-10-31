@@ -7,11 +7,18 @@
 | 资源 | 当前事实 |
 | --- | --- |
 | 前端 | Vercel 项目 `agent-ready-store`，[公开网页](https://agent-ready-store.vercel.app)，已验证购物与模拟支付 |
+| 文档与展示 | Vercel 项目 `agent-ready-store-docs`，[在线入口](https://agent-ready-store-docs.vercel.app)；构建与发布配置见[文档站说明](../../site/README.md#vercel-发布) |
 | 后端 | Vercel 项目 `agent-ready-store-api`，[健康检查](https://agent-ready-store-api.vercel.app/api/v1/health)，REST / MCP 已验证 |
 | 数据库 | Neon Free 项目 `agent-ready-store-demo`（`fancy-salad-72400395`），PG18 / AWS US East；已执行7个迁移并导入30条库存，不要重复 seed |
 | Git | 部署 PR #3 已通过 Merge Commit `61b2e7d` 合入 main |
 
 之前尝试 Render Free 时被银行卡验证阻断，未创建服务；Human 已选择上述 Vercel 方案。原始附件访问及向 Vercel 后端 Production 写入本项目 Neon/MCP 凭据均已获得明确授权。原件仍不公开，密钥不进入 Git、前端变量或日志。
+
+## 当前发布与自动更新
+
+2026-10-31 文档站上线收尾版本为 `c8075a1`，文档站、商城和 API 的 Production 部署均为 READY；对应 [GitHub Actions](https://github.com/linshuohao/agent-ready-store/actions/runs/41188565691) 已通过。线上文档回归覆盖 109 份正文、16 屏展示、旧入口、刷新返回及四种屏宽；商城首页与 API 健康检查正常。下方保留首次部署时的业务验收记录，不将其视为每次文档更新都重跑了购物验收。
+
+三个 Vercel 项目连接同一仓库 main，推送后由 Vercel Git 集成自动部署。GitHub Actions 执行业务测试和镜像验证，当前与部署独立运行，尚无“Actions 通过后才发布”的门禁。
 
 ## 验证结果
 

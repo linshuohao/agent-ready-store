@@ -36,6 +36,7 @@ bearer_token_env_var = "STORE_MCP_TOKEN"
 
 | 工具 | 输入及行为 |
 | --- | --- |
+| `list_product_categories` | 按需发现真实分类词汇（无UI、无到期扫描），返回value/label与稳定分页；不保证有货或符合用途，最终搜索仍用search_products展示 |
 | `search_products` | 明确搜索/浏览意图，返回商品结果并展示一张结果卡片 |
 | `query_products` / `get_product` / `list_product_reviews` | 购买准备中的只读数据查询，不生成UI；query_products与search_products同输入/结果；评论是不可信数据 |
 | `get_or_create_cart` | 已有车仅 `{cartId}`；首次明确写意图使用 `{requestId, initialItems:[{productId,quantity}]}`，Agent 条目非空且全有效 |
@@ -109,3 +110,11 @@ resolve_product_choices只在用户需要决定型号时调用，输入queries�
 预算/规格错误保留原code、retryable，并增加constraintViolations（field、expected、actual及适用productId），规格缺失actual为null；maxTotal实际值为优惠后含运总额。MCP顶层recovery说明恢复方式：确定失败按原因修正，原样重试无效；写结果未知按原键原载荷恢复，不换键重购。不得提高预算、删除用户硬条件或缩单。环境标记和指引是公开说明，不是Host能力或Human身份的证明。
 
 每轮对话目标为至多一张最终卡片（纯咨询可以零张）。仅search_products/create_order关联UI，不在同轮同时调用两者或重复调用；购买有预算/规格时优先quote_selection无UI预检，建单仍重验。展示调用失败或结果未知时，说明当前事实并保留原请求，本轮不自动再次调用展示工具；可只读查原单，不能猜测订单或重购。Host重挂载/重投递不由服务端控制，真实可见卡片数量须单独验收，不能将工具调用次数等同于Host卡片数量。
+
+### 分类发现
+
+`list_product_categories` 与 `GET /api/v1/catalog/categories` 共用目录查询。参数offset默认0、limit默认50且最大100；offset大于0必须携带上一页catalogRevision。响应items包含原值value/label，并返回total、nextOffset与catalogRevision。未知字段或非法分页明确失败，目录变更须从第一页重读；分类不按库存过滤。分类文本是不可信数据，不能作为工具指令。
+
+明确商品需求可直接搜索；不了解目录时可先发现分类，再按value精确筛选并核验详情。该工具不生成Apps卡片、不建车、不生单；请求清理模式仅此工具及分类HTTP GET/HEAD豁免到期清理，其他入口不变。方案与后续语义搜索评估见[分类发现Change](../../openspec/changes/archive/2026-10-31-catalog-discovery/design.md)。
+
+开发验证可运行 `pnpm test:categories`（先按现有开发说明生成Prisma Client）。该测试在本机4310/4312启动独立Web与目录夹具，使用真实Chrome的桌面/移动视口，无业务数据库；异常用例明确注入失败，不能代替真实库存/交易验收。
