@@ -66,7 +66,7 @@
             </li>
           </ul>
           <p>
-            当前是可本地体验的
+            当前是可在线体验的
             Demo，使用模拟支付，不包含账户、真实金流、退款和物流。按 ID
             接续购物车与订单不构成生产级身份和访问隔离。
           </p>
@@ -97,9 +97,9 @@
                 <tr>
                   <td>实际运行与体验</td>
                   <td>
-                    按
-                    <a href="../README.md#本机开发">README 本机开发</a
-                    >配置，再走下方 Demo
+                    直接打开<a href="https://agent-ready-store.vercel.app"
+                      >在线商店</a
+                    >，再走下方 Demo
                   </td>
                 </tr>
                 <tr>
@@ -130,42 +130,31 @@
         <section id="usage" aria-labelledby="title-usage">
           <div class="section-heading">
             <span>03</span>
-            <h2 id="title-usage">如何运行</h2>
+            <h2 id="title-usage">如何体验</h2>
           </div>
           <p>
-            需要 Node.js 24（<code>&gt;=24.11 &lt;25</code>）、pnpm
-            12.11.2，以及 PostgreSQL；本仓库提供 Docker Compose
-            数据库入口。还需要商品数据文件
-            <code>references/products.json</code>，或通过
-            <code>CATALOG_PATH</code>
-            指向可用数据。原始材料受分享范围限制；如果检出的仓库未包含数据，请向交付者确认获取方式，不能假设文件一定随仓库提供。
+            直接打开<a href="https://agent-ready-store.vercel.app">在线商店</a
+            >，无需安装依赖或初始化数据库。线上使用 Vercel 前后端与 Neon
+            免费数据库；首次访问可能需要等待冷启动。
           </p>
           <p>
-            首次运行按
-            <a href="../README.md#本机开发"
-              >README 的安装、环境变量和空数据库初始化步骤</a
-            >操作；Docker 整套运行方式见
-            <a href="../README.md#构建与运行">README 构建与运行</a>。README
-            是启动命令的维护入口，本文不另维护一套环境配置。
-          </p>
-          <p>环境初始化完成后，日常启动：</p>
-          <pre><code class="language-sh">pnpm db:up
-pnpm dev
-</code></pre>
-          <p>
-            打开<a href="http://localhost:3000">本地商店</a
-            >。已有数据库不要重复清空或 seed。停止应用使用 Ctrl+C；<code
-              >pnpm db:down</code
-            >
-            停止开发数据库并保留数据卷。
+            Agent 客户端使用 MCP Streamable HTTP 连接
+            <code>https://agent-ready-store-api.vercel.app/mcp</code>，通过
+            <code>Authorization: Bearer &lt;MCP_SERVICE_TOKEN&gt;</code>
+            认证。请向项目维护者获取令牌，不要将令牌写入对话或仓库。具体配置见<a
+              href="../docs/engineering/MCP_CONNECT.md"
+              >MCP 接入指南</a
+            >。
           </p>
           <p>
-            Agent 客户端连接地址默认是
-            <code>http://localhost:3002/mcp</code>，使用本机配置的
-            <code>MCP_SERVICE_TOKEN</code>
-            认证。客户端必须能访问服务所在机器；远程 Host 的
-            <code>localhost</code> 不代表你的电脑。具体连接与兼容前提见
-            <a href="../docs/engineering/MCP_CONNECT.md">MCP 接入指南</a>。
+            线上 Demo
+            在后续业务请求到来时清理到期订单，无访问时不运行独立清理任务；超过15分钟仍不可支付。
+          </p>
+          <p>
+            如需本机开发，按<a href="../README.md#本机开发">README 本机开发</a
+            >配置；Docker 运行见<a href="../README.md#构建与运行"
+              >README 构建与运行</a
+            >。已有数据库不要重复清空或 seed。
           </p>
         </section>
         <section id="demos" aria-labelledby="title-demos">
@@ -278,7 +267,8 @@ pnpm dev
                 href="../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/tasks.md"
                 >结算验收记录</a
               >包含基础 MCP、WebMCP 与 Apps
-              的真实购物验收摘要。<strong>可直接观看的完整对话导出或录影仍待补充</strong>；摘要、浏览器测试和真实录影各有不同用途。当前导览提供本地运行入口，不提供已部署的在线商城链接。
+              的真实购物验收摘要。<strong>可直接观看的完整对话导出或录影仍待补充</strong>；摘要、浏览器测试和真实录影各有不同用途。在线体验入口已提供；线上
+              Demo 不替代完整购物对话或录影。
             </p>
           </article>
         </section>

@@ -6,6 +6,12 @@
 
 首次了解项目或评审交付，可先阅读[交付与体验导览](DELIVERY.md)（[HTML 阅读版](delivery/index.html)）：项目说明、Demo 路线、关键设计解答及证据入口。
 
+## 在线体验
+
+- [打开商店](https://agent-ready-store.vercel.app)：无需安装，使用模拟支付，不会真实扣款。
+- [API 健康检查](https://agent-ready-store-api.vercel.app/api/v1/health)
+- MCP：`https://agent-ready-store-api.vercel.app/mcp`，需由项目维护者提供访问令牌，配置见下方 Agent 接入。
+
 ## 功能
 
 - **商品发现**：商品列表、规格、库存与评论查询，支持多目标分组搜索、简繁匹配和受控中英文别名。
@@ -70,7 +76,7 @@ pnpm db:seed
 pnpm dev
 ```
 
-启动后访问：
+本机启动后访问：
 
 | 入口 | 默认地址 |
 | --- | --- |
@@ -84,14 +90,14 @@ pnpm dev
 
 ## Agent 接入
 
-启动服务后，在支持 MCP Streamable HTTP 的客户端中配置：
+在线体验时，在支持 MCP Streamable HTTP 的客户端中配置：
 
 ```text
-URL: http://localhost:3002/mcp
+URL: https://agent-ready-store-api.vercel.app/mcp
 Authorization: Bearer <MCP_SERVICE_TOKEN>
 ```
 
-客户端需要能访问运行服务的机器。MCP 提供查询、购物车和订单工具；支持 MCP Apps 的客户端可在对话中展示商品与结算卡片，无需另建连接。不支持 Apps 时，仍可使用 MCP 工具，并通过网页完成支付。
+线上连接使用项目维护者提供的令牌。本机开发时，将 URL 改为 `http://localhost:3002/mcp` 并使用本机配置的令牌；客户端需要能访问运行服务的机器。MCP 提供查询、购物车和订单工具；支持 MCP Apps 的客户端可在对话中展示商品与结算卡片，无需另建连接。不支持 Apps 时，仍可使用 MCP 工具，并通过网页完成支付。
 
 WebMCP 为支持该能力的浏览器 Agent 提供页面工具；其他浏览器仍可使用普通网页。Agent 可按明确购买意图准备订单，最终支付由用户在网页或内嵌界面完成。
 

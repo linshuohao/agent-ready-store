@@ -46,9 +46,9 @@ const slides = [
     visual:
       '<div class="flow"><div class="node "><div class="step">01</div><strong>表达意图</strong><small>搜索与比较；明确商品、数量和预算</small></div><span class="arrow" aria-hidden="true">→</span><div class="node "><div class="step">02</div><strong>准备订单</strong><small>明确购买后生单，固定金额并预留库存</small></div><span class="arrow" aria-hidden="true">→</span><div class="node dark"><div class="step">03</div><strong>Human 支付</strong><small>核对明细，亲自点击模拟支付</small></div><span class="arrow" aria-hidden="true">→</span><div class="node "><div class="step">04</div><strong>查询原单</strong><small>同一 orderId，读取最终事实</small></div></div>',
     caption: '购物链路：选购 → 待支付订单 → Human 支付 → 原单结果。',
-    actions: [['打开本地商店', 'http://localhost:3000', true]],
+    actions: [['打开在线商店', 'https://agent-ready-store.vercel.app', true]],
     pending:
-      '运行前提：本地 Web / API 与数据库可用。证据范围：已有真实 Host 验收摘要，尚无完整对话或录影的直接入口。',
+      '体验方式：直接打开线上商店，无需本机启动服务。证据范围：已有真实 Host 验收摘要，尚无完整对话或录影的直接入口。',
     evidence: [
       {
         label: 'MCP 接入与 Host 前提',
@@ -523,7 +523,7 @@ const slides = [
     visual:
       '<div class="flow"><div class="node "><div class="step">01</div><strong>理解</strong><small>复述目标、范围与验收</small></div><span class="arrow" aria-hidden="true">→</span><div class="node "><div class="step">02</div><strong>判断</strong><small>局部修改或正式契约变化</small></div><span class="arrow" aria-hidden="true">→</span><div class="node dark"><div class="step">03</div><strong>实施</strong><small>沿既有 Workflow 推进</small></div><span class="arrow" aria-hidden="true">→</span><div class="node "><div class="step">04</div><strong>交付</strong><small>效果、相关验证与 Diff</small></div></div>',
     caption: '当前执行方式：按变更影响选择轻量实现或正式规格路径。',
-    actions: [['打开本地商店', 'http://localhost:3000', true]],
+    actions: [['打开在线商店', 'https://agent-ready-store.vercel.app', true]],
     evidence: [
       {
         label: '本地开发与测试入口',

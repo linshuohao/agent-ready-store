@@ -14,14 +14,14 @@ Agent-Ready Store 是一个同时服务人类与 AI Agent 的商店。用户可�
 - **不同入口如何保持一致？** Web 与 Agent 共用商品、计价、库存和订单能力；Web 与 MCP Apps 进一步共用完整购物应用。
 - **交易发生异常时如何继续？** 生单固定金额并预留库存15分钟；支付、取消、到期及网络未知均围绕原订单处理。
 
-当前是可本地体验的 Demo，使用模拟支付，不包含账户、真实金流、退款和物流。按 ID 接续购物车与订单不构成生产级身份和访问隔离。
+当前是可在线体验的 Demo，使用模拟支付，不包含账户、真实金流、退款和物流。按 ID 接续购物车与订单不构成生产级身份和访问隔离。
 
 ## 从哪里开始
 
 | 你想做什么 | 建议入口 |
 | --- | --- |
 | 快速了解产品与关键取舍 | 阅读本文，再看[产品决策](DECISIONS.md) |
-| 实际运行与体验 | 按 [README 本机开发](README.md#本机开发)配置，再走下方 Demo |
+| 实际运行与体验 | 直接打开[在线商店](https://agent-ready-store.vercel.app)，再走下方 Demo |
 | 在 Agent 中购物 | 查看 [MCP 接入指南](docs/engineering/MCP_CONNECT.md) |
 | 查看图解展示 | 本地打开 [HTML 展示](presentation/index.html)，[打开方式](presentation/README.md)；GitHub 文件页不会直接运行 HTML |
 | 检查架构和源码 | 从下方“设计解答”进入对应设计、实现与测试 |
@@ -29,22 +29,15 @@ Agent-Ready Store 是一个同时服务人类与 AI Agent 的商店。用户可�
 
 HTML 展示用于现场按章节讲解与跳转；交付导览用于独立阅读，优先提供使用步骤、Demo 路线与设计解答。两者均不包含私人讲解提示。
 
-## 如何运行
+## 如何体验
 
-需要 Node.js 24（`>=24.11 <25`）、pnpm 12.11.2，以及 PostgreSQL；本仓库提供 Docker Compose 数据库入口。还需要商品数据文件 `references/products.json`，或通过 `CATALOG_PATH` 指向可用数据。原始材料受分享范围限制；如果检出的仓库未包含数据，请向交付者确认获取方式，不能假设文件一定随仓库提供。
+直接打开[在线商店](https://agent-ready-store.vercel.app)，无需安装依赖或初始化数据库。线上使用 Vercel 前后端与 Neon 免费数据库；首次访问可能需要等待冷启动。
 
-首次运行按 [README 的安装、环境变量和空数据库初始化步骤](README.md#本机开发)操作；Docker 整套运行方式见 [README 构建与运行](README.md#构建与运行)。README 是启动命令的维护入口，本文不另维护一套环境配置。
+Agent 客户端使用 MCP Streamable HTTP 连接 `https://agent-ready-store-api.vercel.app/mcp`，通过 `Authorization: Bearer <MCP_SERVICE_TOKEN>` 认证。请向项目维护者获取令牌，不要将令牌写入对话或仓库。具体配置见 [MCP 接入指南](docs/engineering/MCP_CONNECT.md)。
 
-环境初始化完成后，日常启动：
+线上 Demo 在后续业务请求到来时清理到期订单，无访问时不运行独立清理任务；超过15分钟仍不可支付。
 
-```sh
-pnpm db:up
-pnpm dev
-```
-
-打开[本地商店](http://localhost:3000)。已有数据库不要重复清空或 seed。停止应用使用 Ctrl+C；`pnpm db:down` 停止开发数据库并保留数据卷。
-
-Agent 客户端连接地址默认是 `http://localhost:3002/mcp`，使用本机配置的 `MCP_SERVICE_TOKEN` 认证。客户端必须能访问服务所在机器；远程 Host 的 `localhost` 不代表你的电脑。具体连接与兼容前提见 [MCP 接入指南](docs/engineering/MCP_CONNECT.md)。
+如需本机开发，按 [README 本机开发](README.md#本机开发)配置；Docker 运行见 [README 构建与运行](README.md#构建与运行)。已有数据库不要重复清空或 seed。
 
 ## 可以体验哪些 Demo
 
@@ -91,7 +84,7 @@ Agent 客户端连接地址默认是 `http://localhost:3002/mcp`，使用本机�
 
 ### Demo 与录影的证据状态
 
-[结算验收记录](openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/tasks.md)包含基础 MCP、WebMCP 与 Apps 的真实购物验收摘要。**可直接观看的完整对话导出或录影仍待补充**；摘要、浏览器测试和真实录影各有不同用途。当前导览提供本地运行入口，不提供已部署的在线商城链接。
+[结算验收记录](openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/tasks.md)包含基础 MCP、WebMCP 与 Apps 的真实购物验收摘要。**可直接观看的完整对话导出或录影仍待补充**；摘要、浏览器测试和真实录影各有不同用途。在线体验入口已提供；线上 Demo 不替代完整购物对话或录影。
 
 ## 设计解答：为什么这样做
 
