@@ -38,6 +38,10 @@ Requirements / Product Design表达产品与体验结果，Technical Design表�
 
 面试阅读顺序：运行README → 业务决策 → 技术方案 → AI_NOTES → 按追问查看Spec、测试与历史。CI已有当前修复版本的通过证据；仍需补充真实购物可观看材料。
 
+## 在线文档与展示
+
+[统一文档与展示站](https://agent-ready-store-docs.vercel.app)已上线，可从[产品 Demo](https://agent-ready-store-docs.vercel.app/demo.html)进入章节讲解及完整正文。2026-10-31 发布收尾版本 `c8075a1` 的 [CI](https://github.com/linshuohao/agent-ready-store/actions/runs/41188565691) 已通过；线上检查覆盖 109 份正文、16 屏展示、旧入口、刷新返回及四种屏宽。当前发布机制见[部署说明](DEPLOYMENT.md#当前发布与自动更新)，首次部署与各业务阶段记录继续保留其版本边界。
+
 ## 云端 Demo
 
 2026-10-31：Vercel 前后端与 Neon Free 已上线，运行版本 `266489a`；对应 Actions 的 Verify / Delivery image 均通过。公开入口、云端购物与 MCP 验证、请求清理限制统一见[部署说明](DEPLOYMENT.md#验证结果)。部署 PR #3 已通过 Merge Commit `61b2e7d` 合入 main；上述线上运行版本与 Git 合并状态分别记录。

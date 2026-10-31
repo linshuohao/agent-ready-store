@@ -4,17 +4,22 @@
 
 网页与 Agent 共用商品查询、计价、库存和订单能力；MCP Apps 与网页进一步共享完整的购物界面和交互逻辑。
 
-首次了解项目或评审交付，可先启动[统一文档与展示站](site/README.md)：产品 Demo、四章讲解、设计正文及验证证据可连续阅读。纯 Markdown 入口仍为[交付与体验导览](DELIVERY.md)，旧 [HTML 导览](delivery/index.html)保留。
-
-本地文档与演示站使用 VitePress，包含现行设计、正式 Spec、历史归档和旧入口兼容。启动方式与迁移边界见 [文档站说明](site/README.md)；[在线阅读](https://agent-ready-store-docs.vercel.app)。
+首次了解项目或评审交付，可直接打开[文档与展示站](https://agent-ready-store-docs.vercel.app)：从产品 Demo 进入需求演进、技术方案与 AI 工作流，再跳转到设计正文、正式 Spec 和验证证据，读完可返回原演示位置。
 
 ## 在线体验
 
-- [打开商店](https://agent-ready-store.vercel.app)：无需安装，使用模拟支付，不会真实扣款。
-- [API 健康检查](https://agent-ready-store-api.vercel.app/api/v1/health)
-- MCP：`https://agent-ready-store-api.vercel.app/mcp`，需由项目维护者提供访问令牌，配置见下方 Agent 接入。
+| 入口 | 用途 |
+| --- | --- |
+| [在线商店](https://agent-ready-store.vercel.app) | 实际浏览商品、购物车与模拟支付，无需安装 |
+| [文档与展示站](https://agent-ready-store-docs.vercel.app) | 项目导览与完整阅读链路 |
+| [产品 Demo](https://agent-ready-store-docs.vercel.app/demo.html) | 网页与 Agent 购物流程的分步展示 |
+| [章节讲解](https://agent-ready-store-docs.vercel.app/presentation.html?slide=authorization) | 需求与演进、技术方案、AI 工作流 |
+| [完整文档](https://agent-ready-store-docs.vercel.app/library.html) | 设计方案、现行 Spec、历史归档与验证证据 |
+| [API 健康检查](https://agent-ready-store-api.vercel.app/api/v1/health) | 查看后端服务是否可用 |
 
-部署配置与限制见[部署说明](docs/engineering/DEPLOYMENT.md)。
+MCP 地址：`https://agent-ready-store-api.vercel.app/mcp`，需由项目维护者提供访问令牌，配置见下方 Agent 接入。商城使用模拟支付，不会真实扣款。
+
+部署配置见[部署说明](docs/engineering/DEPLOYMENT.md)，文档站本地启动与发布设置见[文档站说明](site/README.md)。纯 Markdown 入口为[交付与体验导览](DELIVERY.md)。
 
 ## 功能
 
@@ -38,6 +43,7 @@ Next.js / React 提供网页，NestJS 承载 API 与 MCP，Prisma / PostgreSQL �
 | [packages/commerce-ui](packages/commerce-ui/) | Web / Apps 共用页面、交互、控件与样式 |
 | [packages/contracts](packages/contracts/) | 共享数据契约与输入校验 |
 | [openspec](openspec/) | 功能规格与变更记录 |
+| [site](site/) | VitePress 文档与展示站 |
 
 ## 本机开发
 
@@ -149,7 +155,7 @@ pnpm start:docker
 
 ## 更多文档
 
-- [展示与答辩](presentation/index.html)：主讲、备查、设计说明与证据；[打开方式](presentation/README.md)。
+- [在线展示与文档](https://agent-ready-store-docs.vercel.app)：产品 Demo、章节图解、设计正文与证据；[旧版离线展示](presentation/index.html)保留。
 
 - [产品需求](docs/product/REQUIREMENTS.md)与[产品设计](docs/product/PRODUCT_DESIGN.md)：功能、用户流程和交互约定。
 - [产品决策](DECISIONS.md)：需求理解、业务取舍与 PM 沟通。
