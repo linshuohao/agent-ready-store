@@ -8,7 +8,7 @@ test.beforeAll(async () => {
   const require = createRequire(root + 'package.json');
   const { build } = await import(pathToFileURL(require.resolve('vite')).href);
   const appHtml = await readFile(
-    new URL('../apps/api/dist/mcp-app/get-cart-v4.html', import.meta.url),
+    new URL('../apps/api/dist/mcp-app/get-cart-v5.html', import.meta.url),
     'utf8',
   );
   const result = await build({
@@ -46,6 +46,11 @@ test('Apps consumes the shared Web cart page and accessible controls', async ({
 }) => {
   const f = await openFixture(page);
   await expect(f.locator('.commerce-page.cart-page')).toBeVisible();
+  expect(
+    await f
+      .locator('.purchase-layout')
+      .evaluate((el) => getComputedStyle(el).gridTemplateColumns),
+  ).toMatch(/^\d+(?:\.\d+)?px$/);
   await expect(
     f.locator('.cart-selection [data-slot="checkbox"]').first(),
   ).toBeVisible();
@@ -155,6 +160,11 @@ test('shared product details and reviews use the same artwork, controls and layo
 }) => {
   const f = await openFixture(page, '?product');
   await expect(f.locator('.detail')).toBeVisible();
+  expect(
+    await f
+      .locator('.detail')
+      .evaluate((el) => getComputedStyle(el).gridTemplateColumns),
+  ).toMatch(/^\d+(?:\.\d+)?px$/);
   await expect(
     f.getByRole('img', { name: 'P001 商品示意，非實物照片' }),
   ).toBeVisible();
@@ -243,4 +253,23 @@ test('external cart delivery preserves the current unsaved draft', async ({
         ).length,
     ),
   ).toBe(0);
+});
+
+test('embedded catalog shows search results without a search form', async ({
+  page,
+}) => {
+  const f = await openFixture(page, '?product');
+  await expect(f.locator('.detail')).toBeVisible();
+  await f.getByRole('link', { name: 'AGENT / STORE', exact: true }).click();
+  await expect(
+    f.getByRole('heading', { name: '搜尋結果', exact: true }),
+  ).toBeVisible();
+  await expect(f.locator('.product-card')).toHaveCount(1);
+  await expect(f.getByRole('searchbox')).toHaveCount(0);
+  await expect(f.locator('.filters')).toHaveCount(0);
+  expect(
+    await f
+      .locator('.product-grid')
+      .evaluate((el) => getComputedStyle(el).gridTemplateColumns),
+  ).toMatch(/^\d+(?:\.\d+)?px$/);
 });

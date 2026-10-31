@@ -657,3 +657,10 @@ html {
   color: var(--muted-foreground);
   font-size: 13px;
 }
+
+/* Host cards stay in one column regardless of the available iframe width. */
+.commerce-application[data-surface='embedded'] .product-grid,
+.commerce-application[data-surface='embedded'] .detail,
+.commerce-application[data-surface='embedded'] .purchase-layout {
+  grid-template-columns: minmax(0, 1fr);
+}

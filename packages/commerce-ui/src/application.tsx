@@ -141,17 +141,22 @@ export function CommerceApplication({
 }) {
   return (
     <CommerceRuntimeProvider value={runtime}>
-      <a className="skip" href="#main">
-        跳至主要內容
-      </a>
-      <OrderMemory>
-        <CartProvider>
-          <SiteHeader />
-          <DeliveryCoordinator />
-          {children ?? <CommerceRoute />}
-        </CartProvider>
-      </OrderMemory>
-      <footer>商品資訊為目前快照，實際庫存可能變動。</footer>
+      <div
+        className="commerce-application"
+        data-surface={runtime.surface ?? 'web'}
+      >
+        <a className="skip" href="#main">
+          跳至主要內容
+        </a>
+        <OrderMemory>
+          <CartProvider>
+            <SiteHeader />
+            <DeliveryCoordinator />
+            {children ?? <CommerceRoute />}
+          </CartProvider>
+        </OrderMemory>
+        <footer>商品資訊為目前快照，實際庫存可能變動。</footer>
+      </div>
     </CommerceRuntimeProvider>
   );
 }

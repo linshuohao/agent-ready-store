@@ -1,5 +1,5 @@
 'use client';
-import { Link, PageTools } from './runtime';
+import { Link, PageTools, useRuntime } from './runtime';
 import { buttonVariants } from './components/ui/button';
 import type { Page, ProductSummary } from '@store/contracts';
 
@@ -13,6 +13,7 @@ export function CatalogPage({
   response: import('@store/contracts').Result<Page<ProductSummary>>;
   query?: string;
 }) {
+  const embedded = useRuntime().surface === 'embedded';
   const params = new URLSearchParams(query);
   const values = Object.fromEntries(params);
   const pageLink = (offset: number, revision: string) => {
@@ -34,10 +35,10 @@ export function CatalogPage({
       </section>
       <section aria-labelledby="catalog-heading">
         <div className="section-title">
-          <h2 id="catalog-heading">探索商品</h2>
+          <h2 id="catalog-heading">{embedded ? '搜尋結果' : '探索商品'}</h2>
           {response.ok && <p role="status">共 {response.data.total} 件商品</p>}
         </div>
-        <SearchForm key={params.toString()} values={values} />
+        {!embedded && <SearchForm key={params.toString()} values={values} />}
         {!response.ok ? (
           <section role="alert" className="notice">
             <h2>

@@ -283,3 +283,10 @@ Human明确：“授权之后往下推进，如果没有什么需要我审批的
 - 原实施工作树启动器及本轮3104临时Web已停止；按原root .env及scripts/local.mjs start恢复Web3000/API3002。Web首页、API健康及Web代理健康均200；使用原凭证的真实MCP只读资源/拒绝探测2/2通过，11份静态资源/工具元数据均为v4。应用revision commerce-shared-v4；get-cart-v4.html SHA256为464017478ae6a5c0b36f0d3d921fb4e35b71d508f49b9448e326b40e7c7a7091。Host需刷新连接并重新发现/调用工具加载v4。未迁移/seed/清理或自动化真实购买。
 - 复用既有交易核心/真实DB验证；本轮交易服务、schema和金额/库存事务无变化，API差异仅资源URI/文件名v4。未启动store_test集成服务，42项订单/WebMCP真实集成在只读检查轮按环境条件跳过，未计入50项通过。9.1/9.3保持未勾选，后续只补真实Host/Human缺口及正式Spec同步/归档。
 - Git：当前codex/checkout-lifecycle-implementation。授权提交前Guard按shared-commerce-implementation、已验证/已审查且Human设计批准运行，实际BLOCKED仅因持久变更缺少checkpoint commit。Human随后明确回复「提交」，授权将完整共享应用及本文档整合作为同一审查单元提交；实际提交与提交后Guard结果由Git及交付对话核对。9.1/9.3未完成，不归档；原main保持7ec9aa2且干净，未Push/Merge。
+
+## 11. 内嵌搜索与布局修订（2026-10-31 Human明确要求）
+
+- [x] 11.1 共享runtime增加环境展示标记，Apps目录不渲染搜索/筛选表单并展示搜索结果；内嵌商品列表、详情、车/订单结算网格始终单栏。Web默认行为保持；无新增依赖、业务接口或交易变更。
+- [x] 11.2 Apps SDK替身浏览器桌面/移动16/16通过，包含无搜索表单、商品结果可见与三类网格实际单栏断言；共享包/Apps typecheck、lint及Apps生产构建通过。首轮Chrome因沙箱权限无法启动，放宽执行沙箱后测试通过，不记首轮为功能失败或Human验收。资源同步升级v5避免Host复用旧UI。
+- v5收尾：API生产构建、OpenSpec strict validate及diff检查通过；API构建会清除dist，按API→Apps顺序重建后，本地真实MCP只读资源/认证2/2通过，v5桌面/移动布局定向6/6通过。Web3000/API3002已用原环境配置重启；Host需刷新连接重新调用工具。无迁移、seed或真实购买写入。
+- 本次为局部可逆UI调整，聚焦验证与自查，不触发交易Checkpoint Guard。真实Host视觉验收仍待Human；Human随后明确回复「提交」，授权提交本轮UI、资源版本、测试与Change记录。实际提交由Git历史核对；未Push、Merge或归档。

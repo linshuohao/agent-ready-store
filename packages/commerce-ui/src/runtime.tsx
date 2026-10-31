@@ -28,6 +28,7 @@ export type Navigation = {
 };
 export type RouteDelivery = { navigate: () => void };
 export type CommerceRuntime = {
+  surface?: 'web' | 'embedded';
   revision?: number;
   subscribeDelivery?: (
     listener: (delivery: RouteDelivery) => void,

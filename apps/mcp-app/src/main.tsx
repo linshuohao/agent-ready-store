@@ -11,7 +11,7 @@ import {
 import '@store/commerce-ui/application.css';
 declare const __CHECKOUT_ORIGIN__: string;
 const app = new App(
-  { name: 'Agent-Ready Store', version: 'commerce-shared-v4' },
+  { name: 'Agent-Ready Store', version: 'commerce-shared-v5' },
   {},
   { autoResize: true },
 );
@@ -65,6 +65,7 @@ function View() {
   const state = useSyncExternalStore(subscribe, () => snapshot);
   const runtime = useMemo(
     () => ({
+      surface: 'embedded' as const,
       location: state.location,
       revision: state.revision,
       navigation,

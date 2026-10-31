@@ -21,13 +21,13 @@ const token = process.env.MCP_SERVICE_TOKEN;
         (tool) => tool.name === 'search_products',
       );
       expect(tool?._meta?.ui).toMatchObject({
-        resourceUri: 'ui://store/search-products-v4.html',
+        resourceUri: 'ui://store/search-products-v5.html',
       });
       expect(tool?._meta?.['ui/resourceUri']).toBe(
-        'ui://store/search-products-v4.html',
+        'ui://store/search-products-v5.html',
       );
       const resource = await client.readResource({
-        uri: 'ui://store/search-products-v4.html',
+        uri: 'ui://store/search-products-v5.html',
       });
       const html = resource.contents[0];
       expect(html.mimeType).toBe('text/html;profile=mcp-app');
@@ -83,7 +83,7 @@ const token = process.env.MCP_SERVICE_TOKEN;
       jsonrpc: '2.0',
       id: 1,
       method: 'resources/read',
-      params: { uri: 'ui://store/get-cart-v4.html' },
+      params: { uri: 'ui://store/get-cart-v5.html' },
     };
     const headers = {
       'Content-Type': 'application/json',
