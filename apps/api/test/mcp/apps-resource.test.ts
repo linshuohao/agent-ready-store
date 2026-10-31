@@ -62,7 +62,12 @@ const token = process.env.MCP_SERVICE_TOKEN;
         data: (visible.structuredContent as any).data,
       });
 
-      expect(tools).toHaveLength(18);
+      expect(tools).toHaveLength(19);
+      const categories = tools.find(
+        (tool) => tool.name === 'list_product_categories',
+      );
+      expect(categories).toBeDefined();
+      expect(categories?._meta).toBeUndefined();
       for (const resource of resources) {
         const entry = tools.find(
           (tool) =>

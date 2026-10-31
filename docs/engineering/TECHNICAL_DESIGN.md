@@ -216,3 +216,7 @@ Human可在网站或Apps点击模拟支付；Agent工具只承接查询、选购
 
 
 </details>
+
+## 分类发现增量（2026-10-31）
+
+[catalog-discovery](../../openspec/changes/archive/2026-10-31-catalog-discovery/design.md)复用Catalog/Service与共享Page/Result：`GET /api/v1/catalog/categories`和MCP `list_product_categories`返回目录派生的分类原值；Web首屏并行加载商品与分类，共享SearchForm使用分类下拉框。无新数据库表或搜索依赖。Human已批准仅分类HTTP GET/HEAD和该MCP工具豁免请求到期清理；认证不豁免，其他商品/交易入口仍先清理。边界与版本语义见该Change，不修改历史批准。

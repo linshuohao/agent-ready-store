@@ -701,3 +701,15 @@ html {
 .grouped-catalog .search-group {
   margin-block: 1.5rem;
 }
+
+.category-select {
+  width: 100%;
+  min-width: 0;
+  height: 44px;
+  border: 1px solid var(--input, #d6d6d6);
+  border-radius: 8px;
+  background: transparent;
+  padding: 4px 10px;
+  font: inherit;
+  color: inherit;
+}
