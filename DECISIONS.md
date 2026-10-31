@@ -169,6 +169,10 @@
 
 **给PM的回复：** “先保证商品符合顾客的查询条件，再比较推荐分数；有多个购买目标时分别展示，不让无关高分商品干扰选择。”
 
+### 2026-10-31 — 分类发现与后续语义搜索方向
+
+Human 已确认按“共享分类发现、Web分类下拉框、MCP目录探索”制作方案，并将向量／混合搜索保留为后期演进方向。确认范围为方向与规划，不包含具体接口设计、实施或向量数据库选型。当前增量与后续评估条件统一见 [catalog-discovery](openspec/changes/catalog-discovery/proposal.md) 及其 [Design](openspec/changes/catalog-discovery/design.md#future-evolution)；D-15现有精确约束与排序规则保持，后续如需改变须另行批准。
+
 <a id="current-d-16"></a>
 ## D-16 — 商品评论采用分页查询
 
@@ -302,3 +306,5 @@
 <a id="s3-confirmation-lifetime-20261030"></a>
 
 以上旧锚点保留供历史文档引用，对应记录见[限定替代及确认依据](docs/product/archive/DECISIONS_HISTORY.md)与[D-01历史](docs/product/archive/D01_DECISION_HISTORY.md)。
+
+2026-10-31 catalog-discovery后续批准：Human审阅方案通过，授权复核通过后提交进入实施；复核发现到期清理冲突后，Human明确接受仅新增分类HTTP/MCP入口豁免，其他入口与库存保守约束保持。该批准不包含Push、Merge或发布。
