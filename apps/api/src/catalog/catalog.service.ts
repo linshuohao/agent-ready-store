@@ -1,4 +1,6 @@
 import { readFileSync } from 'node:fs';
+import { discoveryInput } from '@store/contracts';
+import { AppError } from '../shared/app-error.js';
 import { Catalog } from './catalog.js';
 import { database } from '../infrastructure/database/database.js';
 export class CatalogService {
@@ -20,6 +22,17 @@ export class CatalogService {
   }
   async search(input: unknown) {
     return this.catalog.search(input, await this.stock());
+  }
+  async discover(input: unknown) {
+    const parsed = discoveryInput.safeParse(input);
+    if (!parsed.success) throw new AppError('VALIDATION_ERROR', 400);
+    const stock = await this.stock();
+    return 'queries' in parsed.data
+      ? this.catalog.searchGrouped(parsed.data, stock)
+      : this.catalog.search(parsed.data, stock);
+  }
+  async searchGrouped(input: unknown) {
+    return this.catalog.searchGrouped(input, await this.stock());
   }
   async get(id: string) {
     return this.catalog.get(id, await this.stock());

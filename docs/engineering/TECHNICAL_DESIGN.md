@@ -1,11 +1,11 @@
 # Agent-Ready Store — Technical Design
 
-**状态：商店当前技术方案（2026-10-31，Asia/Shanghai）。** 订单生命周期重构与Web/Apps完整应用复用已按Human授权实施，本文描述当前采用的架构；当前Change仍待真实Host/Human剩余验收、最终接受及正式Spec同步，不是新的整体Approved声明。T-11的完整复用限定替代已有明确Human批准；授权与历史批准分别追溯至[工程决策](ENGINEERING_DECISIONS.md)及[Change Tasks](../../openspec/changes/checkout-lifecycle-redesign/tasks.md)，实际交付事实见[DELIVERY_STATUS](DELIVERY_STATUS.md)。
+**状态：商店当前技术方案（2026-10-31，Asia/Shanghai）。** 订单生命周期重构与Web/Apps完整应用复用已按Human授权实施，本文描述当前采用的架构；Human已确认人工验收通过，相关Change已同步正式Spec并归档，不据此扩大为全局基线整体Approved声明。T-11的完整复用限定替代已有明确Human批准；授权与历史批准分别追溯至[工程决策](ENGINEERING_DECISIONS.md)及[Change Tasks](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/tasks.md)，实际交付事实见[DELIVERY_STATUS](DELIVERY_STATUS.md)。
 
 <a id="order-lifecycle-architecture"></a>
 ## 阅读入口
 
-本文是了解整个系统的唯一技术方案正文。按“业务目标与领域 → 用户旅程与业务状态 → 页面/组件/交互数据流 → 跨端协作 → 后端与运行验证”组织；读者不必阅读旧方案或Change才能理解系统。技术选择及替代关系见[工程决策](ENGINEERING_DECISIONS.md)，具体增量接口、迁移和验收场景见[当前Change](../../openspec/changes/checkout-lifecycle-redesign/design.md)。
+本文是了解整个系统的唯一技术方案正文。按“业务目标与领域 → 用户旅程与业务状态 → 页面/组件/交互数据流 → 跨端协作 → 后端与运行验证”组织；读者不必阅读旧方案或Change才能理解系统。技术选择及替代关系见[工程决策](ENGINEERING_DECISIONS.md)，具体增量接口、迁移和验收场景见[当前Change](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/design.md)。
 
 | 阅读问题 | 正文位置 |
 | --- | --- |
@@ -566,7 +566,7 @@ sequenceDiagram
 
 Server MCP通过Streamable HTTP调用共享用例，返回结构化公开数据及可读摘要，不在服务内部绕回HTTP。WebMCP按当前页面注册/清理工具，不复制Server工具全集；旧页面回调不能更新新页。Apps只将search_products与create_order关联UI资源；购买准备使用同搜索契约的query_products及其他无UI数据工具，支付/状态恢复在原订单卡片内完成。Apps静态资源不嵌交易上下文或秘密，运行时由Bridge交付数据，不依赖网站Cookie、Next Router或RSC。
 
-查询工具继续复用；新用例及工具映射由[Change §8](../../openspec/changes/checkout-lifecycle-redesign/design.md)维护，旧prepare/review、原生批准与独立取链接工具不作为新购买链兼容要求。Agent工具不暴露支付；Human通过网页或Apps UI直接支付。工具可用、页面已显示与实际支付成功分别验收，不用一个入口的成功代替另一个。
+查询工具继续复用；新用例及工具映射由[Change §8](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/design.md)维护，旧prepare/review、原生批准与独立取链接工具不作为新购买链兼容要求。Agent工具不暴露支付；Human通过网页或Apps UI直接支付。工具可用、页面已显示与实际支付成功分别验收，不用一个入口的成功代替另一个。
 
 ### 5.8 首屏、交互接管与反馈
 

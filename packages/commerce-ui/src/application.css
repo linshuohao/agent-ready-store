@@ -658,9 +658,46 @@ html {
   font-size: 13px;
 }
 
-/* Host cards stay in one column regardless of the available iframe width. */
-.commerce-application[data-surface='embedded'] .product-grid,
+/* Embedded page sections stack vertically; product cards may share a row. */
 .commerce-application[data-surface='embedded'] .detail,
 .commerce-application[data-surface='embedded'] .purchase-layout {
   grid-template-columns: minmax(0, 1fr);
+}
+
+.commerce-application[data-surface='embedded'] .product-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 16px;
+}
+.commerce-application[data-surface='embedded'] .product-grid .product-card {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow-wrap: anywhere;
+}
+.commerce-application[data-surface='embedded'] .product-grid .art {
+  aspect-ratio: auto;
+  height: 112px;
+}
+.commerce-application[data-surface='embedded'] .product-grid .art img {
+  width: 88px;
+  height: 88px;
+}
+.commerce-application[data-surface='embedded'] .product-grid .art span {
+  left: 8px;
+  bottom: 4px;
+}
+.commerce-application[data-surface='embedded'] .product-grid .eyebrow {
+  margin: 8px 0 2px;
+}
+.commerce-application[data-surface='embedded'] .product-grid .price {
+  margin: 4px 0;
+  font-size: 18px;
+}
+.commerce-application[data-surface='embedded'] .product-grid .availability {
+  margin: 4px 0 8px;
+}
+
+.grouped-catalog .search-group {
+  margin-block: 1.5rem;
 }

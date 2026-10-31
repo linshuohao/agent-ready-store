@@ -2,7 +2,7 @@
 
 **接入术语说明：** MCP 与 WebMCP 是两类 Agent 接入；MCP Apps 是 MCP 的 UI 增强，不兼容时降级为无 Apps UI 的 MCP。协议、连接和构建关系见 [Technical Design §1.1](TECHNICAL_DESIGN.md#11-系统全景与请求路径)。本次统一术语不改变历史批准、业务行为与尚未完成的验证事实。
 
-当前基础 MCP 按 [checkout-lifecycle-redesign](../../openspec/changes/checkout-lifecycle-redesign/specs/agent-shopping/spec.md) 提供商品查询、持久购物车与待支付订单工具。旧七工具及原生购买批准流程不兼容；请重新发现工具。Apps只为搜索结果与最终生单关联UI资源；不支持Apps的Host仍可使用基础MCP。实际验收状态以同一Change的Tasks为准。
+当前基础 MCP 按 [checkout-lifecycle-redesign](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/specs/agent-shopping/spec.md) 提供商品查询、持久购物车与待支付订单工具。旧七工具及原生购买批准流程不兼容；请重新发现工具。Apps只为搜索结果与最终生单关联UI资源；不支持Apps的Host仍可使用基础MCP。实际验收状态以同一Change的Tasks为准。
 
 ## 连接
 
@@ -59,9 +59,9 @@ WebMCP 使用同源 JSON 的 `POST /api/v1/shopping/webmcp/carts` 和 `POST /api
 
 ## Apps 资源与 UI Bridge
 
-当前资源URI版本为`v6`、应用revision为`commerce-shared-v6`。仅search_products与create_order关联两份隔离静态HTML；query_products、详情/评论、建车/读车/加购/改量/移除、报价、查单/列表/取消均只返回数据。购买准备使用query_products，完整目标准备好后仅create_order展示结算；搜索意图直接用search_products展示结果。Human在原结算卡片内点击支付，状态与未知恢复原地更新，不依赖Agent调用查单生成新卡片。卡片内主动导航及Bridge操作不新增对话卡片。使用ext-apps 1.1.2与MCP SDK 1.32.2，资源只含构建代码，不含交易数据或服务凭证。API构建后须构建Apps；资源URI白名单禁止任意文件读取，资源同样需要服务认证。
+当前资源URI版本为`v8`、应用revision为`commerce-shared-v8`。仅search_products与create_order关联两份隔离静态HTML；query_products、详情/评论、建车/读车/加购/改量/移除、报价、查单/列表/取消均只返回数据。购买准备使用query_products，完整目标准备好后仅create_order展示结算；搜索意图直接用search_products展示结果。Human在原结算卡片内点击支付，状态与未知恢复原地更新，不依赖Agent调用查单生成新卡片。卡片内主动导航及Bridge操作不新增对话卡片。使用ext-apps 2.0.4与MCP v2 (server/core/client 2.4.0, node 2.1.2)，资源只含构建代码，不含交易数据或服务凭证。API构建后须构建Apps；资源URI白名单禁止任意文件读取，资源同样需要服务认证。
 
-Host可能缓存tools/list中的旧资源URI。服务只为两个最终展示入口保留v4/v5→当前v6的显式读取映射，返回请求的URI及当前HTML；资源发现仍只公布两份v6，不恢复旧详情/车等中间卡片。未知版本和路径继续拒绝。资源可读不代表Host已经更新工具目录：连接刷新后应能发现query_products；若仍仅有旧13个模型工具，购买准备无法使用新的无UI查询。真实失效记录须核对实际工具名及资源URI，不能仅凭有数据返回认定UI已展示。
+Host可能缓存tools/list中的旧资源URI。服务只为两个最终展示入口保留v4/v5/v6/v7→当前v8的显式读取映射，返回请求的URI及当前HTML；资源发现仍只公布两份v8，不恢复旧详情/车等中间卡片。未知版本和路径继续拒绝。资源可读不代表Host已经更新工具目录：连接刷新后应能发现query_products；若仍仅有旧13个模型工具，购买准备无法使用新的无UI查询。真实失效记录须核对实际工具名及资源URI，不能仅凭有数据返回认定UI已展示。
 
 同一次购买多个商品先通过query_products及其他数据工具准备完整目标，再一次create_order生成包含全部行的一张结算卡片；用户明确拆单除外。不逐商品调用展示/生单工具，支付状态在同卡片更新。
 
@@ -73,4 +73,20 @@ Web与Apps使用同一完整购物应用；共享源码、界面/交互边界和
 
 ## 验证边界
 
-自动化以隔离 `store_test` 和 loopback API3003 验证真实 HTTP/MCP 发现、错误映射、幂等与交易约束。真实 Host 的网页接手、可见摘要、Human 支付及库存结果仍须按 [Tasks](../../openspec/changes/checkout-lifecycle-redesign/tasks.md) 分入口记录，协议测试不能冒充 Human 验收。旧 prepare/review/submit/handoff/get_order_link 写流程返回 `CHECKOUT_FLOW_REPLACED`，旧支付调用不生效。
+自动化以隔离 `store_test` 和 loopback API3003 验证真实 HTTP/MCP 发现、错误映射、幂等与交易约束。真实 Host 的网页接手、可见摘要、Human 支付及库存结果仍须按 [Tasks](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/tasks.md) 分入口记录，协议测试不能冒充 Human 验收。旧 prepare/review/submit/handoff/get_order_link 写流程返回 `CHECKOUT_FLOW_REPLACED`，旧支付调用不生效。
+
+## 多目标搜索与新协议选择
+
+当前代码支持2026-07-28新协议，同时兼容2025-11-25、2025-06-18及2025-03-26旧调用。HTTP通过官方createMcpHandler逐请求创建Server，不新增持久协议会话。SDK升级配合现代server/discover及显式协商；测试客户端用versionNegotiation.mode={pin:'2026-07-28'}验证没有退回旧协议。
+
+search_products/query_products接受旧单目标或严格批量结构：
+```json
+{"queries":[{"id":"audio","label":"耳机","q":"Bluetooth","maxPrice":2000},{"id":"bottle","label":"水杯","q":"保温杯","maxPrice":1000}]}
+```
+批量结果包含kind=grouped、groups和去重products。续页在顶层传catalogRevision、searchRevision，目标沿用原id和条件。Apps组内操作使用query_products；Host调用ID隔离不同卡片页码，缺少稳定调用ID时不保证重挂载恢复。只读HTTP对应POST /api/v1/products/search，要求JSON和WEB_ORIGIN。普通Web/WebMCP继续单目标并复用语言匹配。
+
+匹配使用服务端离线opencc-js 1.4.2（MIT AND Apache-2.0，完整包解包约6.1MB，仅加载t2cn，不进入浏览器包）。登记别名：蓝牙/Bluetooth、水瓶/water bottle、移动电源/行动电源/power bank；不承诺任意翻译，不放宽品牌、分类或预算。
+
+resolve_product_choices只在用户需要决定型号时调用，输入queries及可选choices（组ID到商品ID）。现代form客户端收到input_required，答复后续调原工具；SDK签名requestState绑定原目标、候选及价格，10分钟过期，进程重启失效。SDK getClientCapabilities在逐请求实例读取从当前envelope回填的能力，不是跨请求能力缓存。accept重查当前事实，decline/cancel停止；无能力或旧无状态客户端返回selection_required供对话澄清。工具不写车、不生单、不付款。超时/断连后无持续等待的服务器事务；Host应保留原目标，只有用户明确继续才重试，不能把失联视为接受。
+
+实际Host的协议版本、form支持、点选/取消显示仍需人工验收；本地SDK及AppBridge浏览器夹具成功不等于实际Host通过。本轮没有替换另一工作区正在运行的服务。

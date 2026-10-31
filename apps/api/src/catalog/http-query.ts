@@ -12,6 +12,7 @@ export function decodeQuery(query: Record<string, unknown>) {
 
 export const httpStatus: Record<string, number> = {
   VALIDATION_ERROR: 400,
+  FORBIDDEN: 403,
   NOT_FOUND: 404,
   CATALOG_CHANGED: 409,
   TEMPORARY_UNAVAILABLE: 503,

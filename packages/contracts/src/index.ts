@@ -29,6 +29,58 @@ export const searchInput = pageInput
       v.minPrice <= v.maxPrice,
     { message: 'minPrice exceeds maxPrice' },
   );
+const { catalogRevision: _singleRevision, ...targetFields } = searchInput.shape;
+void _singleRevision;
+export const searchTargetInput = z
+  .object({
+    ...targetFields,
+    id: z
+      .string()
+      .min(1)
+      .max(64)
+      .regex(/^[A-Za-z0-9_-]+$/),
+    label: z.string().min(1).max(80).optional(),
+    limit: z.number().int().min(1).max(10).default(4),
+  })
+  .strict()
+  .refine(
+    (v) =>
+      v.minPrice === undefined ||
+      v.maxPrice === undefined ||
+      v.minPrice <= v.maxPrice,
+  );
+export const groupedSearchInput = z
+  .object({
+    queries: z.array(searchTargetInput).min(1).max(5),
+    catalogRevision: z.string().min(1).max(128).optional(),
+    searchRevision: z.string().min(1).max(128).optional(),
+  })
+  .strict()
+  .refine((v) => new Set(v.queries.map((q) => q.id)).size === v.queries.length)
+  .refine(
+    (v) =>
+      !v.queries.some((q) => q.offset > 0) ||
+      (v.catalogRevision !== undefined && v.searchRevision !== undefined),
+  );
+export const discoveryInput = z.union([searchInput, groupedSearchInput]);
+export type SearchTarget = z.output<typeof searchTargetInput>;
+export type GroupedSearchInput = z.input<typeof groupedSearchInput>;
+export type SearchGroup = { id: string; label: string; query: SearchTarget } & (
+  | {
+      status: 'ok' | 'empty';
+      productIds: string[];
+      total: number;
+      nextOffset: number | null;
+    }
+  | { status: 'error'; code: string; retryable: boolean }
+);
+export interface GroupedSearchResult {
+  kind: 'grouped';
+  catalogRevision: string;
+  searchRevision: string;
+  groups: SearchGroup[];
+  products: ProductSummary[];
+}
 export const productInput = z
   .object({ productId: z.string().min(1).max(64) })
   .strict();
@@ -431,3 +483,92 @@ export const purchaseMaterialsResultOutput = z.discriminatedUnion('ok', [
 
 // New lifecycle contracts are breaking; old exports only serve UI consumers pending Tasks 5–7.
 export * from './lifecycle.js';
+
+export const productSummaryOutput = z
+  .object({
+    id: z.string(),
+    name: z.string(),
+    brand: z.string(),
+    category: z.string(),
+    currency: z.literal('TWD'),
+    price: z.string().regex(/^\d+\.\d{2}$/),
+    imagePath: z.null(),
+    availability: z.object({
+      canPurchase: z.boolean(),
+      reasons: z.array(
+        z.enum([
+          'SOLD_OUT',
+          'INVENTORY_ANOMALY',
+          'PRICE_PENDING',
+          'INVENTORY_UNAVAILABLE',
+        ]),
+      ),
+      currentQuantity: z.number().int().nullable(),
+    }),
+  })
+  .strict();
+
+const groupBase = {
+  id: z.string(),
+  label: z.string(),
+  query: searchTargetInput,
+};
+export const groupedSearchOutput = z
+  .object({
+    kind: z.literal('grouped'),
+    catalogRevision: z.string().min(1).max(128),
+    searchRevision: z.string().min(1).max(128),
+    products: z.array(productSummaryOutput).max(50),
+    groups: z
+      .array(
+        z.discriminatedUnion('status', [
+          z
+            .object({
+              ...groupBase,
+              status: z.literal('ok'),
+              productIds: z.array(z.string()).max(10),
+              total: z.number().int().positive(),
+              nextOffset: z.number().int().nonnegative().nullable(),
+            })
+            .strict(),
+          z
+            .object({
+              ...groupBase,
+              status: z.literal('empty'),
+              productIds: z.array(z.string()).length(0),
+              total: z.literal(0),
+              nextOffset: z.null(),
+            })
+            .strict(),
+          z
+            .object({
+              ...groupBase,
+              status: z.literal('error'),
+              code: z.string(),
+              retryable: z.boolean(),
+            })
+            .strict(),
+        ]),
+      )
+      .min(1)
+      .max(5),
+  })
+  .strict()
+  .refine((data) => {
+    const ids = new Set(data.products.map((p) => p.id));
+    const referenced = new Set(
+      data.groups.flatMap((g) => (g.status === 'error' ? [] : g.productIds)),
+    );
+    return (
+      ids.size === data.products.length &&
+      ids.size === referenced.size &&
+      [...referenced].every((id) => ids.has(id)) &&
+      new Set(data.groups.map((g) => g.id)).size === data.groups.length &&
+      data.groups.every(
+        (g) =>
+          g.id === g.query.id &&
+          (g.status === 'error' ||
+            new Set(g.productIds).size === g.productIds.length),
+      )
+    );
+  });

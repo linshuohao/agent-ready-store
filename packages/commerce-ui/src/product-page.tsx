@@ -14,8 +14,10 @@ import { formatMoney } from './lib/money';
 export function ProductPage({
   id,
   response: r,
+  returnTo,
 }: {
   id: string;
+  returnTo?: string;
   response: import('@store/contracts').Result<ProductDetail>;
 }) {
   if (!r.ok) {
@@ -34,7 +36,9 @@ export function ProductPage({
   return (
     <main tabIndex={-1} id="main">
       <PageTools product={p} />
-      <Link href="/">返回商品列表</Link>
+      <Link href={returnTo?.startsWith('/search?collection=') ? returnTo : '/'}>
+        返回商品列表
+      </Link>
       <div className="detail">
         <div className="art">
           <Artwork

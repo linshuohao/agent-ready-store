@@ -9,7 +9,7 @@ test.beforeAll(async () => {
   const { build } = await import(pathToFileURL(require.resolve('vite')).href);
   const appHtml = await readFile(
     new URL(
-      '../apps/api/dist/mcp-app/search-products-v6.html',
+      '../apps/api/dist/mcp-app/search-products-v8.html',
       import.meta.url,
     ),
     'utf8',
@@ -117,7 +117,7 @@ test('shared cart, original order payment, remount, explicit share and continued
   expect(calls.filter((n) => n === 'apps_create_order')).toHaveLength(1);
   await f.getByRole('link', { name: '繼續購物', exact: true }).click();
   await expect(
-    f.getByRole('heading', { name: '找一件適合日常的好物。', exact: true }),
+    f.getByRole('heading', { name: '搜尋結果', exact: true }),
   ).toBeVisible();
   expect(errors).toEqual([]);
 });
@@ -266,13 +266,18 @@ test('embedded catalog shows search results without a search form', async ({
     f.getByRole('heading', { name: '搜尋結果', exact: true }),
   ).toBeVisible();
   await expect(f.locator('.product-card')).toHaveCount(1);
+  const bounds = await f.locator('.product-card').evaluate((el) => ({
+    height: el.getBoundingClientRect().height,
+    artHeight: el.querySelector('.art')!.getBoundingClientRect().height,
+    overflow: el.scrollWidth > el.clientWidth,
+  }));
+  expect(bounds.artHeight).toBeLessThanOrEqual(112);
+  expect(bounds.height).toBeLessThanOrEqual(320);
+  expect(bounds.overflow).toBe(false);
+  await expect(f.locator('.hero')).toHaveCount(0);
+
   await expect(f.getByRole('searchbox')).toHaveCount(0);
   await expect(f.locator('.filters')).toHaveCount(0);
-  expect(
-    await f
-      .locator('.product-grid')
-      .evaluate((el) => getComputedStyle(el).gridTemplateColumns),
-  ).toMatch(/^\d+(?:\.\d+)?px$/);
 });
 
 test('multi-product purchase opens one final checkout and updates payment in the same card', async ({
@@ -323,4 +328,88 @@ test('multi-product purchase opens one final checkout and updates payment in the
         ).length,
     ),
   ).toBe(1);
+});
+
+test('grouped search keeps both targets in one card, pages independently and returns from detail', async ({
+  page,
+}) => {
+  const f = await openFixture(page, '?grouped');
+  const audio = f.getByRole('region', { name: '耳機', exact: true });
+  const bottle = f.getByRole('region', { name: '水杯', exact: true });
+  await expect(audio).toBeVisible();
+  await expect(bottle).toBeVisible();
+  await expect(audio.locator('.product-grid > *')).toHaveCount(2);
+  await audio.getByRole('button', { name: '下一頁', exact: true }).click();
+  await expect(audio).toContainText('第 2 頁');
+  await expect(bottle).toContainText('第 1 頁');
+  await bottle.getByRole('link', { name: '商品 P001', exact: true }).click();
+  await f.getByRole('link', { name: '返回商品列表' }).click();
+  await expect(audio).toContainText('第 2 頁');
+  await expect(bottle).toContainText('第 1 頁');
+  const calls = await page.evaluate(
+    () => (window as unknown as { fixture: { calls: string[] } }).fixture.calls,
+  );
+  expect(calls).not.toContain('search_products');
+  expect(calls.some((name) => /cart|order|pay/.test(name))).toBe(false);
+  expect(
+    await f
+      .locator('.grouped-catalog')
+      .evaluate((el) => el.scrollWidth <= el.clientWidth),
+  ).toBe(true);
+});
+
+test('group pagination retry repeats the failed next page', async ({
+  page,
+}) => {
+  const f = await openFixture(page, '?grouped&failGroup');
+  const audio = f.getByRole('region', { name: '耳機', exact: true });
+  await audio.getByRole('button', { name: '下一頁', exact: true }).click();
+  await expect(audio.getByRole('alert')).toBeVisible();
+  await audio.getByRole('button', { name: '重試', exact: true }).click();
+  await expect(audio).toContainText('第 2 頁');
+  await expect(
+    f.getByRole('region', { name: '水杯', exact: true }),
+  ).toContainText('第 1 頁');
+});
+
+test('full grouped refresh clears errors from the previous collection pages', async ({
+  page,
+}) => {
+  const f = await openFixture(page, '?grouped&failGroup&changedGroup');
+  const audio = f.getByRole('region', { name: '耳機', exact: true });
+  await audio.getByRole('button', { name: '下一頁', exact: true }).click();
+  await expect(audio.getByRole('alert')).toBeVisible();
+  await f
+    .getByRole('region', { name: '水杯', exact: true })
+    .getByRole('button', { name: '下一頁', exact: true })
+    .click();
+  await f.getByRole('button', { name: '重新查詢全部目標' }).click();
+  await expect(audio).toContainText('第 1 頁');
+  await expect(audio.getByRole('alert')).toHaveCount(0);
+  await expect(
+    audio.getByRole('button', { name: '下一頁', exact: true }),
+  ).toBeEnabled();
+});
+
+test('embedded search uses available width for compact cards without splitting page sections', async ({
+  page,
+  isMobile,
+}) => {
+  const f = await openFixture(page, '?search&multiple');
+  await expect(f.locator('.product-card')).toHaveCount(2);
+  const boxes = await f.locator('.product-card').evaluateAll((els) =>
+    els.map((el) => {
+      const rect = el.getBoundingClientRect();
+      return { x: rect.x, y: rect.y, height: rect.height };
+    }),
+  );
+  expect(boxes.every((box) => box.height <= 320)).toBe(true);
+  if (isMobile) expect(boxes[1].y).toBeGreaterThan(boxes[0].y);
+  else {
+    expect(boxes[1].y).toBe(boxes[0].y);
+    expect(boxes[1].x).toBeGreaterThan(boxes[0].x);
+  }
+  expect(
+    await f.locator('main').evaluate((el) => el.scrollWidth <= el.clientWidth),
+  ).toBe(true);
 });

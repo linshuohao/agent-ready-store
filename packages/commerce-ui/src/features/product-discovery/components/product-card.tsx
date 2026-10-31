@@ -6,13 +6,22 @@ import { ProductPresentation } from '../../../index';
 export { Availability, reasonText } from '../../../index';
 export { illustration } from '../../../index';
 import { illustration } from '../../../index';
-export function ProductCard({ product }: { product: ProductSummary }) {
+export function ProductCard({
+  product,
+  returnTo,
+}: {
+  product: ProductSummary;
+  returnTo?: string;
+}) {
+  const href =
+    `/products/${product.id}` +
+    (returnTo ? '?returnTo=' + encodeURIComponent(returnTo) : '');
   return (
     <ProductPresentation
       product={product}
       art={
         <Link
-          href={`/products/${product.id}`}
+          href={href}
           prefetch={false}
           className="art"
           aria-label={`查看 ${product.name}，${product.id}`}
@@ -27,7 +36,7 @@ export function ProductCard({ product }: { product: ProductSummary }) {
         </Link>
       }
       title={
-        <Link href={`/products/${product.id}`} prefetch={false}>
+        <Link href={href} prefetch={false}>
           {product.name}
         </Link>
       }

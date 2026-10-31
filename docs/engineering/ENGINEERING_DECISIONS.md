@@ -345,7 +345,7 @@ Human 已通过整体架构，授权收敛 [Technical Design v0.2（历史记录
 <a id="order-lifecycle-decisions"></a>
 ## 订单生命周期重构：下一里程碑技术决策 — 2026-10-30
 
-**来源与范围：** 本聊天Human明确选择单一Order、单车多订单、固定15分钟库存/金额、长期上下文、demo权限简化，并多轮明确要求“按建议统一更新、不进入开发”；本轮要求记录技术决策及更新技术方案。以下Accepted仅指这些已采用设计选择，不代表新增架构整合稿整体Approved、独立Review通过或实施授权。证据为实际对话与[OpenSpec Design](../../openspec/changes/checkout-lifecycle-redesign/design.md)，无本轮运行实验。架构说明见[Technical Design架构总览](TECHNICAL_DESIGN.md#order-lifecycle-architecture)，精选推导与Human纠偏见[既有讨论文档§7](../ai-collaboration/AI_COLLABORATION_TECH_DECISIONS.md#order-lifecycle-discussion)。本次补充复用原ID，不改变上述确认日期与批准范围。
+**来源与范围：** 本聊天Human明确选择单一Order、单车多订单、固定15分钟库存/金额、长期上下文、demo权限简化，并多轮明确要求“按建议统一更新、不进入开发”；本轮要求记录技术决策及更新技术方案。以下Accepted仅指这些已采用设计选择，不代表新增架构整合稿整体Approved、独立Review通过或实施授权。证据为实际对话与[OpenSpec Design](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/design.md)，无本轮运行实验。架构说明见[Technical Design架构总览](TECHNICAL_DESIGN.md#order-lifecycle-architecture)，精选推导与Human纠偏见[既有讨论文档§7](../ai-collaboration/AI_COLLABORATION_TECH_DECISIONS.md#order-lifecycle-discussion)。本次补充复用原ID，不改变上述确认日期与批准范围。
 
 | 新决策 | 限定替代的旧结论 | 保留部分 |
 | --- | --- | --- |
@@ -404,4 +404,10 @@ Human 已通过整体架构，授权收敛 [Technical Design v0.2（历史记录
 
 - **Status：Accepted。** Human明确要求「不要局部复用，我们要完整复用。我们的流程、交互、视觉都是一致的」，并对以Web为基准、共用完整界面与交互协调、仅保留环境适配的设计明确回复「确认这个设计，直接更新并实施」。
 - **替代范围：** 上述T-11中的各端独立呈现、仅适用时共享纯展示及Apps独立购物协调，改为commerce-ui唯一维护完整购物应用；Web/Apps只保留HTTP/Host Bridge、导航、存储、页面工具/工具结果及服务端首屏适配。旧决策正文保留历史，其余服务端唯一用例、实例隔离、迟到响应、Human支付和不依赖Next运行时约束继续有效。
-- **取舍与实际问题：** 两套界面/样式与交互协调已造成视觉分叉和反复修复；共享现有Web实现消除重复。沿用现有共享包及已使用依赖，不新增服务、万能状态框架或跨Host上下文；承担必要环境适配和双构建验证。完整架构正文见[Technical Design §5](TECHNICAL_DESIGN.md#frontend-architecture)，变更替代及验收见[当前Change Design §13](../../openspec/changes/checkout-lifecycle-redesign/design.md#13-web与apps完整应用复用2026-10-31-human确认)，不将替身回归视为真实Host/Human验收。
+- **取舍与实际问题：** 两套界面/样式与交互协调已造成视觉分叉和反复修复；共享现有Web实现消除重复。沿用现有共享包及已使用依赖，不新增服务、万能状态框架或跨Host上下文；承担必要环境适配和双构建验证。完整架构正文见[Technical Design §5](TECHNICAL_DESIGN.md#frontend-architecture)，变更替代及验收见[当前Change Design §13](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/design.md#13-web与apps完整应用复用2026-10-31-human确认)，不将替身回归视为真实Host/Human验收。
+
+### MCP SDK与新协议增量 — 2026-10-31
+
+- **Status：Accepted（范围与方向）；实现和真实Host验收待完成。** Human明确要求审查规格通过后提交实施，并补充「我们要支持新协议，不要只支持旧协议。仓库SDK的版本也要更新」。
+- **Decision：** 升级正式v2 SDK，显式支持2026-07-28和input_required候选选择续调，保持无状态HTTP及已有旧协议工具兼容。选择只读，不恢复T-07最终支付批准或新增持久会话；现有Demo认证和Human结算支付边界不变。
+- **取舍与验证：** 新协议采用逐请求能力与有完整性/期限/原请求绑定的续调状态；SDK升级本身不能证明新协议启用，真实SDK及真实Host分别验收。具体形状和测试归[Change Design §7](../../openspec/changes/archive/2026-10-31-grouped-multilingual-search/design.md#7-协议能力与实施前置验证)，不复制另一份实施方案。

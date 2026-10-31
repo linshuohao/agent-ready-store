@@ -1,10 +1,10 @@
 # Agent-Ready Store — Product Design
 
 - **Status：Draft v0.3 / 订单生命周期体验修订，待Human批准。** 2026-10-31（Asia/Shanghai）。
-- **依据：** [Requirements v0.3目标稿](REQUIREMENTS.md)、[本轮产品决定限定传播](../../DECISIONS.md#checkout-lifecycle-20261031)、[Technical Design](../engineering/TECHNICAL_DESIGN.md)及[当前Change](../../openspec/changes/checkout-lifecycle-redesign/proposal.md)。Human只授权传播、独立规划审查与修订，不开发。
+- **依据：** [Requirements v0.3目标稿](REQUIREMENTS.md)、[本轮产品决定限定传播](../../DECISIONS.md#checkout-lifecycle-20261031)、[Technical Design](../engineering/TECHNICAL_DESIGN.md)及[当前Change](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/proposal.md)。规划阶段仅授权传播与审查；后续实施与本轮Human验收已完成，授权和证据见归档Tasks。
 - **历史批准：** v0.2批准、UX选择及视觉验证全文保存在[传播前快照](archive/2026-10-31-PRODUCT_DESIGN.md)。既有视觉语言及可访问性方向沿用；本稿不把旧流程演示或旧批准扩为新流程验收。
 - **限定替代：** 旧Checkout与成交页的业务分离收敛为同一orderId的状态展示；持续车、整行选择、多单、15分钟预留、长期ID接续替代旧整车准备及凭证到期。视觉资产保持原状，不以过时示意批准新契约。
-- **Pending：** 本轮独立Planning Review与定向复核已通过，处理记录归同一Change Tasks；Human整体规划批准、实施授权和真实界面/Host验收分别待完成。
+- **Pending：** 本轮独立Planning Review与定向复核已通过，处理记录归同一Change Tasks；后续限定规划批准、实施及Human验收已完成；本稿不因此自动变为全局整体Approved。
 
 ## 1. 设计目标与资产入口
 
@@ -16,7 +16,7 @@ Agent接入分为 MCP 与 WebMCP。MCP Apps 是 MCP 的交互式 UI 增强，复
 
 ## 2. 信息架构与页面职责
 
-Web与Apps共用页面、流程、控件与视觉；依2026-10-31 Human进一步明确的展示约束，Apps只为搜索结果与最终结算生成卡片、内嵌单栏且不显示搜索表单，支付状态在同一卡片更新；不另设计Apps专用购物页面、摘要布局或控件。此限定已由Human明确确认并授权实施，详细架构统一见[Technical Design §5.2](../engineering/TECHNICAL_DESIGN.md#shared-commerce-application)。产品基线其余Draft状态及最终验收边界不因此改变。
+Web与Apps共用页面、流程、控件与视觉；依2026-10-31 Human进一步明确的展示约束，Apps只为搜索结果与最终结算生成卡片、内嵌主要区块上下排列且不显示搜索表单，商品结果卡片可按宽度并排，支付状态在同一卡片更新；不另设计Apps专用购物页面、摘要布局或控件。此限定已由Human明确确认并授权实施，详细架构统一见[Technical Design §5.2](../engineering/TECHNICAL_DESIGN.md#shared-commerce-application)。产品基线其余Draft状态及最终验收边界不因此改变。
 
 | 页面/载体 | 内容与入口 |
 | --- | --- |
@@ -25,7 +25,7 @@ Web与Apps共用页面、流程、控件与视觉；依2026-10-31 Human进一步
 | 订单列表 | /orders?cartId=…集中展示该车待支付及历史订单；购物车和详情不嵌入列表 |
 | 统一订单页 | /orders/{orderId}按待支付、已支付、已取消、已超时显示同一固定摘要；有效待支付提供Human模拟支付与取消，继续购物独立可用 |
 | 分享订单页 | 仅该单固定摘要/状态及有效期内Human支付；不显示车、其他单或取消，不改变当前购物指针 |
-| Apps内嵌载体 | 搜索展示一张结果卡片；购买准备不生成中间卡片，最终展示结算，Human支付及结果在同一卡片更新。共享页面继续支持卡片内主动导航，单栏展示且不显示搜索表单；不是另一套页面设计 |
+| Apps内嵌载体 | 搜索展示一张结果卡片；购买准备不生成中间卡片，最终展示结算，Human支付及结果在同一卡片更新。共享页面继续支持卡片内主动导航，主要区块纵向排列，搜索商品卡片自适应并排且不显示搜索表单；不是另一套页面设计 |
 
 旧/checkout/{cartId}、旧/orders/{cartId}及凭证链接提示进入新流程，不映射历史单或隐式购买。原视觉“五页”是历史资产范围，不要求为新订单状态新增重复业务页面。
 
@@ -89,7 +89,7 @@ Agent：咨询只读，明确加购只改车，明确购买在完整目标及预
 
 旧视觉稿的1440×1000及390×844等检查、截图、日志异常和未完成可访问性项目见[历史证据](archive/2026-10-31-PRODUCT_DESIGN.md#7-design-review验收与实际证据)，本轮不重跑、不冒称新流程通过。新流程以真实Web桌面/移动、键盘/辅助反馈以及MCP增强/兼容模式与WebMCP实际Human支付分别验收；替身Bridge、自动化和真实Host分开记录。
 
-本轮独立规划审查与修订证据归[Tasks](../../openspec/changes/checkout-lifecycle-redesign/tasks.md)，它审查体验约束，不是页面渲染或Human验收。
+本轮独立规划审查与修订证据归[Tasks](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/tasks.md)，它审查体验约束，不是页面渲染或Human验收。
 
 ## 8. 限制、未决与下一步
 

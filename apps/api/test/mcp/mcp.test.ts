@@ -1,7 +1,7 @@
 import { request as httpRequest } from 'node:http';
 import { describe, it, expect } from 'vitest';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { Client } from '@modelcontextprotocol/client';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 const base = process.env.API_BASE_URL;
 const token = process.env.MCP_SERVICE_TOKEN;
 (base && token ? describe : describe.skip)(
@@ -32,6 +32,7 @@ const token = process.env.MCP_SERVICE_TOKEN;
           'query_products',
           'quote_selection',
           'remove_cart_item',
+          'resolve_product_choices',
           'search_products',
           'update_cart_item',
         ]);

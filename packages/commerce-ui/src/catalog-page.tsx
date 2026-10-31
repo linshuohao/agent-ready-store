@@ -28,11 +28,13 @@ export function CatalogPage({
   return (
     <main tabIndex={-1} id="main">
       <PageTools catalog={response} queryKey={params.toString()} />
-      <section className="hero">
-        <p className="eyebrow">日常選物 / Agent-Ready 商店</p>
-        <h1>找一件適合日常的好物。</h1>
-        <p>為自己慢慢選，或由 AI 助理探索商品資訊。</p>
-      </section>
+      {!embedded && (
+        <section className="hero">
+          <p className="eyebrow">日常選物 / Agent-Ready 商店</p>
+          <h1>找一件適合日常的好物。</h1>
+          <p>為自己慢慢選，或由 AI 助理探索商品資訊。</p>
+        </section>
+      )}
       <section aria-labelledby="catalog-heading">
         <div className="section-title">
           <h2 id="catalog-heading">{embedded ? '搜尋結果' : '探索商品'}</h2>

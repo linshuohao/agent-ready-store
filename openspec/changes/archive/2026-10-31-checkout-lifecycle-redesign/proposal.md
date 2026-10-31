@@ -4,7 +4,7 @@
 
 Human本轮明确授权继续在实施分支按同一Change推进数据模型、共享契约和交易核心及相关验证，授权原话、规划Checkpoint和实际完成范围见[Tasks](tasks.md)。下文“本轮仅规划/未授权实施”等保留先前规划轮次的历史语境，以此当前状态为准；不扩展为实际环境清理、Push、Merge、发布或完整流程验收。
 
-早期规划阶段仅授权整理设计，后续实施授权与执行事实见Tasks。完整技术方案见[Technical Design](../../../docs/engineering/TECHNICAL_DESIGN.md)，变更级细节见[Design](design.md)：持久单车、一车多订单、整行选择、Agent生单后Human模拟支付；生单固定金额并预留库存15分钟，单车待支付上限env默认10。车和订单不设查看期限。
+早期规划阶段仅授权整理设计，后续实施授权与执行事实见Tasks。完整技术方案见[Technical Design](../../../../docs/engineering/TECHNICAL_DESIGN.md)，变更级细节见[Design](design.md)：持久单车、一车多订单、整行选择、Agent生单后Human模拟支付；生单固定金额并预留库存15分钟，单车待支付上限env默认10。车和订单不设查看期限。
 
 本Change包含Proposal/Design、12份Delta Specs及Tasks；当前31/33，正式Spec仍待最终接受后同步。目录名用于追踪，不表示存在Checkout实体；产物齐全不代表独立Planning Review、Human批准或实施授权完成，不使用skip_specs绕过规格。权限、凭证、Review、独立Session实体、Redis、真实支付和旧流程兼容均不在本轮实现范围内。
 
@@ -52,7 +52,7 @@ Human本轮明确授权继续在实施分支按同一Change推进数据模型、
 - `product-discovery`：可售量扣除订单预留，区别于实际剩余库存。
 - `agent-cart-metrics`：保留按车去重的创建事实；创建订单、预留库存、订单已支付分别计量，未支付订单不算购买成功。
 
-架构整体说明见[Technical Design](../../../docs/engineering/TECHNICAL_DESIGN.md#order-lifecycle-architecture)，已采用技术选择见[T-08～T-11](../../../docs/engineering/ENGINEERING_DECISIONS.md#order-lifecycle-decisions)。
+架构整体说明见[Technical Design](../../../../docs/engineering/TECHNICAL_DESIGN.md#order-lifecycle-architecture)，已采用技术选择见[T-08～T-11](../../../../docs/engineering/ENGINEERING_DECISIONS.md#order-lifecycle-decisions)。
 
 ## Impact
 
@@ -65,4 +65,4 @@ Human本轮明确授权继续在实施分支按同一Change推进数据模型、
 
 ### 2026-10-31 完整应用复用修订
 
-Human确认并授权Web与Apps共用完整界面、交互、流程与视觉，替代仅共享适用展示组件的范围；沿现有commerce-ui交付，环境仅保留协议/导航/存储及工具结果接续。完整架构正文见[Technical Design §5](../../../docs/engineering/TECHNICAL_DESIGN.md#frontend-architecture)，本Change Design §13记录替代范围，Tasks §10记录实际实施与验证。不改变交易核心、Human支付与真实Host验收边界。
+Human确认并授权Web与Apps共用完整界面、交互、流程与视觉，替代仅共享适用展示组件的范围；沿现有commerce-ui交付，环境仅保留协议/导航/存储及工具结果接续。完整架构正文见[Technical Design §5](../../../../docs/engineering/TECHNICAL_DESIGN.md#frontend-architecture)，本Change Design §13记录替代范围，Tasks §10记录实际实施与验证。不改变交易核心、Human支付与真实Host验收边界。
