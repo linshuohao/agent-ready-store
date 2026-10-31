@@ -25,7 +25,12 @@
     "db:migrate:docker": "docker compose run --rm api pnpm --filter @store/api db:migrate",
     "db:seed:docker": "docker compose run --rm api pnpm --filter @store/api db:seed",
     "db:up": "docker compose -f compose.local.yaml up -d --wait",
-    "db:down": "docker compose -f compose.local.yaml down"
+    "db:down": "docker compose -f compose.local.yaml down",
+    "docs:dev": "pnpm --dir site --ignore-workspace run dev",
+    "docs:build": "pnpm --dir site --ignore-workspace run build",
+    "docs:preview": "pnpm --dir site --ignore-workspace run preview",
+    "docs:check": "pnpm --dir site --ignore-workspace run check",
+    "docs:test": "pnpm --dir site --ignore-workspace run test:browser"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",

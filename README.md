@@ -4,7 +4,9 @@
 
 网页与 Agent 共用商品查询、计价、库存和订单能力；MCP Apps 与网页进一步共享完整的购物界面和交互逻辑。
 
-首次了解项目或评审交付，可先阅读[交付与体验导览](DELIVERY.md)（[HTML 阅读版](delivery/index.html)）：项目说明、Demo 路线、关键设计解答及证据入口。
+首次了解项目或评审交付，可先启动[统一文档与展示站](site/README.md)：产品 Demo、四章讲解、设计正文及验证证据可连续阅读。纯 Markdown 入口仍为[交付与体验导览](DELIVERY.md)，旧 [HTML 导览](delivery/index.html)保留。
+
+本地文档与演示站使用 VitePress，包含现行设计、正式 Spec、历史归档和旧入口兼容。启动方式与迁移边界见 [文档站说明](site/README.md)；暂未发布。
 
 ## 在线体验
 
