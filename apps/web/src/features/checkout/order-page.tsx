@@ -269,27 +269,30 @@ export function OrderPage({
           <p>
             將接續這筆訂單的來源購物車。目前的購物車資料會保留，不會合併或刪除。
           </p>
-          <Button
-            onClick={() => {
-              if (cart.resumeCart(order.cartId, confirmation.currentId)) {
+          <div className="commerce-actions">
+            <Button
+              onClick={() => {
+                if (cart.resumeCart(order.cartId, confirmation.currentId)) {
+                  setConfirmation(null);
+                  router.push(`/cart/${order.cartId}`);
+                } else
+                  setResumeError(
+                    '目前購物車或操作已改變，請先完成原操作後再確認。',
+                  );
+              }}
+            >
+              確認接續原購物車
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
                 setConfirmation(null);
-                router.push(`/cart/${order.cartId}`);
-              } else
-                setResumeError(
-                  '目前購物車或操作已改變，請先完成原操作後再確認。',
-                );
-            }}
-          >
-            確認接續原購物車
-          </Button>
-          <Button
-            onClick={() => {
-              setConfirmation(null);
-              setResumeError('');
-            }}
-          >
-            保留目前購物車
-          </Button>
+                setResumeError('');
+              }}
+            >
+              保留目前購物車
+            </Button>
+          </div>
           {resumeError && <p role="alert">{resumeError}</p>}
         </section>
       )}

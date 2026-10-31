@@ -648,6 +648,7 @@ html {
     padding: 14px 20px;
     min-height: 68px;
     gap: 16px;
+    flex-wrap: wrap;
   }
   .site-brand {
     font-size: 13px;
@@ -683,6 +684,8 @@ html {
   display: flex;
   align-items: center;
   gap: 24px;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 .cart-selection {
   display: flex;

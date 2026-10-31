@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import type { OrderView, ShoppingCartView } from '@store/contracts';
+const fixtureOrders = new WeakMap<Page, OrderView>();
 const creationGates = new WeakMap<Page, Promise<void>>();
 const errors = new WeakMap<Page, string[]>();
 const cartId = '10000000-0000-4000-8000-000000000001';
@@ -44,6 +45,7 @@ async function setup(page: Page) {
       shareUrl: `http://localhost:3000/orders/${orderId}?view=share`,
     },
   };
+  fixtureOrders.set(page, order);
   const cart: ShoppingCartView = {
     cartId,
     cartVersion: 1,
@@ -349,4 +351,60 @@ test('catalog checkbox checkmark stays centered inside its background', async ({
   });
   expect(centers.x).toBeLessThan(1);
   expect(centers.y).toBeLessThan(1);
+});
+
+test('narrow header keeps navigation labels on one line', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 740 });
+  await page.goto(`/cart/${cartId}`);
+  for (const link of await page
+    .getByRole('navigation', { name: '購物導覽' })
+    .getByRole('link')
+    .all()) {
+    expect(
+      await link.evaluate((el) => {
+        const range = document.createRange();
+        range.selectNodeContents(el);
+        return range.getClientRects().length;
+      }),
+    ).toBe(1);
+  }
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
+    320,
+  );
+});
+test('resume confirmation separates primary and secondary actions', async ({
+  page,
+}, testInfo) => {
+  fixtureOrders.get(page)!.cartId = '10000000-0000-4000-8000-000000000003';
+  await page.goto(`/orders/${orderId}`);
+  await page.getByRole('button', { name: '接續這次購物', exact: true }).click();
+  const primary = page.getByRole('button', { name: '確認接續原購物車' });
+  const secondary = page.getByRole('button', { name: '保留目前購物車' });
+  const first = (await primary.boundingBox())!;
+  const second = (await secondary.boundingBox())!;
+  expect(
+    Math.max(
+      second.y - first.y - first.height,
+      second.x - first.x - first.width,
+    ),
+  ).toBeGreaterThanOrEqual(12);
+  await expect(secondary).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+  await secondary.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: testInfo.outputPath('confirmation.png') });
+});
+
+test('order list retry is separated from error copy', async ({
+  page,
+}, testInfo) => {
+  await page.route('**/api/v1/shopping/carts/*/orders*', (route) =>
+    route.abort(),
+  );
+  await page.goto(`/orders?cartId=${cartId}`);
+  const error = page.getByRole('alert').filter({ hasText: '暫時無法讀取訂單' });
+  await expect(error).toBeVisible();
+  const retry = page.getByRole('button', { name: '重新查詢訂單' });
+  const copy = (await error.boundingBox())!;
+  const button = (await retry.boundingBox())!;
+  expect(button.y - copy.y - copy.height).toBeGreaterThanOrEqual(16);
+  await page.screenshot({ path: testInfo.outputPath('order-list-error.png') });
 });

@@ -52,10 +52,12 @@ export function CartOrders({ id, revision }: { id: string; revision: number }) {
     <section aria-label="所有訂單">
       <h2>所有訂單</h2>
       {error ? (
-        <p role="alert">
-          {error}
-          <Button onClick={() => setRefresh((n) => n + 1)}>重新查詢訂單</Button>
-        </p>
+        <div>
+          <p role="alert">{error}</p>
+          <div className="commerce-actions">
+            <Button onClick={() => setRefresh((n) => n + 1)}>重新查詢訂單</Button>
+          </div>
+        </div>
       ) : !page ? (
         <p role="status">正在讀取訂單…</p>
       ) : page.items.length ? (
