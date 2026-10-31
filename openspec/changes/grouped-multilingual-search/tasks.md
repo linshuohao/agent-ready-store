@@ -1,6 +1,6 @@
 # Tasks
 
-状态：规划已提交为09e014f，代码实施及本地验证收尾中，真实Host与Human验收待完成。
+状态：规划与实施已提交，紧凑卡片已整合；Human已确认本次实际搜索展示验收通过。技术边界复验通过；完整Host选型证据及最终Spec同步/归档仍按5.2/5.3单独核对。
 
 规划校验：OpenSpec 1.15.0严格校验通过（0 issues），Proposal、Design、三份Delta与Tasks齐全；本次追加候选选择规划后重新严格校验；已完成独立规划审查，发现根对象schema与续页版本字段缺口并修订，定向复核确认已解决，无新增阻塞，不宣称业务测试或Human最终体验验收。2026-10-31独立审查与复核完成；明确实施/提交授权及SDK升级要求见Proposal，差异传播至Requirements及工程决策。
 
@@ -55,3 +55,12 @@
 Human在上一轮交付后明确要求「整合一下」，据此提交原分支为f1ace90并整合到codex/grouped-search-spec，保留Merge Commit历史。上面的4.3待整合记录至此解除。单目标/分组共用220px最小列宽、112px图片区及88px插图，整体区块纵向排列；移除内嵌宣传hero，普通Web不变。保留当前v8资源、新协议与SDK v2，兼容v4～v7精确别名，不回退到原分支v7。
 
 合并冲突按上述契约逐项解决并聚焦自查：浏览器桌面/移动26项通过，包含紧凑尺寸、并排/换行、分组恢复及结算回归；类型与lint通过。真实Host验收、最终Spec同步/归档仍待5.2/5.3，不把分支整合视为main合并或人工接受。
+
+## 人工搜索验收与技术边界复验 — 2026-10-31
+
+- Human在真实商城搜索调用后明确表示「已经验收通过了，现在需要你做技术边界的验证」。该次调用一次提交两个queries，返回耳机P001/P002及移动电源P003；库存不足的P002明确售罄。记录本次搜索展示接受，不推断未观察的原生选型、取消或断连场景也已验收。
+- 修正验收服务仍运行旧v7的环境问题后，当前工作区通过pnpm start运行Web3000、API/MCP3002，真实发现18工具及v8资源。客户端已发现queries并完成上述真实调用。
+- 在d35ef18代码上定向运行Vitest：contracts/grouped-search、catalog/grouped-search/grouped-db/grouped-http、mcp/protocol-upgrade/mcp/apps-resource、commerce-ui/grouped-search及mcp-app/test，共9文件61项通过、0跳过、0失败。包含20种真实SDK协议场景、5项真实HTTP/MCP资源检查及1项store_test事务回滚库存验证；未清库、迁移或seed。
+- Playwright命令：pnpm exec playwright test e2e/mcp-app.spec.ts --grep 'group|embedded search|embedded catalog'。桌面与移动共10项通过，覆盖原卡分组分页/详情返回、失败页重试、刷新清理旧错误和紧凑布局；这是Apps SDK夹具证据，不冒充真实Host。
+- 实际3002服务额外依次调用query_products、search_products及无form能力的resolve_product_choices，分别返回grouped/grouped/selection_required。前后只读比较Inventory、Cart、CartOperation、Order、OrderLine完整行集合摘要，五表均不变，不输出秘密或业务行内容。该观察限于本次调用窗口；价格/库存变化及选择续调异常另由上述隔离测试覆盖。
+- 本次无代码修复；沿用未变化代码的类型、lint、构建与独立Review证据。真实Host原生表单、拒绝/取消、断连及并行客户端的完整证据仍未补齐，不能以SDK成功替代；5.2不整体勾选。正式Spec同步/归档、main合并与发布未执行。
