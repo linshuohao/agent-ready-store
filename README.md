@@ -4,6 +4,8 @@
 
 网页与 Agent 共用商品查询、计价、库存和订单能力；MCP Apps 与网页进一步共享完整的购物界面和交互逻辑。
 
+[在线体验](https://agent-ready-store.vercel.app) · [部署说明](docs/engineering/DEPLOYMENT.md)（模拟支付，无真实扣款）
+
 ## 功能
 
 - **商品发现**：商品列表、规格、库存与评论查询，支持多目标分组搜索、简繁匹配和受控中英文别名。

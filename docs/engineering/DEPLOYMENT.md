@@ -6,12 +6,23 @@
 
 | 资源 | 当前事实 |
 | --- | --- |
-| 前端 | Vercel 项目 `agent-ready-store`，域名 `agent-ready-store.vercel.app`；本轮部署验证进行中 |
-| 后端 | Vercel 项目 `agent-ready-store-api`，域名 `agent-ready-store-api.vercel.app`；本轮部署验证进行中 |
+| 前端 | Vercel 项目 `agent-ready-store`，[公开网页](https://agent-ready-store.vercel.app)，已验证购物与模拟支付 |
+| 后端 | Vercel 项目 `agent-ready-store-api`，[健康检查](https://agent-ready-store-api.vercel.app/api/v1/health)，REST / MCP 已验证 |
 | 数据库 | Neon Free 项目 `agent-ready-store-demo`（`fancy-salad-72400395`），PG18 / AWS US East；已执行7个迁移并导入30条库存，不要重复 seed |
 | Git | `codex/deploy-free-demo`，PR #3；尚未合并 |
 
 之前尝试 Render Free 时被银行卡验证阻断，未创建服务；Human 已选择上述 Vercel 方案。原始附件访问及向 Vercel 后端 Production 写入本项目 Neon/MCP 凭据均已获得明确授权。原件仍不公开，密钥不进入 Git、前端变量或日志。
+
+## 验证结果
+
+2026-10-31，前后端 Production 均部署提交 `266489a`。Vercel Hobby 与 Neon Free 已完成配置，本次未绑定银行卡、未启用付费方案。
+
+- [Actions run 41173631160](https://github.com/linshuohao/agent-ready-store/actions/runs/41173631160)：Verify 与 Delivery image 均通过，含真实 PostgreSQL、HTTP/MCP、桌面与移动浏览器测试。
+- 云端 REST 经前端代理完成建车、生单、取消，验证库存恢复；商品原始文件的公开路径返回404。
+- 云端 MCP SDK 连接成功，发现18个工具，商品搜索成功，两个 MCP Apps HTML 资源可读取且引用正确前端地址。入口为 `https://agent-ready-store-api.vercel.app/mcp`，客户端须使用 Bearer 令牌。
+- 浏览器完成搜索、加购、勾选、生单与模拟支付；订单 `6b8ad24e-8273-45a2-8fc5-5ce05487d3cb` 显示支付成功，成交金额 NT$1,790。该记录属于部署验收，不替代真实 Agent 购物录影。
+
+请求清理的截止检查、并发释放与故障日志已在隔离 PostgreSQL 和接口测试中验证；未在云端修改时间或批量清空数据制造测试条件。后续纯文档提交不改变以上运行版本。
 
 ## 项目配置
 
