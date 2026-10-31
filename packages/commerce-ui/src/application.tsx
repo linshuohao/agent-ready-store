@@ -14,6 +14,7 @@ import { SiteHeader } from './features/cart/site-header';
 import { CartPage } from './features/cart/cart-page';
 import { OrderPage } from './features/checkout/order-page';
 import { OrdersPage } from './features/checkout/orders-page';
+import { GroupedCatalogPage } from './grouped-catalog-page';
 import { CatalogPage } from './catalog-page';
 import { ProductPage } from './product-page';
 import type { RouteDelivery } from './runtime';
@@ -64,7 +65,11 @@ function DiscoveryRoute({ id, query }: { id?: string; query: string }) {
       </main>
     );
   return id ? (
-    <ProductPage id={id} response={response as Result<ProductDetail>} />
+    <ProductPage
+      id={id}
+      response={response as Result<ProductDetail>}
+      returnTo={new URLSearchParams(query).get('returnTo') ?? undefined}
+    />
   ) : (
     <CatalogPage
       query={query}
@@ -76,6 +81,13 @@ export function CommerceRoute() {
   const { location } = useRuntime();
   const [pathname, query = ''] = location.split('?');
   const parts = pathname.split('/');
+  if (pathname === '/search')
+    return (
+      <GroupedCatalogPage
+        key={location}
+        collection={new URLSearchParams(query).get('collection') ?? ''}
+      />
+    );
   if (parts[1] === 'cart')
     return <CartPage key={parts[2] ?? 'empty'} id={parts[2]} />;
   if (parts[1] === 'orders') {

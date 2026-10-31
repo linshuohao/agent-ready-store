@@ -9,7 +9,7 @@ test.beforeAll(async () => {
   const { build } = await import(pathToFileURL(require.resolve('vite')).href);
   const appHtml = await readFile(
     new URL(
-      '../apps/api/dist/mcp-app/search-products-v6.html',
+      '../apps/api/dist/mcp-app/search-products-v8.html',
       import.meta.url,
     ),
     'utf8',
@@ -323,4 +323,65 @@ test('multi-product purchase opens one final checkout and updates payment in the
         ).length,
     ),
   ).toBe(1);
+});
+
+test('grouped search keeps both targets in one card, pages independently and returns from detail', async ({
+  page,
+}) => {
+  const f = await openFixture(page, '?grouped');
+  const audio = f.getByRole('region', { name: '耳機', exact: true });
+  const bottle = f.getByRole('region', { name: '水杯', exact: true });
+  await expect(audio).toBeVisible();
+  await expect(bottle).toBeVisible();
+  await expect(audio.locator('.product-grid > *')).toHaveCount(2);
+  await audio.getByRole('button', { name: '下一頁', exact: true }).click();
+  await expect(audio).toContainText('第 2 頁');
+  await expect(bottle).toContainText('第 1 頁');
+  await bottle.getByRole('link', { name: '商品 P001', exact: true }).click();
+  await f.getByRole('link', { name: '返回商品列表' }).click();
+  await expect(audio).toContainText('第 2 頁');
+  await expect(bottle).toContainText('第 1 頁');
+  const calls = await page.evaluate(
+    () => (window as unknown as { fixture: { calls: string[] } }).fixture.calls,
+  );
+  expect(calls).not.toContain('search_products');
+  expect(calls.some((name) => /cart|order|pay/.test(name))).toBe(false);
+  expect(
+    await f
+      .locator('.grouped-catalog')
+      .evaluate((el) => el.scrollWidth <= el.clientWidth),
+  ).toBe(true);
+});
+
+test('group pagination retry repeats the failed next page', async ({
+  page,
+}) => {
+  const f = await openFixture(page, '?grouped&failGroup');
+  const audio = f.getByRole('region', { name: '耳機', exact: true });
+  await audio.getByRole('button', { name: '下一頁', exact: true }).click();
+  await expect(audio.getByRole('alert')).toBeVisible();
+  await audio.getByRole('button', { name: '重試', exact: true }).click();
+  await expect(audio).toContainText('第 2 頁');
+  await expect(
+    f.getByRole('region', { name: '水杯', exact: true }),
+  ).toContainText('第 1 頁');
+});
+
+test('full grouped refresh clears errors from the previous collection pages', async ({
+  page,
+}) => {
+  const f = await openFixture(page, '?grouped&failGroup&changedGroup');
+  const audio = f.getByRole('region', { name: '耳機', exact: true });
+  await audio.getByRole('button', { name: '下一頁', exact: true }).click();
+  await expect(audio.getByRole('alert')).toBeVisible();
+  await f
+    .getByRole('region', { name: '水杯', exact: true })
+    .getByRole('button', { name: '下一頁', exact: true })
+    .click();
+  await f.getByRole('button', { name: '重新查詢全部目標' }).click();
+  await expect(audio).toContainText('第 1 頁');
+  await expect(audio.getByRole('alert')).toHaveCount(0);
+  await expect(
+    audio.getByRole('button', { name: '下一頁', exact: true }),
+  ).toBeEnabled();
 });

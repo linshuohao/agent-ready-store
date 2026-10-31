@@ -1,7 +1,16 @@
-import { Controller, Get, Inject, Param, Query, Res } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Inject,
+  Param,
+  Query,
+  Res,
+  Post,
+  Req,
+} from '@nestjs/common';
 import { productInput } from '@store/contracts';
 import { AppError } from '../shared/app-error.js';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { CatalogService } from './catalog.service.js';
 import { result } from '../shared/result.js';
 import { decodeQuery, httpStatus } from './http-query.js';
@@ -20,6 +29,21 @@ export class CatalogController {
     @Res() res: Response,
   ) {
     await this.send(res, () => this.catalog.search(decodeQuery(query)));
+  }
+  @Post('products/search') async grouped(
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    await this.send(res, () => {
+      if (
+        req.get('origin') !== process.env.WEB_ORIGIN ||
+        !req.is('application/json')
+      )
+        throw new AppError('FORBIDDEN', 403);
+      if (Object.keys(req.query).length)
+        throw new AppError('VALIDATION_ERROR', 400);
+      return this.catalog.searchGrouped(req.body);
+    });
   }
   @Get('products/:id/reviews') async reviews(
     @Param('id') id: string,

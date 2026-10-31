@@ -3,6 +3,7 @@ import {
   AppBridge,
   PostMessageTransport,
 } from '@modelcontextprotocol/ext-apps/app-bridge';
+import { groupedSearchInput } from '@store/contracts';
 import type { ShoppingCartView, OrderView } from '@store/contracts';
 declare const __APP_HTML__: string;
 const id = '10000000-0000-4000-8000-000000000001',
@@ -26,10 +27,40 @@ const calls: string[] = [],
   opens: string[] = [];
 const controls = {
   failPayOnce: false,
+  changedGroupOnce: new URL(location.href).searchParams.has('changedGroup'),
+  failGroupOnce: new URL(location.href).searchParams.has('failGroup'),
   conflictOnce: false,
   failProductOnce: new URL(location.href).searchParams.has('failDiscovery'),
 };
-const searchMode = new URL(location.href).searchParams.has('search');
+const groupedMode = new URL(location.href).searchParams.has('grouped');
+const groupedArgs = {
+  queries: [
+    { id: 'audio', label: '耳機', q: '蓝牙', limit: 2 },
+    { id: 'bottle', label: '水杯', q: '水瓶', limit: 2 },
+  ],
+};
+function groupedData(input: unknown) {
+  const parsed = groupedSearchInput.parse(input);
+  const groups = parsed.queries.map((query) => ({
+    id: query.id,
+    label: query.label ?? query.q,
+    query,
+    status: 'ok',
+    total: 3,
+    productIds: query.offset === 0 ? ['P001', 'P002'] : ['P003'],
+    nextOffset: query.offset === 0 ? 2 : null,
+  }));
+  const ids = [...new Set(groups.flatMap((g) => g.productIds))];
+  return {
+    kind: 'grouped',
+    catalogRevision: 'fixture',
+    searchRevision: 'rules',
+    groups,
+    products: ids.map((id) => ({ ...productSummary, id, name: '商品 ' + id })),
+  };
+}
+const searchMode =
+  groupedMode || new URL(location.href).searchParams.has('search');
 const productMode = new URL(location.href).searchParams.has('product');
 const productDetail = {
   id: 'P001',
@@ -153,7 +184,39 @@ bridge.oncalltool = async ({ name, arguments: args }) => {
     }
     return ok(productDetail);
   }
-  if (name === 'query_products') return ok(catalogData);
+  if (
+    name === 'query_products' &&
+    'queries' in args &&
+    controls.changedGroupOnce &&
+    groupedSearchInput
+      .parse(args)
+      .queries.some((q) => q.id === 'bottle' && q.offset > 0)
+  ) {
+    controls.changedGroupOnce = false;
+    return {
+      isError: true,
+      content: [],
+      structuredContent: { ok: false, error: { code: 'CATALOG_CHANGED' } },
+    };
+  }
+  if (
+    name === 'query_products' &&
+    'queries' in args &&
+    controls.failGroupOnce &&
+    groupedSearchInput.parse(args).queries.some((q) => q.offset > 0)
+  ) {
+    controls.failGroupOnce = false;
+    return {
+      isError: true,
+      content: [],
+      structuredContent: {
+        ok: false,
+        error: { code: 'TEMPORARY_UNAVAILABLE' },
+      },
+    };
+  }
+  if (name === 'query_products')
+    return ok('queries' in args ? groupedData(args) : catalogData);
   if (name === 'list_product_reviews')
     return ok({
       productId: 'P001',
@@ -251,8 +314,12 @@ bridge.oninitialized = async () => {
     await bridge.sendToolInput({ arguments: { cartId: id } });
     await bridge.sendToolResult(ok({ order, cart }));
   } else if (searchMode) {
-    await bridge.sendToolInput({ arguments: { q: '耳機' } });
-    await bridge.sendToolResult(ok(catalogData));
+    await bridge.sendToolInput({
+      arguments: groupedMode ? groupedArgs : { q: '耳機' },
+    });
+    await bridge.sendToolResult(
+      ok(groupedMode ? groupedData(groupedArgs) : catalogData),
+    );
   } else {
     await bridge.sendToolInput({
       arguments: productMode ? { productId: 'P001' } : { cartId: id },

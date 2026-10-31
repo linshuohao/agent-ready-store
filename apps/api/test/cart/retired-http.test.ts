@@ -1,6 +1,6 @@
 import { beforeAll, describe, it, expect } from 'vitest';
-import { Client } from '@modelcontextprotocol/sdk/client/index.js';
-import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { Client } from '@modelcontextprotocol/client';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 const base = process.env.CHECKOUT_CORE_API_URL;
 (base ? describe : describe.skip)(
   'retired checkout entry points against isolated API',

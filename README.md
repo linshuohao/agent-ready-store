@@ -17,7 +17,7 @@
 - WebMCP：页面工具复用 Web Commands；加购通常展示车，购买直接导航原单。无支持能力的浏览器仍可普通购物。
 - MCP Apps：搜索只展示结果卡片，购买准备只返回数据，生单展示最终结算卡片；支付及状态恢复在原卡片内更新。静态资源及 Host Bridge 提供内嵌购物、原单摘要和 Human 点击支付；不直接获取网站 Cookie 或服务 Token。替身 Host 自动化与真实 Host/Human 验收分开记录。
 
-Web与Apps完整共用`commerce-ui`的页面、交互流程、控件、样式和商品资源；架构及环境边界见[Technical Design §5](docs/engineering/TECHNICAL_DESIGN.md#frontend-architecture)。当前Apps资源为`v6`，更新后刷新Host连接并重新调用工具加载。
+Web与Apps完整共用`commerce-ui`的页面、交互流程、控件、样式和商品资源；架构及环境边界见[Technical Design §5](docs/engineering/TECHNICAL_DESIGN.md#frontend-architecture)。当前Apps资源为`v8`，更新后刷新Host连接并重新调用工具加载。
 
 实现和恢复键说明见 [CHECKOUT_CORE](docs/engineering/CHECKOUT_CORE.md)。本项目是 Demo：ID 接续、分享视图和 app-only 可见性不是顾客身份或访问控制；不能宣称防御恶意 Host 或证明点击者为自然人。
 

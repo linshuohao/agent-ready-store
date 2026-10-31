@@ -399,3 +399,140 @@ it('card catalog reads use the data-only query tool without a new search UI entr
     expect.objectContaining({ q: 'earbuds', limit: 2 }),
   );
 });
+
+describe('grouped search bridge', () => {
+  const query = {
+    id: 'audio',
+    q: '蓝牙',
+    offset: 0,
+    limit: 4,
+    purchasableOnly: false,
+    sort: 'recommendation',
+  };
+  const data = {
+    kind: 'grouped',
+    catalogRevision: 'catalog',
+    searchRevision: 'rules',
+    groups: [
+      {
+        id: 'audio',
+        label: '蓝牙',
+        query,
+        status: 'empty',
+        productIds: [],
+        total: 0,
+        nextOffset: null,
+      },
+    ],
+    products: [],
+  };
+  const delivery = { structuredContent: { ok: true, data } };
+  it('routes a grouped delivery and fetches via background query without extra UI', async () => {
+    const route = toolRoute(
+      'search_products',
+      { queries: [{ id: 'audio', q: '蓝牙' }] },
+      delivery,
+    );
+    expect(route.startsWith('/search?')).toBe(true);
+    const call = vi.fn(async () => delivery);
+    const response = await bridgeTransport({ call, open: async () => ({}) })(
+      '/api/v1/products/search',
+      { queries: [{ id: 'audio', q: '蓝牙' }] },
+    );
+    expect((await response.json()).data).toEqual(data);
+    expect(call.mock.calls[0][0]).toBe('query_products');
+  });
+  it('rejects missing references and unknown result kinds', () => {
+    expect(() =>
+      toolRoute(
+        'search_products',
+        { queries: [{ id: 'audio' }] },
+        { structuredContent: { ok: true, data: { ...data, kind: 'future' } } },
+      ),
+    ).toThrow();
+    expect(() =>
+      toolRoute(
+        'search_products',
+        { queries: [{ id: 'audio' }] },
+        {
+          structuredContent: {
+            ok: true,
+            data: {
+              ...data,
+              groups: [
+                {
+                  ...data.groups[0],
+                  status: 'ok',
+                  total: 1,
+                  productIds: ['missing'],
+                },
+              ],
+            },
+          },
+        },
+      ),
+    ).toThrow();
+  });
+});
+
+it('isolates identical grouped searches by Host tool call ID', () => {
+  const values = new Map<string, string>();
+  const storage = {
+    getItem: (key: string) => values.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      values.set(key, value);
+    },
+    removeItem: (key: string) => {
+      values.delete(key);
+    },
+  };
+  const input = { queries: [{ id: 'a' }] };
+  const query = {
+    id: 'a',
+    q: '',
+    offset: 0,
+    limit: 4,
+    purchasableOnly: false,
+    sort: 'recommendation',
+  };
+  const raw = {
+    structuredContent: {
+      ok: true,
+      data: {
+        kind: 'grouped',
+        catalogRevision: 'c',
+        searchRevision: 's',
+        groups: [
+          {
+            id: 'a',
+            label: '全部商品',
+            query,
+            status: 'empty',
+            productIds: [],
+            total: 0,
+            nextOffset: null,
+          },
+        ],
+        products: [],
+      },
+    },
+  };
+  const a = toolDeliveryContext(
+    'search_products',
+    input,
+    raw,
+    storage,
+    'call-a',
+  );
+  const b = toolDeliveryContext(
+    'search_products',
+    input,
+    raw,
+    storage,
+    'call-b',
+  );
+  expect(a.route).not.toBe(b.route);
+  expect(
+    toolDeliveryContext('search_products', input, raw, storage, 'call-a').route,
+  ).toBe(a.route);
+});

@@ -664,3 +664,22 @@ html {
 .commerce-application[data-surface='embedded'] .purchase-layout {
   grid-template-columns: minmax(0, 1fr);
 }
+
+/* Grouped discovery remains vertically ordered; products may share a row. */
+.commerce-application[data-surface='embedded'] .grouped-catalog .product-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+}
+.grouped-catalog .search-group {
+  margin-block: 1.5rem;
+}
+.grouped-catalog .art {
+  height: 112px;
+}
+.grouped-catalog .art img {
+  width: 88px;
+  height: 88px;
+  object-fit: contain;
+}
+.grouped-catalog .product-card {
+  min-width: 0;
+}

@@ -4,6 +4,10 @@ import {
   shoppingCartViewOutput,
   orderViewOutput,
   searchInput,
+  discoveryInput,
+  groupedSearchInput,
+  groupedSearchOutput,
+  productSummaryOutput as product,
   pageInput,
   cartIdInput,
 } from '@store/contracts';
@@ -27,29 +31,6 @@ const envelope = z.object({
   ]),
   isError: z.boolean().optional(),
 });
-const product = z
-  .object({
-    id: z.string(),
-    name: z.string(),
-    brand: z.string(),
-    category: z.string(),
-    currency: z.literal('TWD'),
-    price: z.string().regex(/^\d+\.\d{2}$/),
-    imagePath: z.null(),
-    availability: z.object({
-      canPurchase: z.boolean(),
-      reasons: z.array(
-        z.enum([
-          'SOLD_OUT',
-          'INVENTORY_ANOMALY',
-          'PRICE_PENDING',
-          'INVENTORY_UNAVAILABLE',
-        ]),
-      ),
-      currentQuantity: z.number().int().nullable(),
-    }),
-  })
-  .strict();
 const detail = product.extend({
   description: z.string(),
   specs: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])),
@@ -103,8 +84,13 @@ export function bridgeTransport(bridge: Bridge): Transport {
     let name: string, input: Record<string, unknown>;
     let output: z.ZodType | undefined;
     if (parts[0] === 'products') {
-      if (body !== undefined) throw Error('INVALID_METHOD');
-      if (parts.length === 1) {
+      if (parts.length === 2 && parts[1] === 'search' && body !== undefined) {
+        if (url.search) throw Error('INVALID_PATH');
+        name = 'query_products';
+        input = groupedSearchInput.parse(body);
+        output = groupedSearchOutput;
+      } else if (body !== undefined) throw Error('INVALID_METHOD');
+      else if (parts.length === 1) {
         name = 'query_products';
         input = searchInput.parse(query(url.searchParams));
         output = catalog;
@@ -230,8 +216,28 @@ export function toolRoute(name: string, input: unknown, raw: unknown): string {
     throw Error('TOOL_FAILED');
   const data = result.structuredContent.data;
   if (name === 'search_products') {
+    const parsed = discoveryInput.parse(args);
+    if ('queries' in parsed) {
+      const grouped = groupedSearchOutput.parse(data);
+      if (
+        JSON.stringify(grouped.groups.map((g) => g.query)) !==
+        JSON.stringify(parsed.queries)
+      )
+        throw Error('WRONG_ENTITY');
+      return (
+        '/search?collection=' +
+        encodeURIComponent(
+          JSON.stringify({
+            ...parsed,
+            catalogRevision: grouped.catalogRevision,
+            searchRevision: grouped.searchRevision,
+          }),
+        )
+      );
+    }
+    if (data && typeof data === 'object' && 'kind' in data)
+      throw Error('INVALID_RESULT');
     catalog.parse(data);
-    searchInput.parse(args);
     return (
       '/?' +
       new URLSearchParams(
@@ -378,6 +384,14 @@ export function toolDeliveryContext(
       ? null
       : `${name}.${typeof callId}:${callId}.${target}`;
   const key = prefix ? 'store.apps.route.' + prefix : null;
+  if (route.startsWith('/search?'))
+    route +=
+      '&scope=' +
+      encodeURIComponent(
+        callId === undefined
+          ? crypto.randomUUID()
+          : `${typeof callId}:${callId}`,
+      );
   if (prefix) {
     const saved = storage.getItem(key!);
     const created = storage.getItem('store.apps.created.' + prefix);
@@ -404,6 +418,12 @@ function validateRoute(route: string) {
     throw Error('INVALID_ROUTE');
   const parts = u.pathname.split('/');
   if (u.pathname === '/') return;
+  if (u.pathname === '/search') {
+    groupedSearchInput.parse(
+      JSON.parse(u.searchParams.get('collection') ?? 'null'),
+    );
+    return;
+  }
   if (parts[1] === 'products' && parts.length === 3 && parts[2]) return;
   if (
     parts[1] === 'cart' &&

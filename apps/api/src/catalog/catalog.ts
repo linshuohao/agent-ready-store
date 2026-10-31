@@ -4,6 +4,8 @@ import { Decimal } from 'decimal.js';
 import { parse } from 'lossless-json';
 import {
   searchInput,
+  groupedSearchInput,
+  type GroupedSearchResult,
   pageInput,
   productInput,
   type ProductSummary,
@@ -49,9 +51,14 @@ const rawCatalog = z.object({
   currency: z.literal('TWD'),
   products: z.array(rawProduct).min(1),
 });
-const normalize = (s: string) => s.normalize('NFKC').toLowerCase();
+import {
+  searchRevision,
+  searchTerms,
+  matchesSearch,
+} from './search-matching.js';
 export class Catalog {
   readonly revision: string;
+  readonly catalogRevision: string;
   private readonly products: z.infer<typeof rawProduct>[];
   constructor(raw: string) {
     // Preserve monetary literals before binary-number conversion; other S1 facts retain their existing types.
@@ -74,7 +81,10 @@ export class Catalog {
     this.products = source.products;
     if (new Set(this.products.map((p) => p.id)).size !== this.products.length)
       throw new Error('Duplicate product ID');
-    this.revision = createHash('sha256').update(raw).digest('hex');
+    this.catalogRevision = createHash('sha256').update(raw).digest('hex');
+    this.revision = createHash('sha256')
+      .update(this.catalogRevision + searchRevision)
+      .digest('hex');
   }
   initialInventory() {
     return this.products.map((p) => ({ productId: p.id, quantity: p.stock }));
@@ -123,15 +133,11 @@ export class Catalog {
     if (!parsed.success) throw new AppError('VALIDATION_ERROR', 400);
     const q = parsed.data;
     this.checkRevision(q.catalogRevision);
-    const words = normalize(q.q.trim()).split(/\s+/).filter(Boolean);
+    const words = searchTerms(q.q);
     const selected = this.products
       .filter(
         (p) =>
-          words.every((word) =>
-            [p.name, p.brand, p.category, p.description].some((field) =>
-              normalize(field).includes(word),
-            ),
-          ) &&
+          matchesSearch([p.name, p.brand, p.category, p.description], words) &&
           (q.category === undefined || p.category === q.category) &&
           (q.brand === undefined || p.brand === q.brand) &&
           (q.minPrice === undefined || new Decimal(p.price).gte(q.minPrice)) &&
@@ -152,6 +158,43 @@ export class Catalog {
       nextOffset:
         q.offset + q.limit < selected.length ? q.offset + q.limit : null,
       catalogRevision: this.revision,
+    };
+  }
+  searchGrouped(
+    input: unknown,
+    stock: ReadonlyMap<string, number>,
+  ): GroupedSearchResult {
+    const parsed = groupedSearchInput.safeParse(input);
+    if (!parsed.success) throw new AppError('VALIDATION_ERROR', 400);
+    const q = parsed.data;
+    if (
+      (q.catalogRevision !== undefined &&
+        q.catalogRevision !== this.catalogRevision) ||
+      (q.searchRevision !== undefined && q.searchRevision !== searchRevision)
+    )
+      throw new AppError('CATALOG_CHANGED', 409);
+    const products = new Map<string, ProductSummary>();
+    const groups: GroupedSearchResult['groups'] = q.queries.map((query) => {
+      const { id, label, ...conditions } = query;
+      const page = this.search(conditions, stock);
+      for (const product of page.items)
+        if (!products.has(product.id)) products.set(product.id, product);
+      return {
+        id,
+        label: label ?? (query.q.trim() || '全部商品'),
+        query,
+        status: page.total === 0 ? 'empty' : 'ok',
+        productIds: page.items.map((p) => p.id),
+        total: page.total,
+        nextOffset: page.nextOffset,
+      };
+    });
+    return {
+      kind: 'grouped',
+      catalogRevision: this.catalogRevision,
+      searchRevision,
+      groups,
+      products: [...products.values()],
     };
   }
   get(id: string, stock: ReadonlyMap<string, number>): ProductDetail {
