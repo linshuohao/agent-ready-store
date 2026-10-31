@@ -2,7 +2,7 @@
 
 这是一份面向面试官与仓库读者的项目导览。你可以从这里了解产品、运行 Demo，并沿证据入口检查产品判断、前端架构与 AI 协作过程，无需先阅读完整设计文档。
 
-[打开 HTML 阅读版](delivery/index.html)：本地浏览器直接打开，无需启动服务；保留仓库目录即可访问证据文件。
+[打开在线文档与展示站](https://agent-ready-store-docs.vercel.app)：无需本地启动，可连续体验产品 Demo、章节讲解和设计正文。[旧版离线 HTML](delivery/index.html)仍保留。
 
 ## 项目在做什么
 
@@ -23,7 +23,7 @@ Agent-Ready Store 是一个同时服务人类与 AI Agent 的商店。用户可�
 | 快速了解产品与关键取舍 | 阅读本文，再看[产品决策](DECISIONS.md) |
 | 实际运行与体验 | 直接打开[在线商店](https://agent-ready-store.vercel.app)，再走下方 Demo |
 | 在 Agent 中购物 | 查看 [MCP 接入指南](docs/engineering/MCP_CONNECT.md) |
-| 查看图解展示 | 本地打开 [HTML 展示](presentation/index.html)，[打开方式](presentation/README.md)；GitHub 文件页不会直接运行 HTML |
+| 查看图解展示 | 打开[在线章节展示](https://agent-ready-store-docs.vercel.app/presentation.html?slide=authorization)，或先看[产品 Demo](https://agent-ready-store-docs.vercel.app/demo.html) |
 | 检查架构和源码 | 从下方“设计解答”进入对应设计、实现与测试 |
 | 核对题目交付、CI 和缺口 | 查看[交付状态与证据](docs/engineering/DELIVERY_STATUS.md) |
 

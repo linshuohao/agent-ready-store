@@ -43,7 +43,7 @@ AI 工作流补充参考用户提供的 ai_native_engineering_manual.html、ai_n
 
 `pnpm docs:build` 自动构建并检查产物链接；`pnpm docs:check` 运行源链接测试及断链、禁发文件、符号链接反例。安装仓库根开发依赖后执行 `pnpm exec playwright install chromium`，再运行 `pnpm docs:test`：启动临时预览并检查所有正文图示、完整展示链路、旧入口、刷新/返回和四种窗口宽度。使用系统 Chrome 可设置 `DOCS_BROWSER_CHANNEL=chrome`。
 
-构建需要正常 Git checkout 和完整文件历史，用于将历史材料中已删除的源码链接定位到最后存在的版本。展示摘要中保留的源码外链固定在原选定版本 3275e19，不声称为最新源码；生成的当前文档源码链接则使用构建 revision。未发布，不验证非根部署前缀；该项随部署方案另行处理。
+构建需要正常 Git checkout 和完整文件历史，用于将历史材料中已删除的源码链接定位到最后存在的版本。展示摘要中保留的源码外链固定在原选定版本 3275e19，不声称为最新源码；生成的当前文档源码链接则使用构建 revision。已验证独立域名根路径部署，非根部署前缀仍未验证。
 
 ## Vercel 发布
 
