@@ -1,4 +1,5 @@
 'use client';
+import { CategorySelect, type CategoriesResult } from './category-select';
 import { Link } from '../../../runtime';
 import { Button, buttonVariants } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
@@ -6,7 +7,13 @@ import { Label } from '../../../components/ui/label';
 import { Checkbox } from '../../../components/ui/checkbox';
 import { useRouter } from '../../../runtime';
 import { useTransition } from 'react';
-export function SearchForm({ values }: { values: Record<string, string> }) {
+export function SearchForm({
+  values,
+  categories,
+}: {
+  values: Record<string, string>;
+  categories?: CategoriesResult;
+}) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   return (
@@ -18,8 +25,11 @@ export function SearchForm({ values }: { values: Record<string, string> }) {
         const data = new FormData(event.currentTarget);
         const params = new URLSearchParams();
         for (const [key, value] of data) {
-          if (typeof value === 'string' && value.trim()) {
-            const text = value.trim();
+          if (
+            typeof value === 'string' &&
+            (key === 'category' ? value !== '' : value.trim() !== '')
+          ) {
+            const text = key === 'category' ? value : value.trim();
             params.set(
               key,
               key === 'minPrice' || key === 'maxPrice'
@@ -47,14 +57,11 @@ export function SearchForm({ values }: { values: Record<string, string> }) {
           placeholder="商品名稱、品牌或描述"
         />
       </Label>
-      <Label className="field">
-        商品分類
-        <Input
-          name="category"
-          defaultValue={values.category ?? ''}
-          placeholder="精確分類名稱"
-        />
-      </Label>
+      <CategorySelect
+        key={categories?.ok ? categories.data.catalogRevision : 'unavailable'}
+        initial={categories}
+        value={values.category}
+      />
       <Label className="field">
         品牌
         <Input

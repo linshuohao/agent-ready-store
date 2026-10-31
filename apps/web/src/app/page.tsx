@@ -1,6 +1,6 @@
 import { CatalogPage } from '@store/commerce-ui/catalog-page';
 import { publicApi } from '@/lib/api';
-import type { Page, ProductSummary } from '@store/contracts';
+import type { Page, ProductSummary, ProductCategory } from '@store/contracts';
 export const dynamic = 'force-dynamic';
 export default async function Home({
   searchParams,
@@ -12,6 +12,15 @@ export default async function Home({
     if (Array.isArray(value)) value.forEach((v) => params.append(key, v));
     else if (value !== undefined) params.set(key, value);
   }
-  const response = await publicApi<Page<ProductSummary>>(`/products?${params}`);
-  return <CatalogPage response={response} query={params.toString()} />;
+  const [response, categories] = await Promise.all([
+    publicApi<Page<ProductSummary>>(`/products?${params}`),
+    publicApi<Page<ProductCategory>>('/catalog/categories'),
+  ]);
+  return (
+    <CatalogPage
+      response={response}
+      categories={categories}
+      query={params.toString()}
+    />
+  );
 }
