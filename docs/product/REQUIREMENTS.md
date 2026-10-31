@@ -211,7 +211,7 @@ $\operatorname{HALF\_UP}_{2}$ 表示按 HALF_UP 舍入到两位小数。商品�
 | --- | --- |
 | <a id="order-01"></a>ORDER-01 | 明确购买可先创建待支付单；完整摘要后Human点击模拟支付，Agent不代点、不提供支付工具；UI直接请求不等Agent消息 |
 | <a id="order-02"></a>ORDER-02 | 生单按当前选中集合计价并固定；支付校验原快照、预留、状态和服务端截止，不实时重算、不比较当前车版本 |
-| <a id="order-03"></a>ORDER-03 | 创建后为待支付订单，支付后同一订单成为已支付；未支付订单可因取消或到期关闭，保留关闭原因，不产生另一笔订单。持久状态的表达见[技术方案](../engineering/TECHNICAL_DESIGN.md#order-state) |
+| <a id="order-03"></a>ORDER-03 | 创建后为待支付订单，支付后同一订单成为已支付；未支付订单可因取消或到期关闭，保留关闭原因，不产生另一笔订单。持久状态的表达见[技术方案](../engineering/CHECKOUT_CORE.md#order-state) |
 | <a id="order-04"></a>ORDER-04 | 生单转行/预留/明细/金额全有或全无；支付原单状态与实际量/预留消费全有或全无；失败保留已存在订单及原预留期限 |
 | <a id="order-05"></a>ORDER-05 | 创建时保存唯一固定商品/金额快照；价格涨跌、活动结束或运费变化不改变原单，历史长期可查看 |
 | <a id="order-06"></a>ORDER-06 | 创建按原车+原键恢复，支付/取消按原orderId恢复；成功重复不扣量，同键异载荷冲突，已关闭不复活，响应未知不自动重付/重建 |
@@ -330,13 +330,13 @@ flowchart LR
 
 | 需求组 | 关键验收 | 正式行为来源 | 技术设计落点 |
 | --- | --- | --- | --- |
-| CAT-01～06 商品发现 | AC-03～05、14 | [商品发现](../../openspec/specs/product-discovery/spec.md) | [目录与数据边界](../engineering/TECHNICAL_DESIGN.md#21-商品发现与运行数据) |
-| CART-01～08 持续选购 | AC-07、12、18 | [购物车](../../openspec/specs/shopping-cart/spec.md) | [领域模型](../engineering/TECHNICAL_DESIGN.md#domain-model)、[状态归属](../engineering/TECHNICAL_DESIGN.md#53-状态归属与保存范围) |
-| PRICE-01～02 价格一致性 | AC-06、10 | [计价](../../openspec/specs/cart-pricing/spec.md) | [库存、期限与计价事实](../engineering/TECHNICAL_DESIGN.md#62-库存期限与计价事实) |
-| ORDER-01～06 订单与库存 | AC-01、08、11、21 | [订单](../../openspec/specs/order-placement/spec.md)、[库存预留](../../openspec/specs/inventory-reservation/spec.md) | [业务状态](../engineering/TECHNICAL_DESIGN.md#order-state)、[后端边界](../engineering/TECHNICAL_DESIGN.md#backend-guarantees) |
-| HAND-01～05、SEC-01～03 接续与授权 | AC-02、09、16、17、19、20 | [购买授权](../../openspec/specs/agent-purchase-authorization/spec.md)、[交接](../../openspec/specs/cart-handoff/spec.md) | [用户旅程](../engineering/TECHNICAL_DESIGN.md#shopping-journeys)、[安全边界](../engineering/TECHNICAL_DESIGN.md#65-运行数据初始化与安全边界) |
+| CAT-01～06 商品发现 | AC-03～05、14 | [商品发现](../../openspec/specs/product-discovery/spec.md) | [目录与数据边界](../engineering/BACKEND_DESIGN.md#21-商品发现与运行数据) |
+| CART-01～08 持续选购 | AC-07、12、18 | [购物车](../../openspec/specs/shopping-cart/spec.md) | [领域模型](../engineering/CHECKOUT_CORE.md#domain-model)、[状态归属](../engineering/FRONTEND_DESIGN.md#53-状态归属与保存范围) |
+| PRICE-01～02 价格一致性 | AC-06、10 | [计价](../../openspec/specs/cart-pricing/spec.md) | [库存、期限与计价事实](../engineering/CHECKOUT_CORE.md#62-库存期限与计价事实) |
+| ORDER-01～06 订单与库存 | AC-01、08、11、21 | [订单](../../openspec/specs/order-placement/spec.md)、[库存预留](../../openspec/specs/inventory-reservation/spec.md) | [业务状态](../engineering/CHECKOUT_CORE.md#order-state)、[后端边界](../engineering/BACKEND_DESIGN.md#backend-guarantees) |
+| HAND-01～05、SEC-01～03 接续与授权 | AC-02、09、16、17、19、20 | [购买授权](../../openspec/specs/agent-purchase-authorization/spec.md)、[交接](../../openspec/specs/cart-handoff/spec.md) | [用户旅程](../engineering/FRONTEND_DESIGN.md#shopping-journeys)、[安全边界](../engineering/BACKEND_DESIGN.md#65-运行数据初始化与安全边界) |
 
-此表连接需求与设计，不代表测试已通过；验证入口见技术方案§7，执行结果见交付状态。NFR与METRIC继续约束对应功能，不因表中按功能分组而成为可选项。
+此表连接需求与设计，不代表测试已通过；验证入口见[总体技术设计](../engineering/TECHNICAL_DESIGN.md#7-取舍验证与演进条件)，执行结果见交付状态。NFR与METRIC继续约束对应功能，不因表中按功能分组而成为可选项。
 
 ### 12.3 批准范围与历史
 

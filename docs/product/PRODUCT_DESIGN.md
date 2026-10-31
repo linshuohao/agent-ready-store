@@ -8,7 +8,7 @@
 
 ## 1. 设计目标与资产入口
 
-Agent接入分为 MCP 与 WebMCP。MCP Apps 是 MCP 的交互式 UI 增强，复用现有 MCP Server、连接和业务用例，不构成额外入口或路径。支持 Apps 的 Host 展示内嵌 UI；不兼容时降级为 MCP 文本与结构化结果。降级保留可用工具能力；购买仍遵循适用契约与Human确认要求，不能把文本返回视为完整购买验收通过。当前订单生命周期目标由网页订单入口承接无 Apps 时的Human支付，实际可用性须验证。验收覆盖 MCP 的 UI 增强与无 Apps 兼容模式，以及 WebMCP 页面工具。 业务承接见 [Requirements §3.3](REQUIREMENTS.md#33-当前需求agent交互形态的生单与human支付)。
+Agent接入分为 MCP 与 WebMCP。MCP Apps 是 MCP 的交互式 UI 增强，复用现有 MCP Server、连接和业务用例，不构成额外入口或路径。支持 Apps 的 Host 展示内嵌 UI；不兼容时降级为 MCP 文本与结构化结果。降级保留可用工具能力；购买仍遵循适用契约与Human确认要求，不能把文本返回视为完整购买验收通过。当前订单生命周期目标由网页订单入口承接无 Apps 时的Human支付，实际可用性须验证。验收覆盖 MCP 的 UI 增强与无 Apps 兼容模式，以及 WebMCP 页面工具。 业务承接见 [Requirements §3.3](REQUIREMENTS.md#33-agent交互形态的生单与human支付)。
 
 让用户看清“仍在选购”“已有待支付订单”“已支付或关闭”，等待付款不阻塞继续购物，未知结果可以定位原单。沿用黑白极简、zh-TW系统文案、原商品文本保真和功能优先，不引入新视觉系统。
 
@@ -16,7 +16,7 @@ Agent接入分为 MCP 与 WebMCP。MCP Apps 是 MCP 的交互式 UI 增强，复
 
 ## 2. 信息架构与页面职责
 
-Web与Apps共用页面、流程、控件与视觉；依2026-10-31 Human进一步明确的展示约束，Apps只为搜索结果与最终结算生成卡片、内嵌主要区块上下排列且不显示搜索表单，商品结果卡片可按宽度并排，支付状态在同一卡片更新；不另设计Apps专用购物页面、摘要布局或控件。此限定已由Human明确确认并授权实施，详细架构统一见[Technical Design §5.2](../engineering/TECHNICAL_DESIGN.md#shared-commerce-application)。产品基线其余Draft状态及最终验收边界不因此改变。
+Web与Apps共用页面、流程、控件与视觉；依2026-10-31 Human进一步明确的展示约束，Apps只为搜索结果与最终结算生成卡片、内嵌主要区块上下排列且不显示搜索表单，商品结果卡片可按宽度并排，支付状态在同一卡片更新；不另设计Apps专用购物页面、摘要布局或控件。此限定已由Human明确确认并授权实施，详细架构统一见[前端详细设计](../engineering/FRONTEND_DESIGN.md#shared-commerce-application)。产品基线其余Draft状态及最终验收边界不因此改变。
 
 | 页面/载体 | 内容与入口 |
 | --- | --- |

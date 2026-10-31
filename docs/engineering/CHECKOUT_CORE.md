@@ -1,28 +1,168 @@
-# 结算交易核心（实施分支）
+# 交易核心详细设计
 
-本文件说明本轮已实现的共享用例及隔离验证方式。权威契约仍为 [checkout-lifecycle-redesign](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/design.md)，进度和运行证据见同一 Change 的 [Tasks](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/tasks.md)。这是不兼容旧购买schema的重构；交易核心、Web/MCP/WebMCP及Apps共享应用已实施，Human验收与正式Spec同步已完成，历史验证及直接证据边界见Tasks最终收尾。旧交易HTTP返回410 / CHECKOUT_FLOW_REPLACED；当前MCP工具及UI-only能力以[MCP_CONNECT](MCP_CONNECT.md)为准，不沿用旧工具清单或将实现完成当最终交付接受。
+**范围与状态：** 2026-10-31 从原 Technical Design 按职责迁移；沿用[总体设计的状态、依据与批准范围](TECHNICAL_DESIGN.md)，不因拆分新增业务批准或声称全局基线整体 Approved。当前行为以正式 Spec 为准，变更理由见工程决策；本文维护当前设计，不维护实施任务或逐轮验证记录。
 
-## 普通 Web HTTP 与 Next 代理
+<a id="domain-model"></a>
+<a id="2-领域与数据模型"></a>
+## 领域与数据模型
 
-新接口统一使用 `/api/v1/shopping`，复用 `{ok,data|error,requestId}` envelope，成功与错误响应均 `Cache-Control: no-store`。成功包含同键恢复均返回200；已知业务错误保留400/404/409等状态，依赖失败返回503且不泄露内部异常。不签发或读取车Cookie、Review、旧Token；旧 `/api/v1/carts`、handoff、购买及order-link路径保持410，不能作为新接口别名。
+```mermaid
+flowchart TB
+    P[商品目录与当前定价] -. 生单时取值 .-> O
+    C[Cart：可变选购集合] -->|选中整行转出| O[Order：固定交易]
+    C -->|未选商品保留| R[继续选购与改量]
+    O -->|包含固定明细| L[OrderLine：商品与数量]
+    O -->|预留15分钟| I[Inventory：库存承诺]
+```
 
-| HTTP（相对新前缀） | 输入 / 用例 |
-| --- | --- |
-| `POST /carts` | getOrCreate输入；新建或按cartId恢复 |
-| `GET /carts/:cartId` | get；不会隐式创建 |
-| `POST /carts/:cartId/operations` | operate输入，必须携原operationRequestId |
-| `POST /carts/:cartId/quote` | quoteSelection输入，无预留 |
-| `POST /carts/:cartId/orders` | createOrder输入，返回原单和剩余车 |
-| `GET /carts/:cartId/orders` | 可选查询offset、limit、pendingOnly=true/false；严格解析、拒绝重复/未知参数，默认/上界见共享用例 |
-| `GET /orders/:orderId` | 可选查询cartId；携带时校验关联 |
-| `POST /orders/:orderId/pay` | UI专用模拟支付；JSON `{}` 或 `{cartId}` |
-| `POST /orders/:orderId/cancel` | 关闭原单；JSON `{}` 或 `{cartId}` |
+图表达业务关系，不表示数据库表/外键：商品目录在生单时提供当前价格与摘要，随后固定到Order/OrderLine；目录引用不要求Product落关系表；Cart条目继续使用现有JSON，Order与OrderLine承载固定快照。一辆Cart可产生多笔独立Order；库存是跨订单共享资源，继续购物不会改变旧订单。
 
-本组创建、报价与生单固定由适配器派生 `WEB`，不从body/车来源推导AI资格。所有POST要求JSON且Origin等于配置的WEB_ORIGIN；未知字段、旧x-cart-token和非预期查询参数拒绝。UI专用仅为产品交互边界，不证明自然人身份，不新增Agent支付工具。
 
-Next继续复用既有 `/api/v1/:path*` rewrite到服务端API_INTERNAL_URL，保留请求方法、JSON及Origin，无需新增代理业务代码。隔离验证Next端口3004 → API端口3003 → store_test；两端测试写请求的Origin均为API配置的 `http://localhost:3004`。`lifecycle-http.test.ts` 需要TEST_DATABASE_URL仅指向store_test、CHECKOUT_CORE_API_URL为本机3003或3004，且该API确实连接store_test。套件会重置测试库交易与库存，必须与其他破坏性DB套件串行运行；实际业务库不得作为代理目标。
+| 模型 | 负责的事实 | 不负责的事实 |
+| --- | --- | --- |
+| Cart | 持久购物上下文、可编辑商品与数量、version、来源归因；一车多单 | 用户身份、结算锁、订单付款状态；不另建Session |
+| Order | 全局唯一ID、来源cartId、固定金额和优惠资格、支付/关闭事实、预留截止、创建幂等 | 继续跟随购物车或目录价格变化 |
+| OrderLine | 生单时完整数量、商品摘要、单价和行金额的唯一权威 | 从当前商品目录重建历史交易内容 |
+| Inventory | 实际未售量quantity、预留量reservedQuantity；可售量为二者之差 | 客户端倒计时、页面是否仍打开 |
+| Product/定价规则 | 生单前的商品事实与当前计价依据 | 覆盖已生成订单快照 |
 
-## 共享用例与输入
+Order.cartId是必填、非唯一的来源关联；OrderLine按orderId与productId唯一，保存从车转入的完整数量。OrderLine加订单支付/关闭事实构成最小预留归属账本，不另建Checkout或独立预留生命周期。
+
+Order与OrderLine共同组成不可变交易快照，不另存重复商品JSON或purchaseHash。Cart的JSON条目仍复用现有结构，首版不为减少偶发版本冲突新增逐行修订体系。读模型CartView/OrderView是权威数据投影，不是新的领域实体。
+
+必须保持：选择整行且数量一致；生单、移出车行与预留全有或全无；同键不重复生单；有效待支付默认每车最多10笔；同一预留只能消费或释放一次。这些约束如何通过数据库保证，见[用例与一致性边界](#61-用例与一致性边界)；本节只定义业务边界。
+
+车和订单长期落库，ID用于demo接续，无业务TTL；库存预留才有固定15分钟期限。Demo不设计身份、凭证或服务端访问隔离，分享仅约束页面展示，不把这一简化描述成生产级授权方案。
+
+
+<a id="22-标识版本请求与来源"></a>
+### 标识、版本、请求与来源
+
+| 材料 | 唯一职责 | 不代表什么 |
+| --- | --- | --- |
+| productId | 区分商品，包括同名商品 | 不携带价格或库存承诺 |
+| cartId / currentCartId | 来源车关联 / 当前入口的购物指针 | 不证明身份，不因订单状态自动换车 |
+| Cart.version | 服务端车快照版本，保护JSON条目写入 | 不是订单支付版本，客户端不可自增后重放 |
+| orderId | 从创建到支付/关闭持续定位同一订单 | 订单存在不等于已支付 |
+| 创建/车操作请求键及载荷校验 | 原意图重试去重、拒绝同键异内容 | 不证明用户授权，不允许续期或复活 |
+| createdByChannel / aiEligible | 固定本单生单通道与AI优惠资格 | 不从车来源继承，不因读单或支付者变化而升级 |
+| Cart创建归因 | 按车记录最初有效创建事实 | Agent接手或生单不补算一次建车 |
+
+数据库保存业务事实和必要幂等记录；查询投影与页面草稿不另建实体。Cart没有“存在订单即完成”的标志，Order没有支付后换号的第二生命周期。商品管理、账户、物流、真实金流和退款不属于当前模型。
+
+
+<a id="order-state"></a>
+<a id="4-状态与异常体验"></a>
+## 状态与异常体验
+
+```mermaid
+stateDiagram-v2
+    direction LR
+    state "待支付" as Pending
+    state "已支付" as Paid
+    state "已关闭（取消 / 到期）" as Closed
+    [*] --> Pending: 生单提交
+    Pending --> Paid: 支付提交
+    Pending --> Closed: 关闭提交并释放预留
+```
+
+图表达已提交业务事实的转移，不是数据库枚举；待支付节点包含“已到截止但关闭尚未提交”的中间观察窗口，此时不可新发起支付。请求“提交中/结果未知”也不是新的订单状态。
+
+| 业务事实 | 存储映射 | 页面动作 |
+| --- | --- | --- |
+| 待支付且未到期 | status=CHECKOUT，closedAt为空 | 支付、取消、继续购物 |
+| 已支付 | status=PAID，paidAt有值 | 显示结果，可继续购物 |
+| 已提交关闭 | status=CHECKOUT，closedAt有值，closeReason记录原因 | 显示原因，返回选购 |
+| 截止已到但关闭尚未提交 | status=CHECKOUT，closedAt为空，服务端判定到期 | 禁用新支付、查询结果；不能覆盖已在途支付的成功结果 |
+
+
+数据库主状态只有CHECKOUT、PAID。服务端统一派生effectiveStatus、canPay/allowedActions，UI不各自实现状态机。本轮关闭原因限定为CANCELLED、EXPIRED；PAID必须有paidAt且无closedAt，已提交关闭不可复活。Human于2026-10-31明确本轮不新增停售/禁售功能；SALE_BLOCKED仅为未来条件性规则，不增加状态或更新入口。
+
+| 维度 | 状态来源 | 处理原则 |
+| --- | --- | --- |
+| 订单业务状态 | 数据库支付/关闭事实 | 已提交终态不可逆，支付后不是新建第二个订单 |
+| 期限有效性 | 服务器当前时间与reservationExpiresAt | 截止后拒绝新支付；读取与重试不续期 |
+| 页面请求状态 | 当前目标的提交中、成功、失败、结果未知 | 不写回订单业务状态；未知不等于失败，不锁全局购物 |
+| 当前导航 | currentCartId、当前orderId、普通/分享视图 | 查看订单不隐式切车，分享不更改currentCartId |
+
+本地倒计时到点只能禁用新的支付并查询事实，不能认定关闭事务已完成。截止前已完成服务端准入的支付允许短事务提交；迟到的PAID结果不能被本地“超时”覆盖。取消与后台到期先保留既有终态，再按取锁后数据库时间裁决关闭原因，详见[归档设计 §5～6](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/design.md)。
+
+订单创建后商品/数量固定；改量须取消后重新选购。取消或到期释放整单预留，但不自动回车、不修改后来加购的行或兄弟订单。关闭页面、结束Agent对话、Abort网络请求都不代表取消；已支付单不能取消或退款。此前普通停售/禁止销售设想保留为未来条件性设计；当前只有可购买原因，不能将售罄、零价或缺库存推定为禁售。
+
+异常按目标恢复：创建失败不移行、不占库；支付事务回滚保留此前已创建的订单、快照及原预留，仍受原截止约束。网络未知不能当成失败或已释放库存。创建未知按原车与创建请求键恢复，支付/取消未知按原orderId查事实，重试不换键、不续期。到期后原单只可查看；用户明确重新购买才重新选购、使用新请求键和当前价格创建新单，不复制旧锁价。
+
+
+<a id="61-用例与一致性边界"></a>
+## 用例与一致性边界
+
+| 用例 | 同一短事务内的保障 | 恢复边界 |
+| --- | --- | --- |
+| 加购、改量、删除 | add累加或新增，set对已有行绝对设量；两者校验目标可购买性和正整数可售量。remove可删除问题行；set/remove不存在行报错、0不当删除。车变更、version递增与操作幂等记录一起提交 | 原键同载荷返回原结果；同键异载荷拒绝；去重先于旧版本校验 |
+| 创建订单 | 恢复原请求后，对新请求校验来源车版本、完整选中集合、预算/规格、配额及可售量；固定金额、写Order/OrderLine、增加reserved、删除选中车行和递增version一起提交 | 原键恢复同orderId及当前状态，即使车行已移出、价格已变、原单已关闭；不同键竞争同车旧版本不能都成功 |
+| 支付 | 锁原Order及其库存，校验未关闭、锁后数据库截止、有效预留和原快照；quantity与reserved同时减本单数量，更新同单为PAID | 不重算价格、不插入第二笔订单、不比较当前车版本；重复支付返回原事实 |
+| 取消/到期 | 锁订单及库存，释放reserved并写关闭事实 | 已支付/已关闭先返回已有事实；未关闭单锁后达到截止则记EXPIRED，未到期才按请求原因关闭；不重复释放、不改写原因 |
+
+创建协调来源车与所选库存；支付/关闭只协调目标订单与库存，不锁来源车。库存按统一商品顺序取锁，关闭与支付共享协调边界；未来如引入可信禁止销售事实，须另行规划其更新与支付的协调。没有覆盖15分钟审阅期的数据库锁。具体锁序、参数和并发反例见[归档设计](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/design.md)；当前行为仍以[正式 Spec](../../openspec/specs/)为准。
+
+单车配额只计CHECKOUT、未关闭且未到期的订单，env默认10笔。新单在Cart短事务内完成计数与准入，避免并发超额；同键恢复先于配额检查。下调配置不取消已有单，只暂停新增；满额显示已有订单入口，不能自动换车绕过。该额度不提供自然人级防囤占。
+
+
+<a id="62-库存期限与计价事实"></a>
+## 库存、期限与计价事实
+
+正常库存保持`0 <= reservedQuantity <= quantity`，reserved对应尚未消费或物化释放的订单预留。预留增加reserved、不减少quantity；支付同时减少二者；关闭只减少reserved。例如实际10件，预留3件和2件后可售5件；第一单支付后实际7、预留2、可售仍5；第二单取消后可售7。持有有效预留的订单不因公开可售为0而被拒付。异常库存不得新增预留。
+
+创建在完成锁等待和校验后记录服务端创建时刻，截止固定为其后15分钟；锁后数据库时间达到截止即拒绝新支付。后台释放尚未提交时，占用仍计入reserved，可能短暂少卖但不能超卖；公开查询不能自行扣除超时占用形成另一口径。到期单不占待支付笔数配额，与库存实际释放是两回事。默认每秒扫描、正常负载5秒内释放是待验证目标；故障后补扫，不能承诺故障期间时延。
+
+计价仅使用本单所选商品，未选商品不贡献优惠门槛。沿用[D-09～D-13金额规则](../../DECISIONS.md#统一价格计算语义d-09d-13)：优惠前商品小计满NT$1,000减100一次；再对有AI资格的商品金额打95折，精确十进制计算并在订单级HALF_UP至两位；运费按优惠前小计满NT$990免运，否则100，最后加到商品应付金额。车报价是无占用预估，生单固定单价、优惠、运费、币种、总额与计价规则版本；支付不按后续涨跌价或活动调整重算，客户端不能覆盖金额。
+
+AI资格由服务端生单入口确定，不接受客户端自报资格，也不从Cart来源继承；这不证明具体用户身份或严格防伪AI来源。Cart创建归因仍单独保留。指标区分建车、订单创建、未支付、关闭与PAID，只有PAID计购买成功或收入；读单和人工支付不会改写生单来源。
+
+## 交易约束与实现索引
+
+本节连接当前不变量与实现，不新增交易规则。模型与关系唯一维护于[Prisma Schema](../../apps/api/prisma/schema.prisma)；数据库CHECK、外键及索引须同时核对[生命周期迁移](../../apps/api/prisma/migrations/202610310001_checkout_lifecycle/migration.sql)，不能只读Schema便推定SQL约束齐全。现行流程见[CartService](../../apps/api/src/cart/cart.service.ts)，历史推导留归档。
+
+| 操作/约束 | 当前事务、锁序及数据库保障 | 验证入口 |
+| --- | --- | --- |
+| 初始化车 | 初始化请求键事务级advisory lock → 同键指纹恢复/校验 → 写Cart；createRequestId全局唯一，初始条目及归因同事务保存 | [生命周期DB测试](../../apps/api/test/cart/lifecycle-db.test.ts)的跨实例初始化与恢复 |
+| 修改车 | 车操作键advisory lock → Cart行锁 → 查原操作指纹 → 校验版本/目标 → 写车与CartOperation；复合主键(cartId,requestId)去重，不预留库存 | 同文件的旧版本竞争、请求冲突及操作/幂等记录回滚 |
+| 创建订单 | 生单键advisory lock → Cart行锁 → 同键恢复 → 配额/版本检查 → 按productId排序的Inventory行锁 → 校验并写新Order/OrderLine、增加reserved、移出车行；新单尚不可被其他事务访问，无需先锁新Order | 同文件的同车竞争、末件库存、配额并发、创建回滚；Order的(cartId,createRequestId)唯一约束 |
+| 支付/取消/到期 | 原Order行锁 → 已提交终态直接返回 → 排序Inventory行锁 → 锁后数据库clock_timestamp裁决 → 同事务更新库存与原单；不锁来源Cart。支付过期时不付款，按EXPIRED关闭释放 | 同文件的支付/关闭竞争、取锁跨截止、终态及回滚场景 |
+| 预留与状态一致 | Inventory_reservation_check约束非负预留及正常库存上界，历史负库存只允许零预留；Order_lifecycle_check约束支付时间与关闭字段一致。预留归属总量仍依赖事务与账实核对，不由单行CHECK独立保证 | [库存测试](../../apps/api/test/inventory/inventory.test.ts)、生命周期DB测试与运行段只读metrics |
+| 金额、来源与明细 | Order_amount_check校验金额汇总，Order_channel_check约束优惠资格与通道；OrderLine复合主键、正数量/单价及行小计CHECK，外键RESTRICT。固定快照由用例维护，不能把这些CHECK描述成禁止任意SQL修改快照 | [计价测试](../../apps/api/test/cart/pricing.test.ts)、生命周期DB测试的固定快照/约束反例 |
+
+CartService使用短交互事务，当前代码设置10秒事务timeout；这属于实现配置，不是请求延迟或吞吐承诺。取锁后读取数据库时刻，不能以客户端倒计时、事务起始时间或测试成功推定截止竞争正确。实际执行与尚待量化目标统一见[质量验收链路](TECHNICAL_DESIGN.md#质量目标与验收链路)。
+
+### 支付与到期关闭竞争
+
+```mermaid
+sequenceDiagram
+    participant Pay as 支付请求
+    participant DB as 数据库事务
+    participant Exp as 到期关闭请求
+    Note over Pay,Exp: 同一Order；库存按productId排序取锁
+    alt 支付先锁定，锁后未到期
+        Pay->>DB: 锁订单及库存，读取数据库时间
+        Exp->>DB: 请求同一Order锁，等待
+        Pay->>DB: 消费预留、写PAID并提交
+        DB-->>Exp: 取得Order锁，重读已提交PAID
+        Exp->>DB: 保留终态，不再次释放
+    else 关闭先锁定，锁后已到期
+        Exp->>DB: 锁订单及库存，读取数据库时间
+        Pay->>DB: 请求同一Order锁，等待
+        Exp->>DB: 释放预留、写EXPIRED并提交
+        DB-->>Pay: 取得Order锁，重读已关闭事实
+        Pay->>DB: 返回原状态，不扣款或消费库存
+    else 支付先锁定，锁后已到期
+        Pay->>DB: 锁Order与库存后判定过期
+        Pay->>DB: 按EXPIRED关闭释放，不支付
+        DB-->>Exp: 后续读取已关闭事实，不重复释放
+    end
+```
+
+图描述成功提交时的三种互斥结果；已取得Order锁仍须等待库存锁，不能在等待前判定支付准入。截止前完成锁后准入的支付可在截止后提交；事务失败则回滚更新，后续请求按重新取得锁后的事实裁决，不把“发出支付”当成已支付。相同协调路径也用于取消，具体裁决和验证入口见上表。
+
+## 用例输入映射
 
 `CartService` 是共享交易边界，输入均拒绝未知字段。通道是适配器参数 `WEB | MCP | WEBMCP | APPS`，不得从 JSON body 的 origin/aiEligible/price 派生。普通网页生单使用 WEB；MCP 服务工具使用 MCP；WebMCP 专用同源路径使用 WEBMCP；Apps Bridge/工具专用路径使用 APPS。这个通道约定不是自然人或 AI 身份证明。只有 WEB 不享本单 AI 折扣，车的 agentCreated 不参与优惠。
 
@@ -39,68 +179,13 @@ Next继续复用既有 `/api/v1/:path*` rewrite到服务端API_INTERNAL_URL，�
 
 `constraints` 必须含 `currency:'TWD'`，可含十进制两位金额 `maxTotal`；`items` 可逐项约束 `{productId,maxUnitPrice?,specs?}`，规格使用目录键和精确值。约束 ID 必须属于选中集合，重复/缺失/数量不符/预算或规格不符整笔拒绝。金额上限和规格不由最终支付兜底。
 
-初始化键持久且全局去重，车操作键和订单创建键分别按 cartId 去重。恢复先检查请求指纹，返回原车当前内容/原单当前事实；不重放历史行、不续期。请求键、目标和未知标记应由调用方在发请求前保存。错误区分校验、版本冲突、请求键异载荷、目标缺失、预算/规格不符、配额和技术故障，不能静默换车重试。
 
-OrderView 保存唯一明细/金额快照，状态为 CHECKOUT / PAID，关闭原因是 CANCELLED / EXPIRED。effectiveStatus 的派生到期且 closedAt 为空并不是已提交终态。navigation 同时包含 `/orders/{orderId}` 与 `?view=share`；后续分享 UI 限制导航及取消入口，不是数据权限隔离。
+## 数据库运行与隔离验证
 
-## 数据库与运行
-
-新迁移仅能在旧 Cart/Order/PurchaseReview 均为空时应用，否则明确中止；不会自动清空旧交易或重置库存。真实环境停写、清理、SKU 核对及切换仍按 Tasks 8 单独授权。新数据产生后不可再次清理或回退到旧写服务。迁移保留 P008 负库存原值：负库存必须零预留，不可用于新订单。
+新迁移仅能在旧 Cart/Order/PurchaseReview 均为空时应用，否则明确中止；不会自动清空旧交易或重置库存。原切换的授权与执行证据见[归档 Tasks 8](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/tasks.md)；该记录不授予再次清理权限。新数据产生后不可再次清理或回退到旧写服务。迁移保留 P008 负库存原值：负库存必须零预留，不可用于新订单。
 
 `MAX_PENDING_ORDERS_PER_CART=10` 必须为正安全整数；下调不取消旧单，同键恢复不受额度限制。到期不占笔数配额，但尚未物化释放仍占库存。API 启动即补扫，每次扫描结束一秒后再扫，单批最多100笔，每单独立短事务；多实例按数据库行锁协调。单笔失败会记录日志并在后续扫描轮转后重试；非持久游标避免异常订单饿死后续批次，重启从头补扫，故障期间无5秒保证。
 
 只读运维入口：`pnpm --filter @store/api metrics:checkout`。在同一只读可重复读事务中返回 Agent 建车、创建订单、有效待支付、物化关闭、PAID/收入、过期未关闭积压和最老超时，以及预留账实差异；不自动修复。`metrics:agent-carts` 保留独立创建事实口径，后续删空或普通车 AI 生单不修改归因。
 
 隔离验证仅用 `TEST_DATABASE_URL` 指向 `/store_test`，串行运行 `pnpm test apps/api/test/cart/lifecycle-db.test.ts apps/api/test/inventory/inventory.test.ts --no-file-parallelism`。测试会删除该库交易和库存，禁止指向业务库。HTTP 退役验证另需指向测试库的 API，`CHECKOUT_CORE_API_URL=http://127.0.0.1:3003`，与该 API 匹配的 WEB_ORIGIN/MCP_SERVICE_TOKEN。跳过环境依赖测试不算通过。
-
-
-## 普通 Web 购物车（Task 5.2）
-
-`features/cart/lifecycle-commands.ts`提供无React请求/原键恢复，Provider仅维护跨页面车指针、车副本及车操作；`use-cart-page.ts`管理页面草稿、选择、请求代次与选中预估，`cart-orders.tsx`提供有界分页历史。沿用已有React/Context、共享展示组件与Next代理，无新状态库/依赖。
-
-- localStorage的`store.currentCartId`定位持久车；`store.cart.initialize`和`store.cart.pending.{cartId}`在初始化/逐项写请求前保存原键、载荷和目标。未知保留，显式恢复沿原键；存储失败不发新写入，旧版本冲突不自动换版本重送。旧cartToken/Cookie及旧sessionStorage指针不导入新流程。
-- 首次加购才建车，纯浏览/空车页零创建；原车存在订单后仍可继续加购。URL显示另一辆车不会覆盖已有当前指针，编辑受当前目标核对；完整本人跨入口确认接续仍属5.5。
-- 车页首次全不选，提供全选和逐行选择；保存/移除按单行提交，Enter或失焦保存数量，非法草稿可恢复已保存量。连续单版本快照保留仍存在且数量相同的选择；跨越多个版本可能隐藏移出/重加，因此保守要求重新选择。显式重载也清空选择，新行不自动勾选。
-- 前台刷新保护未保存草稿；在途返回先记录待校准，写入完成后再查询。车结果核对ID/version，报价核对完整选择与版本，不用迟到响应覆盖新状态。未知逐项操作用全局可见的原请求恢复入口，不由GET猜测写入是否执行。
-- 生单使用5.1接口并提供原订单链接，空车仍显示待支付及所有历史订单。原创建请求在`store.order.create.{cartId}`发送前保存，未知恢复不会把另一份草稿清掉；统一订单页已在5.3接入；完整终态乱序协调及跨入口接续仍属5.4～5.5，不等于全部入口交付。
-- 旧WebMCP的准备/编辑调用在Provider明确拒绝，专用新通道与PageTools迁移仍属6.3；旧Commands仅供尚未迁移的旧入口，不参与普通Web新车操作。
-
-浏览器集成：`CHECKOUT_INTEGRATION=1 WEB_BASE_URL=http://127.0.0.1:3004 pnpm exec playwright test e2e/cart-lifecycle.spec.ts --workers=1`，测试Web必须代理store_test API3003且API的WEB_ORIGIN同为`http://127.0.0.1:3004`。这是自动化Chrome桌面/移动视口，不是真实Host/Human验收；测试以代理HTTP准备车、注入响应丢失/延迟，再通过真实核心验证结果。测试前可按已有测试重置方式只初始化store_test，严禁业务库。
-
-
-## 普通 Web 订单页（Task 5.3）
-
-`/orders/{orderId}`统一读取订单并展示固定商品/规格/数量/单价、金额分项、生单通道、AI资格、截止和当前状态。支付仅由UI按钮直接调用原orderId，不生成第二笔订单；取消只关闭原单且不自动回车。同车提供继续购物与分页订单导航，已支付可刷新重读。`SiteHeader`不再从订单URL推断cartId。
-
-- 无React的`order-commands.ts`复用既有shoppingRequest；`use-order-page.ts`负责本页查询和动作状态，展示继续复用commerce-ui的金额组件，无新增依赖或金额算法。
-- 请求前将orderId和pay/cancel保存在`store.order.pending.{orderId}`；未知只查原单，显式重试限原动作，存储不可用不发送。已确认快照不因后续404消失；本地到期只禁用新支付并查询，不当作已提交关闭。跨页迟到结果由共享OrderCommands保存，原目标终态协调及竞态验证证据见Tasks 5.4与§10，不因页面卸载丢失原操作结果。
-- 同车多单导航已实现；其他车/无当前车不自动改指针。`?view=share`先隐藏来源车、其他单及取消，页头也不显示车导航；完整本人接续确认、分享集成及最终体验仍属5.5，尚未验收。
-- 旧`/checkout/{cartId}`及`/order-details/{orderId}`只显示退出提示，不兑换fragment、不加载旧购买控制器。`/orders`动态参数仅作orderId查询，不按cartId映射；不存在时提供新流程提示及重查。旧控制器文件仍供后续迁移清理核对，不再由这些路由挂载。
-
-浏览器回归：`CHECKOUT_INTEGRATION=1 WEB_BASE_URL=http://127.0.0.1:3004 pnpm exec playwright test e2e/order-lifecycle.spec.ts e2e/cart-lifecycle.spec.ts --workers=1`；环境同上，仅store_test。订单用例包含真实HTTP生单、UI支付/取消、同ID固定摘要、继续购物/多单、旧路由无写入、丢响应刷新、技术故障/存储失败、本地到期，以及取消未知/已支付后404两项回归。浏览器故障注入不替代共享核心已执行的真实PostgreSQL事务与竞态验证，也不代表真实Human点击验收。
-
-
-## 订单恢复与上下文接续（Tasks 5.4～5.5）
-
-`OrderMemory`的浏览器Provider持有按orderId隔离的`OrderCommands`查询副本与订阅，SSR无模块级交易状态。页面卸载只停止观察，不丢弃已发动作结果；晚到支付仍写入原单，不抢新页面。读取序号拒绝旧查询，已提交终态不回退，矛盾终态保留已知结果、停用动作并至多自动重查一次；派生/本地到期不是提交终态。刷新从原单与`store.order.pending.{orderId}`恢复，未知只查、重试限原操作。
-
-创建请求由CartProvider协调同车在途状态；完成后通知当前车页重读恢复材料，`store.order.created.{cartId}`保留原单入口，包含离开后提前返回的顺序。通知不把旧Cart快照装进新草稿、不覆盖当前车、不导航。输入/创建请求键仍在写前保存。
-
-本人订单无当前车时接续原车；同车继续购物；跨车先看单，点击接续再明确确认，确认时核对原指针和在途/草稿，保留另一车数据。单订单分享由显式链接打开，支付仍需点击；分享无车/兄弟单/取消入口、不自动采用原车，并隐藏全局车提示，刷新亦不改变指针。这是Demo展示约定，不是权限隔离。
-
-
-## MCP / WebMCP 新订单入口（Tasks 6.1～6.3）
-
-基础MCP的13项工具及Host接入见[MCP_CONNECT](MCP_CONNECT.md)。加购只改持久车，明确完整购买目标才调用create_order；服务端校验整行数量、版本、预算及规格，未知沿原请求键恢复。Agent目录没有支付工具，返回原orderId的网页入口，由Human在网页点击支付。协议测试不能证明模型不会遗漏自然语言目标，也不能代替Host/Human验收。
-
-WebMCP在商品、目录、车及非分享订单页注册当前工具；初始化/生单通过专用WEBMCP入口，其余共享无React Commands。原请求保存入口通道，刷新重试仍用同键/同通道；同车在途、未保存草稿及版本冲突不会被工具绕过。加购默认展示车，购买的内部准备或明确留页用stayOnPage；生单成功默认直接导航原订单。仅打开页面和查询不写入、不导航。
-
-pathname、目录查询条件和实体变化撤销旧句柄；迟到写入保存原结果，不抢回导航。目录搜索结果在layout阶段先交付，再注销旧工具，避免搜索本身返回失效错误。普通Web按钮生单始终使用WEB来源，即便该车由WebMCP建立，也不继承AI资格。无WebMCP浏览器保留普通Web操作，分享页不注册购物工具。
-
-`e2e/webmcp.spec.ts`使用document.modelContext注册替身、真实隔离API和Chrome；覆盖零写、留页/导航、草稿、未知逐项写/生单刷新恢复、旧句柄、跨路由及同目录查询迟到响应、同单UI支付和来源隔离。旧purchase-webmcp的Review/材料测试已移除，由新生命周期场景替代；不是实际WebMCP Host或Human验收。
-
-## 前端共享应用接入
-
-Web和Apps消费同一commerce-ui页面、Hooks/Commands、控件与完整CSS入口，Web原feature路径为薄导出；源码职责和运行环境接口统一见[Technical Design §5.2](TECHNICAL_DESIGN.md#shared-commerce-application)。本文HTTP/工具契约仍由协议适配进入同一后端用例，不能在两端另写购物流程或前端计价。
-
-Bridge将标准请求映射到APPS专用初始化/生单及UI专用支付工具，保留目标ID、版本和原请求键。暂不可用/未知结果不得映射为可清除未决材料的已知拒绝；卡片重挂载先恢复原位置与材料再读取。共享层承担草稿/跨车结果保护、同页重试和原订单终态协调。实际新增验证见Tasks §10，不将旧DB/Host证据算作本轮新验证。

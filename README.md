@@ -137,7 +137,8 @@ pnpm start:docker
 
 - [产品需求](docs/product/REQUIREMENTS.md)与[产品设计](docs/product/PRODUCT_DESIGN.md)：功能、用户流程和交互约定。
 - [产品决策](DECISIONS.md)：需求理解、业务取舍与 PM 沟通。
-- [技术方案](docs/engineering/TECHNICAL_DESIGN.md)与[工程决策](docs/engineering/ENGINEERING_DECISIONS.md)：领域模型、状态流转和架构选择。
+- [总体技术设计](docs/engineering/TECHNICAL_DESIGN.md)：系统全景、全局约束及详细设计入口；[工程决策](docs/engineering/ENGINEERING_DECISIONS.md)记录选型与取舍。
+- [前端详细设计](docs/engineering/FRONTEND_DESIGN.md)与[后端详细设计](docs/engineering/BACKEND_DESIGN.md)：交互与跨端复用、服务契约与运行边界。
 - [交易核心](docs/engineering/CHECKOUT_CORE.md)：订单、库存与失败恢复。
 - [协作入口](AGENTS.md)与[AI_NOTES](AI_NOTES.md)：开发约定与 AI 协作经验。
 - [交付状态](docs/engineering/DELIVERY_STATUS.md)：实现范围、验证记录和已知限制。
