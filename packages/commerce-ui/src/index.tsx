@@ -13,7 +13,7 @@ export function MoneyBreakdown({
 }) {
   const headingId = useId();
   return (
-    <section className="cart-totals" aria-labelledby={headingId}>
+    <section className="cart-totals commerce-card" aria-labelledby={headingId}>
       <h2 id={headingId}>
         {mode === 'completed'
           ? '成交金額'
@@ -99,7 +99,7 @@ export function PurchaseSummary({
           quote={summary.quote}
           mode={completed ? 'completed' : 'confirmation'}
         />
-        {actions && <div className="commerce-actions">{actions}</div>}
+        {actions && <CommerceActions>{actions}</CommerceActions>}
       </aside>
     </section>
   );
@@ -162,4 +162,9 @@ export function illustration(id: string) {
           : ['P026', 'P027', 'P028', 'P029', 'P030'].includes(id)
             ? 'packet'
             : 'object';
+}
+
+/** Keeps card-to-action and action-to-action spacing consistent in every host. */
+export function CommerceActions({ children }: { children: React.ReactNode }) {
+  return <div className="commerce-actions">{children}</div>;
 }

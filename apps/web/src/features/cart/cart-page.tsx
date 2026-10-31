@@ -1,4 +1,6 @@
 'use client';
+
+import { CommerceActions } from '@store/commerce-ui';
 import Link from 'next/link';
 import { PageTools } from '@/features/webmcp/page-tools';
 import { Button } from '@/components/ui/button';
@@ -71,9 +73,11 @@ export function CartPage({ id }: { id?: string }) {
         </p>
       )}
       {(reload || (!view && !loading)) && (
-        <Button disabled={busy} onClick={() => void load(true)}>
-          {reload ? '重新載入購物車（放棄未儲存修改）' : '重新讀取'}
-        </Button>
+        <CommerceActions>
+          <Button disabled={busy} onClick={() => void load(true)}>
+            {reload ? '重新載入購物車（放棄未儲存修改）' : '重新讀取'}
+          </Button>
+        </CommerceActions>
       )}
       {view && (
         <>
@@ -219,7 +223,7 @@ export function CartPage({ id }: { id?: string }) {
                     : '請勾選要購買的整行商品。'}
                 </p>
               )}
-              <div className="commerce-actions">
+              <CommerceActions>
                 <Button
                   disabled={
                     busy ||
@@ -252,7 +256,7 @@ export function CartPage({ id }: { id?: string }) {
                     </Link>
                   </p>
                 )}
-              </div>
+              </CommerceActions>
             </aside>
           </div>
           <p>購物車與訂單會保留；取消或到期不會自動把商品放回車中。</p>

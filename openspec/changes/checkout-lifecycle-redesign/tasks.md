@@ -251,3 +251,12 @@ Human明确：“授权之后往下推进，如果没有什么需要我审批的
 - 商品库存下方空白根因为`.product-card height:100%`，已删除。实际Host仍加载同URI旧CSS，测得301px空白；统一资源URI/构建文件升为v2后，Human明确确认「已消失了」，并要求后续视觉效果由Human查看验收，AI不再重复视觉检查。
 - 验证：Apps官方SDK浏览器桌面/移动10/10通过（布局、图片、链接间距、冲突弹窗/刷新、未知支付恢复）；真实MCP只读资源/安全探测2/2通过，11资源与工具元数据URI一致；Apps typecheck/lint、API/Apps build通过。此前本增量Web导航回归24/24、控制器/共享呈现单元23项通过，Web build及lint通过；这些替身与构建证据均不冒称Human支付或真实Host异常恢复。聚焦自查，未新增独立Review声明。
 - 最终资源`get-product-v2.html` SHA256：`d3bb46319b1285b77204092f8f47ec28c6b99fbe99f5784a6d17decc57853d6f`；API/Web lint、OpenSpec strict validate及diff检查通过。此增量为已授权UI/资源版本修复，未改变交易不变量，按局部风险采用聚焦自查、不追加阶段转换Guard；依既有连续提交授权提交，无Push/Merge。
+
+
+### 共享按钮、报价卡片与间距收拢（2026-10-31）
+
+- Human反馈Apps报价和生单按钮贴合，要求各页面统一复用。根因为Apps生单按钮未使用操作区，且两Host分别定义MoneyBreakdown/按钮/间距。现有commerce-ui新增共享样式导出与CommerceActions组件，Web/Apps消费同一规则，删除两端重复报价/操作区CSS；Apps Base UI按钮包装器与Web既有Button共享样式，保留特殊尺寸/变体能力。未新建框架或引入依赖。
+- 购物车报价→生单→提示、订单主次操作、跨车确认、订单列表/评论/购物车未知恢复与错误重试统一操作区；Apps商品详情使用显式纵向间距。主要操作深色、次要操作描边；尺寸与间距约定只维护在Design及共享CSS。当前已挂载商品/车/订单页面在范围内，未接入旧流程不作为新验收入口。
+- 自动验证：Apps桌面/移动10/10通过，新增实际几何断言确认报价到生单24px、按钮到说明12px、订单按钮间12px及主次背景。Web商品/购物反馈/导航回归36通过、8条件跳过（不计通过）；真实MCP只读资源/安全探测2/2通过。API/Apps build、各受影响包typecheck/lint及Web生产build通过；构建曾发现导入移动了use-client指令，已恢复文件首部并移除重复表达式后通过。
+- 资源升级v3避免Host复用v2；本地服务按原环境更新，无支付/数据清理/迁移。视觉验收按Human明确要求由Human自行查看，不新增AI视觉检查或将自动化称为Human验收。聚焦自查，不冒称独立Review；9.1/9.3保持原未完成状态。依既有连续提交授权提交，不Push/Merge。
+- 最终补齐错误恢复分支后，Web定向6/6通过，Web lint、Prettier、OpenSpec strict validate和diff检查通过；本地已提供v3购物车卡片供Human勾选后查看报价/按钮间距。

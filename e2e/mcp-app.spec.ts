@@ -8,7 +8,7 @@ test.beforeAll(async () => {
   const require = createRequire(root + 'package.json');
   const { build } = await import(pathToFileURL(require.resolve('vite')).href);
   const appHtml = await readFile(
-    new URL('../apps/api/dist/mcp-app/get-cart-v2.html', import.meta.url),
+    new URL('../apps/api/dist/mcp-app/get-cart-v3.html', import.meta.url),
     'utf8',
   );
   const result = await build({
@@ -56,14 +56,34 @@ test('official Bridge fixture supports row selection, fixed order, direct UI pay
   ).toBeVisible();
   await f.getByLabel('選購 P001 整行').check();
   await expect(f.getByRole('region', { name: '選中預估' })).toBeVisible();
-  await f.getByRole('button', { name: '建立待支付訂單', exact: true }).click();
+  const checkout = f.getByRole('button', {
+    name: '建立待支付訂單',
+    exact: true,
+  });
+  const quoteBox = await f.locator('.cart-totals').boundingBox();
+  const actionBox = await checkout.boundingBox();
+  expect(actionBox!.y - (quoteBox!.y + quoteBox!.height)).toBe(24);
+  const noteBox = await f.locator('.commerce-action-note').boundingBox();
+  expect(noteBox!.y - (actionBox!.y + actionBox!.height)).toBe(12);
+  await checkout.click();
   await expect(
     f.getByRole('heading', { name: '待支付訂單', exact: true }),
   ).toBeVisible();
   await expect(
     f.getByText('數量 2 · 單價 NT$ 10.00 · 小計 NT$ 20.00'),
   ).toBeVisible();
-  await f.getByRole('button', { name: '確認支付', exact: true }).click();
+  const pay = f.getByRole('button', { name: '確認支付', exact: true });
+  const cancel = f.getByRole('button', { name: '取消原訂單', exact: true });
+  const payBox = await pay.boundingBox();
+  const cancelBox = await cancel.boundingBox();
+  expect(cancelBox!.y - (payBox!.y + payBox!.height)).toBe(12);
+  expect(await pay.evaluate((e) => getComputedStyle(e).backgroundColor)).toBe(
+    'rgb(25, 25, 25)',
+  );
+  expect(
+    await cancel.evaluate((e) => getComputedStyle(e).backgroundColor),
+  ).toBe('rgb(255, 255, 255)');
+  await pay.click();
   await expect(
     f.getByRole('heading', { name: '購買完成', exact: true }),
   ).toBeVisible();

@@ -1,4 +1,5 @@
 'use client';
+import { CommerceActions } from '@store/commerce-ui';
 import { Button } from '@/components/ui/button';
 import { useEffect, useState } from 'react';
 import type { ReviewPage, Result } from '@store/contracts';
@@ -58,19 +59,22 @@ export function Reviews({ productId }: { productId: string }) {
               ? '目錄已更新，請從第一頁重讀評論。'
               : '暫時無法載入評論。'}
           </p>
-          <Button
-            onClick={() => {
-              setError('');
-              setPending(true);
-              if (error === 'CATALOG_CHANGED') {
-                setOffset(0);
-                setRevision(undefined);
-              }
-              setAttempt((n) => n + 1);
-            }}
-          >
-            重新載入評論
-          </Button>
+          <CommerceActions>
+            {' '}
+            <Button
+              onClick={() => {
+                setError('');
+                setPending(true);
+                if (error === 'CATALOG_CHANGED') {
+                  setOffset(0);
+                  setRevision(undefined);
+                }
+                setAttempt((n) => n + 1);
+              }}
+            >
+              重新載入評論
+            </Button>
+          </CommerceActions>
         </div>
       ) : (
         <>

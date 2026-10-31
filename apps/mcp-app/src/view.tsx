@@ -1,6 +1,7 @@
+import { CommerceActions } from '@store/commerce-ui';
 import { useEffect, useRef } from 'react';
 import { ProductArt } from './product-art';
-import { Button } from '@base-ui/react/button';
+import { Button } from './button';
 import { Input } from '@base-ui/react/input';
 import { MoneyBreakdown, ProductPresentation } from '@store/commerce-ui';
 import type { ViewState } from './controller';
@@ -66,7 +67,7 @@ export function StoreView({
       )}
       {refreshRequired && (
         <Button
-          className="secondary"
+          variant="outline"
           onClick={() => refreshDialog.current?.showModal()}
         >
           處理資料更新
@@ -80,7 +81,7 @@ export function StoreView({
         <h2 id="refresh-title">資料需要重新確認</h2>
         <p>{s.message}</p>
         {s.dirty && <p>刷新會放棄尚未儲存的數量調整，並取得最新資料。</p>}
-        <div className="commerce-actions">
+        <CommerceActions>
           <Button
             disabled={s.busy}
             onClick={() => {
@@ -91,15 +92,15 @@ export function StoreView({
             刷新資料
           </Button>
           <Button
-            className="secondary"
+            variant="outline"
             onClick={() => refreshDialog.current?.close()}
           >
             稍後處理
           </Button>
-        </div>
+        </CommerceActions>
       </dialog>
       {s.pending && (
-        <div className="commerce-actions">
+        <CommerceActions>
           {s.pending && (
             <Button disabled={s.busy || s.dirty} onClick={a.retry}>
               明確重試原操作（
@@ -113,19 +114,19 @@ export function StoreView({
           )}
           {s.pending && (
             <Button
-              className="secondary"
+              variant="outline"
               disabled={s.busy}
               onClick={() => a.reload(s.dirty)}
             >
               查詢原操作結果
             </Button>
           )}
-        </div>
+        </CommerceActions>
       )}
       {!o && !c && (
         <section className="products" aria-label="商品結果">
           {s.products.map((p) => (
-            <div key={p.id}>
+            <div key={p.id} className="commerce-stack">
               <ProductPresentation product={p} art={<ProductArt id={p.id} />} />
               {'description' in p && (
                 <>
@@ -185,7 +186,7 @@ export function StoreView({
             quote={o.summary}
             mode={o.status === 'PAID' ? 'completed' : 'confirmation'}
           />
-          <div className="commerce-actions">
+          <CommerceActions>
             {o.allowedActions.canPay && (
               <Button
                 disabled={
@@ -197,20 +198,28 @@ export function StoreView({
               </Button>
             )}
             {o.allowedActions.canCancel && (
-              <Button disabled={blocked} onClick={a.cancel}>
+              <Button variant="outline" disabled={blocked} onClick={a.cancel}>
                 取消原訂單
               </Button>
             )}
-            <Button onClick={() => a.continueShopping()}>繼續原車購物</Button>
-            <Button onClick={a.share}>分享此訂單</Button>
-          </div>
+            <Button variant="outline" onClick={() => a.continueShopping()}>
+              繼續原車購物
+            </Button>
+            <Button variant="outline" onClick={a.share}>
+              分享此訂單
+            </Button>
+          </CommerceActions>
           {s.confirmCartId && (
-            <section aria-label="接續確認">
+            <section className="commerce-card" aria-label="接續確認">
               <p>已有不同購物車；接續此訂單原車不會合併商品。</p>
-              <Button onClick={() => a.continueShopping(true)}>
-                確認接續原車
-              </Button>
-              <Button onClick={a.dismissContinue}>保留目前購物車</Button>
+              <CommerceActions>
+                <Button onClick={() => a.continueShopping(true)}>
+                  確認接續原車
+                </Button>
+                <Button variant="outline" onClick={a.dismissContinue}>
+                  保留目前購物車
+                </Button>
+              </CommerceActions>
             </section>
           )}
         </section>
@@ -264,6 +273,7 @@ export function StoreView({
                     />
                   </label>
                   <Button
+                    variant="outline"
                     disabled={blocked || s.dirty}
                     onClick={() => a.remove(i.productId)}
                   >
@@ -287,13 +297,17 @@ export function StoreView({
           ) : (
             <p>請選擇整行商品；預估以服務端結果為準。</p>
           )}
-          <Button
-            disabled={blocked || s.dirty || !s.selected.length}
-            onClick={a.checkout}
-          >
-            建立待支付訂單
-          </Button>
-          <p>生單會固定摘要並預留 15 分鐘；只有明確支付成功才完成購買。</p>
+          <CommerceActions>
+            <Button
+              disabled={blocked || s.dirty || !s.selected.length}
+              onClick={a.checkout}
+            >
+              建立待支付訂單
+            </Button>
+            <p className="commerce-action-note">
+              生單會固定摘要並預留 15 分鐘；只有明確支付成功才完成購買。
+            </p>
+          </CommerceActions>
           <section className="order-navigation" aria-label="原車訂單">
             <h2>待支付及歷史訂單</h2>
             {c.pendingOrders.map((p) => (

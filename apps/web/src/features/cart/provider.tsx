@@ -1,4 +1,5 @@
 'use client';
+import { CommerceActions } from '@store/commerce-ui';
 import {
   createContext,
   useContext,
@@ -356,9 +357,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       {!orderPage && pending && (
         <section className="notice" aria-label="購物車恢復">
           <p>上次購物車操作結果未確認，請使用原請求恢復。</p>
-          <Button disabled={busy} onClick={() => void retry()}>
-            重試原購物車請求
-          </Button>
+          <CommerceActions>
+            <Button disabled={busy} onClick={() => void retry()}>
+              重試原購物車請求
+            </Button>
+          </CommerceActions>
         </section>
       )}
       {children}

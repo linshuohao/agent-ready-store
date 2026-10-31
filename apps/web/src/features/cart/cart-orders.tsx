@@ -1,4 +1,6 @@
 'use client';
+
+import { CommerceActions } from '@store/commerce-ui';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { OrderView } from '@store/contracts';
@@ -54,9 +56,11 @@ export function CartOrders({ id, revision }: { id: string; revision: number }) {
       {error ? (
         <div>
           <p role="alert">{error}</p>
-          <div className="commerce-actions">
-            <Button onClick={() => setRefresh((n) => n + 1)}>重新查詢訂單</Button>
-          </div>
+          <CommerceActions>
+            <Button onClick={() => setRefresh((n) => n + 1)}>
+              重新查詢訂單
+            </Button>
+          </CommerceActions>
         </div>
       ) : !page ? (
         <p role="status">正在讀取訂單…</p>
@@ -88,7 +92,7 @@ export function CartOrders({ id, revision }: { id: string; revision: number }) {
       ) : (
         <p>尚無訂單。</p>
       )}
-      <div className="commerce-actions">
+      <CommerceActions>
         {offset > 0 && (
           <Button
             onClick={() => {
@@ -109,7 +113,7 @@ export function CartOrders({ id, revision }: { id: string; revision: number }) {
             下一頁訂單
           </Button>
         )}
-      </div>
+      </CommerceActions>
     </section>
   );
 }

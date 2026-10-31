@@ -1,6 +1,7 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
+@import '@store/commerce-ui/style.css';
 
 :root {
   --background: #fff;
@@ -405,22 +406,7 @@ dd {
 #cart-error {
   color: var(--destructive);
 }
-.cart-totals {
-  padding: 24px;
-  background: var(--muted);
-  font-variant-numeric: tabular-nums;
-}
-.cart-totals dl > div {
-  justify-content: space-between;
-  gap: 12px;
-}
-.cart-totals dt {
-  width: auto;
-}
-.cart-totals li {
-  font-size: 12px;
-  margin-block: 8px;
-}
+
 @media (max-width: 700px) {
   .cart-feedback {
     right: 16px;
@@ -576,73 +562,7 @@ html {
   border-bottom: 0;
   padding-bottom: 0;
 }
-.purchase-aside .cart-totals {
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 24px;
-}
-.purchase-aside .cart-totals h2 {
-  font-size: 18px;
-  margin: 0 0 16px;
-}
-.purchase-aside .cart-totals dl {
-  margin: 0;
-}
-.purchase-aside .cart-totals dl > div:last-child {
-  border-bottom: 0;
-  margin-top: 8px;
-  padding-top: 18px;
-  font-size: 18px;
-  font-weight: 650;
-}
-.purchase-aside .cart-totals dl > div:last-child dt {
-  color: var(--foreground);
-}
-.purchase-aside .cart-totals ul {
-  border-top: 1px solid var(--border);
-  margin: 16px 0 0;
-  padding: 12px 0 0;
-  list-style: none;
-}
-.purchase-aside .cart-totals li {
-  overflow-wrap: anywhere;
-}
-.commerce-actions {
-  display: grid;
-  gap: 12px;
-  margin-top: 24px;
-}
-.commerce-actions > button,
-.commerce-actions > a:not(.commerce-action-text) {
-  width: 100%;
-}
-.commerce-action-secondary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  padding: 8px 20px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  font-size: 14px;
-  font-weight: 500;
-  text-decoration: none;
-}
-.commerce-action-secondary:hover {
-  background: var(--muted);
-}
-.commerce-action-text {
-  text-align: center;
-  font-size: 13px;
-  text-underline-offset: 4px;
-  padding: 4px;
-}
-.commerce-action-note {
-  margin: 0;
-  font-size: 12px;
-  color: var(--muted-foreground);
-  text-align: center;
-}
+
 @media (max-width: 760px) {
   .site-header-inner {
     padding: 14px 20px;
@@ -672,9 +592,6 @@ html {
     margin-block: 28px;
   }
   .purchase-product {
-    padding: 20px;
-  }
-  .purchase-aside .cart-totals {
     padding: 20px;
   }
 }

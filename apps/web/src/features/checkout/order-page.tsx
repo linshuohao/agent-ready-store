@@ -1,4 +1,6 @@
 'use client';
+
+import { CommerceActions } from '@store/commerce-ui';
 import Link from 'next/link';
 import { PageTools } from '@/features/webmcp/page-tools';
 import { useEffect, useState, useRef, useCallback } from 'react';
@@ -67,10 +69,18 @@ export function OrderPage({
         <p>
           請確認訂單連結，或請從購物車進入新的訂單流程。舊購物車編號不會轉換成新訂單。
         </p>
-        <Button disabled={page.loading} onClick={() => void page.load()}>
-          重新查詢訂單
-        </Button>
-        {!share && <Link href="/cart">前往購物車</Link>}
+        <CommerceActions>
+          <Button disabled={page.loading} onClick={() => void page.load()}>
+            重新查詢訂單
+          </Button>
+        </CommerceActions>
+        {!share && (
+          <CommerceActions>
+            <Link className="commerce-action-secondary" href="/cart">
+              前往購物車
+            </Link>
+          </CommerceActions>
+        )}
       </main>
     );
   if (!order)
@@ -78,9 +88,11 @@ export function OrderPage({
       <main id="main" tabIndex={-1} className="commerce-page">
         <h1>訂單</h1>
         <p role="status">{page.message || '正在讀取訂單…'}</p>
-        <Button disabled={page.loading} onClick={() => void page.load()}>
-          重新查詢訂單
-        </Button>
+        <CommerceActions>
+          <Button disabled={page.loading} onClick={() => void page.load()}>
+            重新查詢訂單
+          </Button>
+        </CommerceActions>
       </main>
     );
   const paid = order.status === 'PAID',
@@ -192,7 +204,7 @@ export function OrderPage({
             quote={order.summary}
             mode={paid ? 'completed' : 'confirmation'}
           />
-          <div className="commerce-actions">
+          <CommerceActions>
             {!paid &&
               !closed &&
               (!page.pendingAction || page.pendingAction === 'pay') &&
@@ -261,7 +273,7 @@ export function OrderPage({
                 分享這筆訂單
               </Link>
             )}
-          </div>
+          </CommerceActions>
         </aside>
       </section>
       {!share && confirmation && (
@@ -274,7 +286,7 @@ export function OrderPage({
           <p>
             將接續這筆訂單的來源購物車。目前的購物車資料會保留，不會合併或刪除。
           </p>
-          <div className="commerce-actions">
+          <CommerceActions>
             <Button
               onClick={() => {
                 if (cart.resumeCart(order.cartId, confirmation.currentId)) {
@@ -297,7 +309,7 @@ export function OrderPage({
             >
               保留目前購物車
             </Button>
-          </div>
+          </CommerceActions>
           {resumeError && <p role="alert">{resumeError}</p>}
         </section>
       )}

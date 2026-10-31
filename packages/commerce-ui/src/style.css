@@ -1,0 +1,175 @@
+/* Shared commerce surfaces and actions. Keep host CSS for page layout only. */
+:root {
+  --commerce-space-sm: 12px;
+  --commerce-space-md: 16px;
+  --commerce-space-lg: 24px;
+  --commerce-border: #e0e0e0;
+  --commerce-ink: #191919;
+  --commerce-muted: #f5f5f3;
+  --commerce-radius: 8px;
+  --commerce-card-padding: 24px;
+}
+.commerce-card {
+  border: 1px solid var(--commerce-border);
+  border-radius: var(--commerce-radius);
+  padding: var(--commerce-card-padding);
+}
+.commerce-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--commerce-space-md);
+  min-width: 0;
+}
+.commerce-stack > * {
+  margin-block: 0;
+}
+.commerce-actions {
+  display: grid;
+  gap: var(--commerce-space-sm);
+  margin-block: var(--commerce-space-lg) 0;
+}
+.commerce-actions > * {
+  margin-block: 0;
+  min-width: 0;
+}
+.commerce-actions > button,
+.commerce-actions > a:not(.commerce-action-text) {
+  width: 100%;
+}
+.commerce-action-note {
+  color: #616161;
+  font-size: 12px;
+  text-align: center;
+}
+.commerce-button[data-size='default'] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  height: auto;
+  padding: 10px 20px;
+  gap: 8px;
+  border: 1px solid transparent;
+  border-radius: var(--commerce-radius);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.5;
+  white-space: normal;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    background-color 150ms,
+    opacity 150ms;
+}
+.commerce-button[data-variant='default'] {
+  background: var(--commerce-ink);
+  color: white;
+}
+.commerce-button[data-variant='outline'] {
+  background: white;
+  color: var(--commerce-ink);
+  border-color: var(--commerce-border);
+}
+.commerce-button[data-variant='default']:hover:not(:disabled) {
+  background: #353535;
+}
+.commerce-button[data-variant='outline']:hover:not(:disabled) {
+  background: var(--commerce-muted);
+}
+.commerce-button:focus-visible {
+  outline: 3px solid #777;
+  outline-offset: 3px;
+}
+.commerce-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.cart-totals {
+  background: var(--commerce-muted);
+  font-variant-numeric: tabular-nums;
+}
+.cart-totals h2 {
+  font-size: 18px;
+  margin: 0 0 var(--commerce-space-md);
+}
+.cart-totals .hint {
+  margin: 0 0 var(--commerce-space-md);
+}
+.cart-totals dl {
+  margin: 0;
+}
+.cart-totals dl > div {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--commerce-space-sm);
+  padding: 8px 0;
+  border-bottom: 1px solid var(--commerce-border);
+}
+.cart-totals dt {
+  width: auto;
+  color: #616161;
+}
+.cart-totals dd {
+  margin: 0;
+  text-align: right;
+}
+.cart-totals dl > div:last-child {
+  border-bottom: 0;
+  margin-top: 8px;
+  padding-top: var(--commerce-space-md);
+  font-size: 18px;
+  font-weight: 650;
+}
+.cart-totals dl > div:last-child dt {
+  color: var(--commerce-ink);
+}
+.cart-totals ul {
+  border-top: 1px solid var(--commerce-border);
+  margin: var(--commerce-space-md) 0 0;
+  padding: var(--commerce-space-sm) 0 0;
+  list-style: none;
+}
+.cart-totals li {
+  font-size: 12px;
+  margin-block: 8px;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 760px) {
+  :root {
+    --commerce-card-padding: 20px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .commerce-button {
+    transition: none;
+  }
+}
+
+.commerce-action-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 8px 20px;
+  border: 1px solid var(--commerce-border);
+  border-radius: var(--commerce-radius);
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+}
+.commerce-action-secondary:hover {
+  background: var(--commerce-muted);
+}
+.commerce-action-text {
+  text-align: center;
+  font-size: 13px;
+  text-underline-offset: 4px;
+  padding: 4px;
+}
+.commerce-action-note {
+  margin: 0;
+  font-size: 12px;
+  color: #616161;
+  text-align: center;
+}
