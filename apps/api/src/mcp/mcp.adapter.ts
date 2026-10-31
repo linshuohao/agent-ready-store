@@ -106,8 +106,8 @@ export function attachMcp(
     ];
     const resources = uiTools.map((tool) => ({
       tool,
-      uri: `ui://store/${tool.replaceAll('_', '-')}-v1.html`,
-      filename: `${tool.replaceAll('_', '-')}-v1.html`,
+      uri: `ui://store/${tool.replaceAll('_', '-')}-v2.html`,
+      filename: `${tool.replaceAll('_', '-')}-v2.html`,
     }));
     const uiMeta = (tool: string) => {
       const resource = resources.find((entry) => entry.tool === tool)!;

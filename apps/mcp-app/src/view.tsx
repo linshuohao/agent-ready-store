@@ -1,3 +1,5 @@
+import { useEffect, useRef } from 'react';
+import { ProductArt } from './product-art';
 import { Button } from '@base-ui/react/button';
 import { Input } from '@base-ui/react/input';
 import { MoneyBreakdown, ProductPresentation } from '@store/commerce-ui';
@@ -27,6 +29,14 @@ export function StoreView({
   state: ViewState;
   actions: Actions;
 }) {
+  const refreshDialog = useRef<HTMLDialogElement>(null);
+  const refreshRequired = s.needsRefresh && !s.pending;
+  useEffect(() => {
+    const dialog = refreshDialog.current;
+    if (refreshRequired && !s.busy && dialog && !dialog.open)
+      dialog.showModal();
+    if (!refreshRequired) dialog?.close();
+  }, [refreshRequired, s.busy]);
   const blocked = s.busy || s.needsRefresh || !!s.pending;
   const o = s.order,
     c = s.cart;
@@ -49,32 +59,74 @@ export function StoreView({
         </h1>
         <p className="hint">由 AI 助理協助選購，由你決定支付。</p>
       </header>
-      <p className="notice" role="status" aria-live="polite">
-        {s.message}
-      </p>
-      {s.pending && (
-        <Button disabled={s.busy || s.dirty} onClick={a.retry}>
-          明確重試原操作（
-          {s.pending.name === 'cancel_order'
-            ? '取消'
-            : s.pending.name === 'apps_pay_order'
-              ? '支付'
-              : '購物'}
-          ）
+      {s.message && !refreshRequired && (
+        <p className="notice" role="status" aria-live="polite">
+          {s.message}
+        </p>
+      )}
+      {refreshRequired && (
+        <Button
+          className="secondary"
+          onClick={() => refreshDialog.current?.showModal()}
+        >
+          處理資料更新
         </Button>
       )}
-      <Button
-        className="secondary"
-        disabled={s.busy}
-        onClick={() => a.reload(s.dirty)}
+      <dialog
+        ref={refreshDialog}
+        aria-labelledby="refresh-title"
+        className="refresh-dialog"
       >
-        {s.dirty ? '放棄調整並重新載入' : '只讀重新載入'}
-      </Button>
+        <h2 id="refresh-title">資料需要重新確認</h2>
+        <p>{s.message}</p>
+        {s.dirty && <p>刷新會放棄尚未儲存的數量調整，並取得最新資料。</p>}
+        <div className="commerce-actions">
+          <Button
+            disabled={s.busy}
+            onClick={() => {
+              refreshDialog.current?.close();
+              a.reload(s.dirty);
+            }}
+          >
+            刷新資料
+          </Button>
+          <Button
+            className="secondary"
+            onClick={() => refreshDialog.current?.close()}
+          >
+            稍後處理
+          </Button>
+        </div>
+      </dialog>
+      {s.pending && (
+        <div className="commerce-actions">
+          {s.pending && (
+            <Button disabled={s.busy || s.dirty} onClick={a.retry}>
+              明確重試原操作（
+              {s.pending.name === 'cancel_order'
+                ? '取消'
+                : s.pending.name === 'apps_pay_order'
+                  ? '支付'
+                  : '購物'}
+              ）
+            </Button>
+          )}
+          {s.pending && (
+            <Button
+              className="secondary"
+              disabled={s.busy}
+              onClick={() => a.reload(s.dirty)}
+            >
+              查詢原操作結果
+            </Button>
+          )}
+        </div>
+      )}
       {!o && !c && (
         <section className="products" aria-label="商品結果">
           {s.products.map((p) => (
             <div key={p.id}>
-              <ProductPresentation product={p} />
+              <ProductPresentation product={p} art={<ProductArt id={p.id} />} />
               {'description' in p && (
                 <>
                   <p>{p.description}</p>
@@ -99,7 +151,7 @@ export function StoreView({
         </section>
       )}
       {o && (
-        <section aria-label="訂單固定摘要">
+        <section id="order-details" aria-label="訂單固定摘要">
           <p>訂單 {o.orderId}</p>
           <p>
             來源 {o.createdByChannel} ·{' '}
@@ -129,7 +181,10 @@ export function StoreView({
               </li>
             ))}
           </ul>
-          <MoneyBreakdown quote={o.summary} />
+          <MoneyBreakdown
+            quote={o.summary}
+            mode={o.status === 'PAID' ? 'completed' : 'confirmation'}
+          />
           <div className="commerce-actions">
             {o.allowedActions.canPay && (
               <Button
@@ -138,7 +193,7 @@ export function StoreView({
                 }
                 onClick={a.pay}
               >
-                確認模擬支付
+                確認支付
               </Button>
             )}
             {o.allowedActions.canCancel && (
@@ -239,18 +294,32 @@ export function StoreView({
             建立待支付訂單
           </Button>
           <p>生單會固定摘要並預留 15 分鐘；只有明確支付成功才完成購買。</p>
-          <section aria-label="原車訂單">
+          <section className="order-navigation" aria-label="原車訂單">
             <h2>待支付及歷史訂單</h2>
             {c.pendingOrders.map((p) => (
-              <Button key={p.orderId} onClick={() => a.openOrder(p.orderId)}>
+              <a
+                key={p.orderId}
+                href="#order-details"
+                onClick={(event) => {
+                  event.preventDefault();
+                  a.openOrder(p.orderId);
+                }}
+              >
                 待支付 {p.orderId}
-              </Button>
+              </a>
             ))}
             <Button onClick={() => a.listOrders()}>查詢全部訂單</Button>
             {s.orders.map((p) => (
-              <Button key={p.orderId} onClick={() => a.openOrder(p.orderId)}>
+              <a
+                key={p.orderId}
+                href="#order-details"
+                onClick={(event) => {
+                  event.preventDefault();
+                  a.openOrder(p.orderId);
+                }}
+              >
                 {p.effectiveStatus} · {p.orderId}
-              </Button>
+              </a>
             ))}
             {s.nextOffset !== null && (
               <Button onClick={() => a.listOrders(s.nextOffset!)}>

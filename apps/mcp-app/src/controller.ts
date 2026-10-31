@@ -172,7 +172,7 @@ export class StoreController {
     needsRefresh: false,
     pending: null,
     confirmCartId: null,
-    message: '等待商品、購物車或原訂單。',
+    message: '',
   };
   #listeners = new Set<() => void>();
   #alive = true;
@@ -401,7 +401,7 @@ export class StoreController {
           return;
         }
         this.#switch(target);
-        this.#set({ products, message: '商品為查詢快照；明確加購才會寫入。' });
+        this.#set({ products, message: '' });
         return;
       }
       if (['get_order', 'cancel_order', 'create_order'].includes(this.entry)) {
@@ -490,7 +490,7 @@ export class StoreController {
         dirty: false,
         needsRefresh: this.#corrupt.has(target),
         pending: this.#restore(target),
-        message: '已取得服務端最新購物車。',
+        message: '',
       });
       await this.#quote();
     } catch {
@@ -538,7 +538,7 @@ export class StoreController {
           needsRefresh: this.#conflicts.has(id) || this.#corrupt.has(id),
           message: this.#conflicts.has(id)
             ? '終態有矛盾，禁止重複操作；請重新查詢。'
-            : '已讀取原訂單；只有 PAID 表示購買成功。',
+            : '',
         });
       }
     } catch {
@@ -851,7 +851,7 @@ export class StoreController {
       this.#set({
         pending: null,
         needsRefresh: false,
-        message: '操作已完成；生單不代表已支付。',
+        message: '',
       });
       if (o) {
         if (p.name === 'apps_create_order') {

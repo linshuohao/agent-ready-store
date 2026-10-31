@@ -4,19 +4,8 @@ import type { ProductSummary } from '@store/contracts';
 import { AddButton } from '@/features/cart/add-button';
 import { ProductPresentation } from '@store/commerce-ui';
 export { Availability, reasonText } from '@store/commerce-ui';
-export function illustration(id: string) {
-  return ['P001', 'P002'].includes(id)
-    ? 'earbuds'
-    : id === 'P005'
-      ? 'headphones'
-      : ['P009', 'P019', 'P022', 'P023', 'P025'].includes(id)
-        ? 'bottle'
-        : id === 'P004'
-          ? 'charger'
-          : ['P026', 'P027', 'P028', 'P029', 'P030'].includes(id)
-            ? 'packet'
-            : 'object';
-}
+export { illustration } from '@store/commerce-ui';
+import { illustration } from '@store/commerce-ui';
 export function ProductCard({ product }: { product: ProductSummary }) {
   return (
     <ProductPresentation

@@ -24,7 +24,27 @@ let cart: ShoppingCartView = {
 let order: OrderView | null = null;
 const calls: string[] = [],
   opens: string[] = [];
-const controls = { failPayOnce: false };
+const controls = { failPayOnce: false, conflictOnce: false };
+const productMode = new URL(location.href).searchParams.has('product');
+const productDetail = {
+  id: 'P001',
+  name: 'Aero 耳機',
+  brand: 'Pulso',
+  category: '3C',
+  currency: 'TWD',
+  price: '1890.00',
+  imagePath: null,
+  availability: { canPurchase: true, reasons: [], currentQuantity: 8 },
+  description: '商品詳情',
+  specs: { 連線: '藍牙' },
+  reviewOverview: { count: 0 },
+};
+const resourceHtml = productMode
+  ? __APP_HTML__.replace(
+      'data-entry-tool="get_cart"',
+      'data-entry-tool="get_product"',
+    )
+  : __APP_HTML__;
 const ok = (data: unknown) => ({
   content: [{ type: 'text' as const, text: 'fixture' }],
   structuredContent: { ok: true, data },
@@ -55,7 +75,10 @@ const bridge = new AppBridge(
     hostContext: {
       toolInfo: {
         id: 'fixture-cart-call',
-        tool: { name: 'get_cart', inputSchema: { type: 'object' } },
+        tool: {
+          name: productMode ? 'get_product' : 'get_cart',
+          inputSchema: { type: 'object' },
+        },
       },
     },
   },
@@ -74,6 +97,17 @@ bridge.oncalltool = async ({ name, arguments: args }) => {
       ),
     );
   if (name === 'update_cart_item') {
+    if (controls.conflictOnce) {
+      controls.conflictOnce = false;
+      return {
+        structuredContent: {
+          ok: false,
+          error: { code: 'CART_VERSION_CONFLICT' },
+        },
+        content: [],
+        isError: true,
+      };
+    }
     cart = {
       ...cart,
       cartVersion: cart.cartVersion + 1,
@@ -162,21 +196,23 @@ bridge.onopenlink = async ({ url }) => {
   return { isError: false };
 };
 bridge.oninitialized = async () => {
-  await bridge.sendToolInput({ arguments: { cartId: id } });
-  await bridge.sendToolResult(ok(cart));
+  await bridge.sendToolInput({
+    arguments: productMode ? { productId: 'P001' } : { cartId: id },
+  });
+  await bridge.sendToolResult(ok(productMode ? productDetail : cart));
 };
 const iframe = document.querySelector('iframe')!;
 await bridge.connect(
   new PostMessageTransport(iframe.contentWindow!, iframe.contentWindow!),
 );
-iframe.srcdoc = __APP_HTML__;
+iframe.srcdoc = resourceHtml;
 Object.assign(window, {
   fixture: {
     calls,
     opens,
     controls,
     remount: () => {
-      iframe.srcdoc = __APP_HTML__;
+      iframe.srcdoc = resourceHtml;
     },
   },
 });

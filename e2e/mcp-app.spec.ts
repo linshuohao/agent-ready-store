@@ -8,7 +8,7 @@ test.beforeAll(async () => {
   const require = createRequire(root + 'package.json');
   const { build } = await import(pathToFileURL(require.resolve('vite')).href);
   const appHtml = await readFile(
-    new URL('../apps/api/dist/mcp-app/get-cart-v1.html', import.meta.url),
+    new URL('../apps/api/dist/mcp-app/get-cart-v2.html', import.meta.url),
     'utf8',
   );
   const result = await build({
@@ -44,7 +44,8 @@ test('official Bridge fixture supports row selection, fixed order, direct UI pay
   );
   await page.goto('http://localhost:3999/');
   const f = page.frameLocator('iframe');
-  await expect(f.getByRole('status')).toContainText('最新購物車');
+  await expect(f.getByLabel('選購 P001 整行')).toBeVisible();
+  await expect(f.getByRole('button', { name: '只讀重新載入' })).toHaveCount(0);
   await expect(
     f.getByRole('heading', { name: '同名耳機', exact: true }),
   ).toHaveCount(2);
@@ -62,7 +63,7 @@ test('official Bridge fixture supports row selection, fixed order, direct UI pay
   await expect(
     f.getByText('數量 2 · 單價 NT$ 10.00 · 小計 NT$ 20.00'),
   ).toBeVisible();
-  await f.getByRole('button', { name: '確認模擬支付', exact: true }).click();
+  await f.getByRole('button', { name: '確認支付', exact: true }).click();
   await expect(
     f.getByRole('heading', { name: '購買完成', exact: true }),
   ).toBeVisible();
@@ -95,7 +96,7 @@ test('official Bridge fixture supports row selection, fixed order, direct UI pay
   await expect(f.getByLabel('選購 P002 整行')).toBeVisible();
   await expect(f.getByLabel('選購 P001 整行')).toHaveCount(0);
   await f.getByRole('button', { name: '查詢全部訂單' }).click();
-  await expect(f.getByRole('button', { name: /PAID · 200/ })).toBeVisible();
+  await expect(f.getByRole('link', { name: /PAID · 200/ })).toBeVisible();
   expect(
     await f
       .locator('body')
@@ -113,7 +114,8 @@ test('unknown payment only permits original action retry', async ({ page }) => {
   );
   await page.goto('http://localhost:3999/');
   const f = page.frameLocator('iframe');
-  await expect(f.getByRole('status')).toContainText('最新購物車');
+  await expect(f.getByLabel('選購 P001 整行')).toBeVisible();
+  await expect(f.getByRole('button', { name: '只讀重新載入' })).toHaveCount(0);
   await f.getByLabel('選購 P001 整行').check();
   await f.getByRole('button', { name: '建立待支付訂單', exact: true }).click();
   await expect(
@@ -124,14 +126,14 @@ test('unknown payment only permits original action retry', async ({ page }) => {
       window as unknown as { fixture: { controls: { failPayOnce: boolean } } }
     ).fixture.controls.failPayOnce = true;
   });
-  await f.getByRole('button', { name: '確認模擬支付', exact: true }).click();
+  await f.getByRole('button', { name: '確認支付', exact: true }).click();
   await expect(f.getByRole('status')).toContainText('操作結果未知');
   await expect(
-    f.getByRole('button', { name: '確認模擬支付', exact: true }),
+    f.getByRole('button', { name: '確認支付', exact: true }),
   ).toBeDisabled();
-  await f.getByRole('button', { name: '只讀重新載入' }).click();
+  await f.getByRole('button', { name: '查詢原操作結果' }).click();
   await expect(
-    f.getByRole('button', { name: '確認模擬支付', exact: true }),
+    f.getByRole('button', { name: '確認支付', exact: true }),
   ).toBeDisabled();
   await f.getByRole('button', { name: '明確重試原操作（支付）' }).click();
   await expect(
@@ -145,4 +147,83 @@ test('unknown payment only permits original action retry', async ({ page }) => {
   expect(
     calls.some((n) => n.includes('purchase') || n.includes('prepare')),
   ).toBe(false);
+});
+test('pending orders are links with spaced order navigation', async ({
+  page,
+}, info) => {
+  await page.route('http://localhost:3999/', (route) =>
+    route.fulfill({ contentType: 'text/html; charset=utf-8', body: hostHtml }),
+  );
+  await page.goto('http://localhost:3999/');
+  const f = page.frameLocator('iframe');
+  await f.getByLabel('選購 P001 整行').check();
+  await f.getByRole('button', { name: '建立待支付訂單', exact: true }).click();
+  await f.getByRole('button', { name: '繼續原車購物' }).click();
+  const link = f.getByRole('link', { name: /待支付 200/ });
+  await expect(link).toBeVisible();
+  const a = (await link.boundingBox())!;
+  const b = (await f
+    .getByRole('button', { name: '查詢全部訂單' })
+    .boundingBox())!;
+  expect(b.y - a.y - a.height).toBeGreaterThanOrEqual(12);
+  await page.screenshot({
+    path: info.outputPath('apps-order-links.png'),
+    fullPage: true,
+  });
+  await link.click();
+  await expect(
+    f.getByRole('heading', { name: '待支付訂單', exact: true }),
+  ).toBeVisible();
+});
+
+test('product card embeds artwork without routine refresh clutter', async ({
+  page,
+}) => {
+  await page.route('http://localhost:3999/?product', (route) =>
+    route.fulfill({ contentType: 'text/html', body: hostHtml }),
+  );
+  await page.goto('http://localhost:3999/?product');
+  const f = page.frameLocator('iframe');
+  await expect(
+    f.getByRole('img', { name: 'P001 商品示意，非實物照片' }),
+  ).toBeVisible();
+  await expect(f.locator('.product-art svg')).toBeVisible();
+  expect(
+    await f
+      .locator('.product-card')
+      .evaluate(
+        (el) =>
+          el.getBoundingClientRect().bottom -
+          el.lastElementChild!.getBoundingClientRect().bottom,
+      ),
+  ).toBeLessThan(40);
+  await expect(f.getByRole('status')).toHaveCount(0);
+  await expect(f.getByRole('button', { name: '只讀重新載入' })).toHaveCount(0);
+});
+test('cart conflict opens a dialog and explicit refresh restores server quantity', async ({
+  page,
+}, info) => {
+  await page.route('http://localhost:3999/', (route) =>
+    route.fulfill({ contentType: 'text/html', body: hostHtml }),
+  );
+  await page.goto('http://localhost:3999/');
+  const f = page.frameLocator('iframe');
+  await expect(f.getByLabel('數量 · P001', { exact: true })).toHaveValue('1');
+  await page.evaluate(() => {
+    (window as any).fixture.controls.conflictOnce = true;
+  });
+  await f.getByLabel('數量 · P001', { exact: true }).fill('2');
+  await page.keyboard.press('Enter');
+  const dialog = f.getByRole('dialog', { name: '資料需要重新確認' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText('放棄尚未儲存');
+  await dialog.getByRole('button', { name: '稍後處理' }).click();
+  await expect(dialog).not.toBeVisible();
+  await f.getByRole('button', { name: '處理資料更新' }).click();
+  await expect(dialog).toBeVisible();
+  await page.screenshot({ path: info.outputPath('conflict-dialog.png') });
+  await dialog.getByRole('button', { name: '刷新資料' }).click();
+  await expect(dialog).not.toBeVisible();
+  await expect(f.getByLabel('數量 · P001', { exact: true })).toHaveValue('1');
+  await expect(f.getByRole('status')).toHaveCount(0);
 });

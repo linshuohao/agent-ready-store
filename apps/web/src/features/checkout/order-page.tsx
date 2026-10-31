@@ -226,9 +226,14 @@ export function OrderPage({
                     : '取消這筆訂單'}
                 </Button>
               )}
-            <Button disabled={page.loading} onClick={() => void page.load()}>
-              重新查詢訂單
-            </Button>
+            {(page.message ||
+              page.unknown ||
+              page.conflict ||
+              (!paid && !closed && page.expired)) && (
+              <Button disabled={page.loading} onClick={() => void page.load()}>
+                重新查詢訂單
+              </Button>
+            )}
             {!share && sameCart && (
               <Link
                 className="commerce-action-secondary"

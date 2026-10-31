@@ -33,7 +33,7 @@ await build({
         for (const tool of appTools) {
           this.emitFile({
             type: 'asset',
-            fileName: tool.replaceAll('_', '-') + '-v1.html',
+            fileName: tool.replaceAll('_', '-') + '-v2.html',
             source: `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Agent-Ready Store</title><style>${css}</style></head><body data-entry-tool="${tool}"><div id="root"></div><script type="module">${code}</script></body></html>`,
           });
         }
