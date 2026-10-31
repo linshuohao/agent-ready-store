@@ -1,3 +1,5 @@
+import { OrderExpiryWorker } from './cart/order-expiry.worker.js';
+import { result } from './shared/result.js';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { attachMcp } from './mcp/mcp.adapter.js';
 import { CartService } from './cart/cart.service.js';
@@ -37,12 +39,27 @@ app.use(
     });
   },
 );
+const expiry = app.get(OrderExpiryWorker);
+app.use('/api/v1', async (req: Request, res: Response, next: NextFunction) => {
+  if (req.path === '/health') return next();
+  const maintenance = await result(() => expiry.beforeRequest());
+  if (!maintenance.ok) {
+    res.setHeader('Cache-Control', 'no-store');
+    res.status(503).json(maintenance);
+    return;
+  }
+  next();
+});
 attachMcp(
   app.getHttpAdapter().getInstance(),
   app.get(CatalogService),
   app.get(CartService),
+  () => expiry.beforeRequest(),
 );
-await app.listen(
+// Vercel captures listen without running its callback during module import.
+// Finish route setup, then let the platform start the captured HTTP server.
+await app.init();
+void app.listen(
   Number(process.env.PORT ?? 3001),
   process.env.HOST ?? '127.0.0.1',
 );

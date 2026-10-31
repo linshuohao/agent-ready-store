@@ -4,6 +4,8 @@
 
 网页与 Agent 共用商品查询、计价、库存和订单能力；MCP Apps 与网页进一步共享完整的购物界面和交互逻辑。
 
+[在线体验](https://agent-ready-store.vercel.app) · [部署说明](docs/engineering/DEPLOYMENT.md)（模拟支付，无真实扣款）
+
 ## 功能
 
 - **商品发现**：商品列表、规格、库存与评论查询，支持多目标分组搜索、简繁匹配和受控中英文别名。
@@ -132,6 +134,8 @@ pnpm start:docker
 ```
 
 [compose.yaml](compose.yaml) 只向本机暴露 Web 与 API 端口；商品目录从 `references/` 只读挂载，不打入镜像。Compose 与本机开发使用独立数据卷。日常启动不需要重复迁移或 seed；停止服务可用 `docker compose down`，保留数据时不要加 `--volumes`。
+
+云端演示部署采用 Vercel 前后端与 Neon PostgreSQL，配置与操作顺序见[部署指南](docs/engineering/DEPLOYMENT.md)。
 
 ## 更多文档
 

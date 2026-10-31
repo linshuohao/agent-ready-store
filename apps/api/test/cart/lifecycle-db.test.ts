@@ -1,4 +1,12 @@
-import { beforeAll, beforeEach, afterAll, describe, it, expect } from 'vitest';
+import {
+  beforeAll,
+  beforeEach,
+  afterAll,
+  describe,
+  it,
+  expect,
+  vi,
+} from 'vitest';
 import { execFileSync } from 'node:child_process';
 import { OrderExpiryWorker } from '../../src/cart/order-expiry.worker.js';
 import { CatalogService } from '../../src/catalog/catalog.service.js';
@@ -46,6 +54,60 @@ const catalog = new Catalog(readFileSync('references/products.json', 'utf8'));
       expectedCartVersion: cart.cartVersion,
       selectedItems,
       constraints: { currency: 'TWD' },
+    });
+    it('request mode releases expired stock once across instances without a background timer', async () => {
+      vi.stubEnv('ORDER_EXPIRY_MODE', 'request');
+      const a = new OrderExpiryWorker(service);
+      const b = new OrderExpiryWorker(new CartService(catalog, db));
+      try {
+        const cart = await service.getOrCreate(init(), 'WEB');
+        const { order } = await service.createOrder(
+          cart.cartId,
+          create(cart),
+          'WEB',
+        );
+        await db.order.update({
+          where: { id: order.orderId },
+          data: { reservationExpiresAt: new Date(0) },
+        });
+        a.onModuleInit();
+        b.onModuleInit();
+        expect(
+          (
+            await db.inventory.findUniqueOrThrow({
+              where: { productId: 'P001' },
+            })
+          ).reservedQuantity,
+        ).toBe(1);
+        await Promise.all([
+          a.beforeRequest(),
+          a.beforeRequest(),
+          b.beforeRequest(),
+        ]);
+        const stock = await db.inventory.findUniqueOrThrow({
+          where: { productId: 'P001' },
+        });
+        expect(stock.reservedQuantity).toBe(0);
+        expect(stock.quantity).toBe(
+          catalog.initialInventory().find((item) => item.productId === 'P001')!
+            .quantity,
+        );
+        expect((await service.payOrder(order.orderId)).effectiveStatus).toBe(
+          'EXPIRED',
+        );
+        await a.beforeRequest();
+        expect(
+          (
+            await db.inventory.findUniqueOrThrow({
+              where: { productId: 'P001' },
+            })
+          ).reservedQuantity,
+        ).toBe(0);
+      } finally {
+        await a.onModuleDestroy();
+        await b.onModuleDestroy();
+        vi.unstubAllEnvs();
+      }
     });
     it('initializes once across instances and resumes current contents before validation', async () => {
       const input = init();
