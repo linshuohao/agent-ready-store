@@ -1,106 +1,59 @@
 # 云端演示部署
 
-本指南使用 Vercel Hobby 承载 Next.js、Render Free 运行现有 Docker 镜像中的 API / MCP / 到期释放任务、Neon Free 保存 PostgreSQL 数据。适用于短期、低流量、模拟支付演示；保留现有 Demo 身份边界，不用于真实顾客交易。
+使用 Vercel Hobby 部署 Next.js 前端与 NestJS Functions 后端，Neon Free 保存 PostgreSQL 数据。仅用于短期、非商业 Demo；不启用 Pro 试用、付费资源、独立 Worker 或 Docker Beta。
 
-仓库配置不代表服务已经上线。实际发布前确认目标账户、免费方案、提交与域名；所有密码和 Token 只放平台密钥设置或本机被忽略的环境文件。
+## 当前资源
 
-## 当前部署状态
-
-2026-10-31：部署配置已提交并推送，见 [PR #3](https://github.com/linshuohao/agent-ready-store/pull/3)；配置提交 `e5fb0dc` 的 Verify 与 Delivery image 均通过。当前云资源情况：
-
-| 平台 | 已完成 | 剩余工作 |
-| --- | --- | --- |
-| Vercel | Hobby 团队中已创建 `agent-ready-store`，Node.js 24、Root Directory `apps/web`；已分配 `agent-ready-store.vercel.app` | 等待后端地址后配置环境变量、发布与验收，当前未上线 |
-| Neon | 通过已有 Vercel 集成创建专用 Free 项目 `agent-ready-store-demo`（`fancy-salad-72400395`），PostgreSQL 18；7 个迁移完成、库存 30 条 | 后端上线后验证实际购物连接 |
-| Render | 控制台已登录，创建表单已填写 Docker、Virginia、Free $0/月、环境变量与商品 Secret File | 提交创建时要求银行卡验证，已取消；服务尚未创建 |
-
-本轮已获授权让云平台访问仓库资料。Render 插件在当前会话返回 `Unknown tool`，故使用控制台配置。控制台即使选择 Free 仍要求绑卡，并提示 $1 临时预授权；是否完成验证由账户持有人决定，不自动添加付款方式或升级实例。若绑定银行卡，还需核对额外带宽与构建用量的费用控制，不能把 Free 实例等同于所有超额用量免费。
-
-当前尝试发布的是已通过 CI 的 `codex/deploy-free-demo` 分支；PR 尚未合并，Blueprint 的长期目标仍是 `main`。实际后端服务创建和网页/MCP 购物验收完成前，不将资源创建或本地构建通过写成上线成功。
-
-## 配置入口
-
-| 文件 | 作用 |
+| 资源 | 当前事实 |
 | --- | --- |
-| [apps/web/vercel.json](../../apps/web/vercel.json) | 固定 pnpm 版本；先构建共享 contracts，再构建 Next.js |
-| [render.yaml](../../render.yaml) | Free Docker Web Service、健康检查和运行环境变量；初始关闭自动部署 |
-| [Dockerfile](../../Dockerfile) | 复用现有交付镜像，默认启动 API；不运行 Compose 或另起 Web 进程 |
-| [.dockerignore](../../.dockerignore) | 排除原始附件、本机密钥以及 Render 注入构建目录的商品文件 |
+| 前端 | Vercel 项目 `agent-ready-store`，域名 `agent-ready-store.vercel.app`；本轮部署验证进行中 |
+| 后端 | Vercel 项目 `agent-ready-store-api`，域名 `agent-ready-store-api.vercel.app`；本轮部署验证进行中 |
+| 数据库 | Neon Free 项目 `agent-ready-store-demo`（`fancy-salad-72400395`），PG18 / AWS US East；已执行7个迁移并导入30条库存，不要重复 seed |
+| Git | `codex/deploy-free-demo`，PR #3；尚未合并 |
 
-Vercel 的 Root Directory 是项目设置，不能写入 `vercel.json`。Render Blueprint 不包含数据库资源，避免误建 Render Postgres。
+之前尝试 Render Free 时被银行卡验证阻断，未创建服务；Human 已选择上述 Vercel 方案。原始附件访问及向 Vercel 后端 Production 写入本项目 Neon/MCP 凭据均已获得明确授权。原件仍不公开，密钥不进入 Git、前端变量或日志。
 
-## 首次部署顺序
+## 项目配置
 
-1. 确认配置已合入 `main` 且该提交 CI 通过。确认云端可访问仓库的授权：Git 集成会拉取仓库，其中包含 `references/` 原件；`.dockerignore` 只限制镜像构建上下文，不限制 Git 拉取。原件访问未获授权时不要连接 Git 部署，先另行确定脱敏交付方式。
-2. 在 Neon 建立专用演示项目，选择 Free 和 PostgreSQL 18；推荐 AWS US East，与 Blueprint 的 Render Virginia 靠近。不要复用未确认用途的已有数据库。检查账户的实际休眠策略与用量限制，不启用付费升级。Vercel 管理的 Neon 账户可能不允许通过 Neon API 修改休眠时间，不能把请求值当作已生效值。
-3. 配置 Vercel 项目并确定稳定的正式域名；配置 Render 服务并取得其实际域名。记录两个真实地址，不假定项目名一定对应同名域名。
-4. 按下文初始化新数据库、配置 Render 环境变量与商品 Secret File，再构建启动后端。Blueprint 初次创建可能立即触发构建；文件未配置完成的失败部署不能算上线成功。`autoDeployTrigger: off` 只关闭后续自动部署。
-5. 将后端地址填入 Vercel 的 Production 环境变量，构建部署前端，完成购物与 MCP 验收。
+两个项目连接同一仓库，各自设置 Root Directory：前端 `apps/web`、后端 `apps/api`；允许访问根目录之外的工作区文件，Node.js 固定24.x。前端使用 [配置](../../apps/web/vercel.json)，后端使用 [配置](../../apps/api/vercel.json)。保持 Hobby 和 `iad1` 后端区域；不自动升级。
 
-## Neon：数据库初始化
+后端构建生成 Prisma Client、共享契约、NestJS 和 MCP Apps；[构建准备脚本](../../apps/api/scripts/prepare-vercel.mjs)只把已授权商品数据复制进 `dist/catalog-data`。`dist/**` 作为函数私有资源打包；不使用公共静态目录，也不复制题目原件。Dockerfile 继续用于本地和其他容器环境，不参与 Vercel 构建。
 
-运行连接使用 Neon 提供的 pooled URL，迁移使用同一项目、同一 branch/database 的 direct URL（主机名不含 `-pooler`；MCP 返回的默认连接也可能是 pooled，必须核对）；保留 Neon 提供的 TLS 参数。这里使用标准 PostgreSQL 驱动，不需要 Neon SDK 或新数据库抽象。
+## 环境变量
 
-在独立 checkout 中创建被 Git 忽略的 `.env`，安全填入 `DATABASE_URL`（direct URL）和 `CATALOG_PATH`（已授权商品文件的绝对路径）。核对目标确实是新演示数据库后，在仓库根目录执行：
+后端 Production 变量在 Vercel 中使用 Sensitive 类型：
 
-```sh
-pnpm install --frozen-lockfile
-pnpm db:generate
-pnpm db:migrate
-pnpm db:seed
-```
-
-这些命令会写入目标数据库。`seed` 仅用于空库存表；不要对已有数据重复导入，也不要执行 reset。后续部署只按需要执行迁移。初始化完成后把 pooled URL 配置到 Render，数据库凭证不提供给 Vercel。
-
-Render Free 不提供 pre-deploy command，因此这里显式执行迁移；不将迁移或 seed 放入容器启动命令。
-
-## Render：Docker 后端
-
-使用根目录 Blueprint，实例必须为 **Free**。保留根目录构建上下文，启动命令使用 Dockerfile 默认值。不要设置固定 `PORT`，服务会读取 Render 注入的端口；`HOST=0.0.0.0` 已配置。
-
-| 变量 / 文件 | 配置值 |
+| 变量 | 值或来源 |
 | --- | --- |
-| `DATABASE_URL` | Neon pooled URL，含 TLS 参数 |
-| `WEB_ORIGIN` | 正式前端完整 origin，例如 `https://实际域名.vercel.app`，无末尾斜杠或路径 |
-| `MCP_ALLOWED_HOSTS` | 实际 Render 主机名，例如 `实际域名.onrender.com`，不含 `https://` |
-| `MCP_SERVICE_TOKEN` | Blueprint 自动生成随机 Token；仅在受信任 MCP 客户端配置 |
-| `CATALOG_PATH` | 已配置为 `/etc/secrets/products.json` |
-| Secret File `products.json` | 获授权后上传商品文件，不能上传题目或整个 `references/` |
+| `DATABASE_URL` | Neon pooled URL，保留 TLS 参数 |
+| `MCP_SERVICE_TOKEN` | 至少24字符的随机令牌，仅后端及受信任 MCP 客户端使用 |
+| `WEB_ORIGIN` | `https://agent-ready-store.vercel.app`；构建 MCP Apps 时也使用它 |
+| `MCP_ALLOWED_HOSTS` | `agent-ready-store-api.vercel.app` |
+| `CATALOG_PATH` | `dist/catalog-data/products.json` |
+| `MCP_APPS_PATH` | `dist/mcp-app` |
+| `ORDER_EXPIRY_MODE` | `request` |
+| `HOST` | `0.0.0.0` |
 
-Secret Files 总大小有 1 MB 限制，上传前检查文件大小。`.dockerignore` 同时排除了 `references/` 与构建目录根部的 `products.json`，商品只在运行时读取。
+前端只配置 `API_INTERNAL_URL=https://agent-ready-store-api.vercel.app`。它用于服务端请求与 API rewrite，不加 `NEXT_PUBLIC_`，不向前端配置数据库连接串或 MCP 令牌。变更后端地址或 `WEB_ORIGIN` 后必须重新构建相应项目。
 
-Render 将环境变量传给 Docker build arguments，现有 Dockerfile 的 `ARG WEB_ORIGIN` 会将正式网页地址编入 MCP Apps。修改该地址后必须重新构建镜像并刷新 MCP 客户端资源；仅重启进程不足以更新 Apps。不要为数据库密码或 Token 新增 Docker ARG。
+演示需要公开可访问的 Production 域名；Vercel Authentication 不能挡住前端访问后端，MCP 自身仍检查 Token、Host 和 Origin。Preview 默认关闭，避免未经验证的分支接入同一 Demo 库。
 
-初次联调采用手动部署。后续如启用自动部署，将 `autoDeployTrigger` 改为 `checksPass`，仅在 `main` 检查通过后部署；无需另加 GitHub Actions 发布 Token 或部署 Hook。
+## 到期清理与限制
 
-## Vercel：Next.js 前端
+云端采用 Human 2026-10-31 批准的请求模式：REST 业务请求与认证后的 MCP 工具调用先等待最多100单的一批清理，再执行请求；健康检查不触发。无访问时不运行后台任务，不保证截止后5秒物化，积压由后续请求继续处理。十五分钟支付截止、原子释放和保守可售量不变；失败显式返回，不静默放大库存。本地/Docker 默认仍每秒扫描。
 
-| 项目设置 | 值 |
-| --- | --- |
-| Plan | Hobby，确认适用其使用条款 |
-| Framework | Next.js |
-| Root Directory | `apps/web` |
-| Include source files outside Root Directory | 开启，共享包位于 `packages/` |
-| Node.js | 24.x |
-| Production Branch | `main` |
-| Install / Build Command | 使用 `apps/web/vercel.json` |
-| Output Directory | 保留 Next.js 默认 |
-| Production `API_INTERNAL_URL` | `https://实际后端域名.onrender.com`，无末尾斜杠 |
+Hobby 超额可能暂停，冷启动与数据库唤醒可能增加首个请求延迟；这里不承诺生产 SLA。Demo 的 ID 接续、模拟支付和身份边界沿用 README，不用于真实交易。体验完毕后删除云端项目/数据库或停止继续使用，避免长期保留演示数据。
 
-`API_INTERNAL_URL` 同时用于服务端请求与构建时生成的 `/api/v1/*` rewrite。更改后需要重新部署前端。浏览器通过同源路径访问后端，无需新增通配 CORS。MCP 客户端直接连接 Render 的 `/mcp`，不经过前端代理。
+## 数据库与发布
 
-不要为前端设置 `DATABASE_URL`、`MCP_SERVICE_TOKEN`，也不要给后端地址加 `NEXT_PUBLIC_` 前缀。Preview 不配置正式数据库对应的后端；若以后要测试 Preview，另配隔离的后端和数据库。当前未配置后端的 Preview 无法完成购物，不视为可用演示。
+迁移使用相同数据库的 direct URL（主机名不含 `-pooler`）；运行使用 pooled URL。不将迁移或 seed 放进 Function 启动或构建过程。
 
-Git 集成部署与 GitHub Actions 测试彼此独立，不宣称 Vercel 默认等待 Actions。首次发布应选择已通过 CI 的提交；自动发布策略另在平台确认。
+全新数据库才执行 `pnpm db:migrate` 与 `pnpm db:seed`，已有数据库只按必要迁移升级。当前库已初始化，不 reset、不重复导入。凭据保存在被 Git 忽略的本地 `.env` 或平台敏感变量。
 
-## 上线验收与回收
+发布前检查目标团队、项目、提交和验证结果。可从获授权分支手动发布 Production，不需要为了部署先合并 PR。依次部署后端、验证健康/商品/MCP，再部署前端并验证搜索、加购、创建订单、模拟支付/取消及跨端链接。验证数据要可追踪，未支付测试订单及时取消；不通过清空数据库恢复。
 
-- Render `/api/v1/health` 成功后，再检查 Vercel 商品列表和详情；健康检查不能代替数据库、商品及交易验收。
-- 在浏览器完成加购、修改数量、创建订单、模拟支付，并检查刷新后的订单状态；另建订单验证取消及库存释放。
-- MCP 验证认证、搜索、加购、生单，确认 Apps 跳转到正式前端，最终支付仍由 Human 完成。
-- 在专用演示数据上检查超过 15 分钟的未支付订单释放，不对云端运行会清库的 CI 测试。
-- Render Free 空闲约 15 分钟会休眠，唤醒可能约一分钟，前端请求可能先超时。演示前先实际访问后端确认恢复。进程休眠期间到期任务不运行，恢复时由现有启动清理追赶；不宣称休眠期间仍保持秒级释放，也不新增保活任务。
-- 到期释放任务持续访问数据库，Neon 可能在后端运行期间保持活跃；低访问量不等于零计算用量，应检查免费额度。
-- 演示结束后停止服务、撤销 MCP Token，确认不再需要数据后再删除演示数据库和项目。删除数据需独立确认；仓库配置不会自动执行清理。
+## 官方资料
 
-平台行为参考：[Render Docker](https://render.com/docs/docker)、[Blueprint](https://render.com/docs/blueprint-spec)、[免费实例限制](https://render.com/docs/free)、[Secret Files](https://render.com/docs/configure-environment-variables)、[Vercel 项目配置](https://vercel.com/docs/project-configuration/general-settings)、[Neon 方案](https://neon.com/pricing)。费用与额度以上线时各账户控制台为准。
+- [NestJS on Vercel](https://vercel.com/docs/frameworks/backend/nestjs)
+- [Vercel Hobby](https://vercel.com/docs/plans/hobby)
+- [Neon Free](https://neon.com/pricing)

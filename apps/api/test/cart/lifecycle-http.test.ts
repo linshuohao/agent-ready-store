@@ -70,6 +70,27 @@ const url = process.env.TEST_DATABASE_URL;
       expect(created).toMatchObject({ status: 200, payload: { ok: true } });
       return { cart, input, order: created.payload.data.order };
     }
+    it('releases an expired reservation before serving the next product request', async () => {
+      const { order } = await setup();
+      await db.order.update({
+        where: { id: order.orderId },
+        data: { reservationExpiresAt: new Date(0) },
+      });
+      const response = await fetch(base + '/api/v1/products/P001');
+      expect(response.status).toBe(200);
+      const stock = await db.inventory.findUniqueOrThrow({
+        where: { productId: 'P001' },
+      });
+      expect(stock.reservedQuantity).toBe(0);
+      expect(
+        (await db.order.findUniqueOrThrow({ where: { id: order.orderId } }))
+          .closeReason,
+      ).toBe('EXPIRED');
+      expect(
+        (await call(`/orders/${order.orderId}/pay`, {})).payload.data
+          .effectiveStatus,
+      ).toBe('EXPIRED');
+    });
     it('uses protected WebMCP initialization and order creation with server-derived attribution', async () => {
       const init = initialization();
       expect(

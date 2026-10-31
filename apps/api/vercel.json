@@ -1,0 +1,11 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nestjs",
+  "installCommand": "npm install --global pnpm@12.11.2 && pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm --filter @store/contracts build && pnpm db:generate && pnpm build && pnpm --filter @store/mcp-app build && node scripts/prepare-vercel.mjs",
+  "functions": {
+    "src/main.ts": {
+      "includeFiles": "dist/**"
+    }
+  }
+}
