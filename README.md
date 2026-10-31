@@ -1,36 +1,66 @@
 # Agent-Ready Store
 
-**接入术语说明：** MCP 与 WebMCP 是两类 Agent 接入；MCP Apps 是 MCP 的 UI 增强，不兼容时降级为无 Apps UI 的 MCP。协议、连接和构建关系见 [Technical Design §1.1](docs/engineering/TECHNICAL_DESIGN.md#11-系统全景与请求路径)。本次统一术语不改变历史批准、业务行为与尚未完成的验证事实。
+面向人类与 AI Agent 的商店。用户可以直接在网页选购，也可以让 AI 搜索商品、比较规格、管理购物车并准备订单，最后由用户核对明细并完成支付。
 
-本机`store`已于2026-10-31按Human明确授权完成清理和新流程迁移，新实施版本运行于`http://localhost:3000`。订单生命周期与共享应用已合并main；多目标搜索与紧凑卡片已验收并在当前分支归档，尚未合并main。清理脚本默认测试库限制以外的本机显式准入及执行记录见[TOOLING](docs/engineering/TOOLING.md)和当前Tasks。
+网页与 Agent 共用商品查询、计价、库存和订单能力；MCP Apps 与网页进一步共享完整的购物界面和交互逻辑。
 
-面向人类与 AI Agent 的商店：普通 Web、基础 MCP、WebMCP 和 MCP Apps 共用商品、持久购物车与独立订单能力。
+## 功能
 
-结算生命周期与分组多语言搜索均已验收并归档，当前契约见[正式规格](openspec/specs/)。实施、验收和证据边界见[结算记录](openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/tasks.md)及[搜索记录](openspec/changes/archive/2026-10-31-grouped-multilingual-search/tasks.md)，交付状态见[DELIVERY_STATUS](docs/engineering/DELIVERY_STATUS.md)。旧Review / Token / 原生批准购买流程已退出，历史归档不作为当前使用说明。
+- **商品发现**：商品列表、规格、库存与评论查询，支持多目标分组搜索、简繁匹配和受控中英文别名。
+- **持续购物车**：加购、改量、移除和勾选商品，同一购物车可创建多笔独立订单。
+- **订单与库存**：创建订单时固定金额并预留库存15分钟，支持模拟支付、取消、到期释放及原单查询。
+- **统一优惠**：满额减免、免运及 AI 购物折扣由服务端统一计算，所有入口展示一致的金额明细。
+- **Agent 接入**：支持 MCP、WebMCP，以及通过 MCP Apps 在对话中展示商品和结算界面。
 
-## 购物与 Agent 入口
+目前使用模拟支付，不包含账户、真实金流、退款或物流。购物车与订单按ID接续，适合本地体验与开发；尚不提供生产级顾客身份和访问隔离。
 
-购物车持续选购，可保留多笔订单。选择整行商品后建立待支付订单，固定金额并预留库存15分钟；Human在原订单上点击模拟支付。取消或到期释放预留，不自动将商品放回车中。创建未知沿原请求键恢复，支付未知只查原订单，不另建单。
+## 技术栈与目录
 
-- 普通 Web：商品页加购，购物车选行、生单，`/orders/{orderId}`核对和支付。跨车继续购物需明确确认；分享入口只展示该订单。
-- 基础 MCP：明确完整购买目标后生单，返回网页订单入口；没有面向模型的支付工具。连接、工具与意图约束见 [MCP_CONNECT](docs/engineering/MCP_CONNECT.md)。
-- WebMCP：页面工具复用 Web Commands；加购通常展示车，购买直接导航原单。无支持能力的浏览器仍可普通购物。
-- MCP Apps：搜索只展示结果卡片，购买准备只返回数据，生单展示最终结算卡片；支付及状态恢复在原卡片内更新。静态资源及 Host Bridge 提供内嵌购物、原单摘要和 Human 点击支付；不直接获取网站 Cookie 或服务 Token。替身 Host 自动化与真实 Host/Human 验收分开记录。
+Next.js / React 提供网页，NestJS 承载 API 与 MCP，Prisma / PostgreSQL 保存交易数据，pnpm Workspaces 管理应用与共享包。
 
-Web与Apps完整共用`commerce-ui`的页面、交互流程、控件、样式和商品资源；架构及环境边界见[Technical Design §5](docs/engineering/TECHNICAL_DESIGN.md#frontend-architecture)。当前Apps资源为`v8`，更新后刷新Host连接并重新调用工具加载。
-
-实现和恢复键说明见 [CHECKOUT_CORE](docs/engineering/CHECKOUT_CORE.md)。本项目是 Demo：ID 接续、分享视图和 app-only 可见性不是顾客身份或访问控制；不能宣称防御恶意 Host 或证明点击者为自然人。
+| 目录 | 内容 |
+| --- | --- |
+| [apps/web](apps/web/) | 网页路由、首屏渲染与 WebMCP 适配 |
+| [apps/api](apps/api/) | 商品、购物车、订单、计价与 MCP 服务 |
+| [apps/mcp-app](apps/mcp-app/) | MCP Apps 入口与 Host Bridge 适配 |
+| [packages/commerce-ui](packages/commerce-ui/) | Web / Apps 共用页面、交互、控件与样式 |
+| [packages/contracts](packages/contracts/) | 共享数据契约与输入校验 |
+| [openspec](openspec/) | 功能规格与变更记录 |
 
 ## 本机开发
 
-使用 Node 24（>=24.11 <25）与 pnpm 12.11.2。Web/API在本机运行，PostgreSQL可由Docker提供。仅首次新环境：
+### 环境要求
 
-1. 没有 `.env` 时复制 `.env.example`；已有文件不要覆盖。配置数据库口令、`DATABASE_URL`、随机 `MCP_SERVICE_TOKEN`、`WEB_ORIGIN` 和 `MCP_ALLOWED_HOSTS`，不要提交秘密。
-2. `DATABASE_URL` 默认形如 `postgresql://store:<URL编码后的密码>@127.0.0.1:5432/store`。浏览器地址须与 `WEB_ORIGIN` 一致。
-3. 对全新空库执行：
+- Node.js 24（`>=24.11 <25`）
+- pnpm 12.11.2
+- Docker 与 Docker Compose，用于运行 PostgreSQL；也可连接自行管理的 PostgreSQL
+- 商品数据文件 `references/products.json`，或通过 `CATALOG_PATH` 指定路径
+
+### 安装与配置
+
+在仓库根目录安装依赖：
 
 ```sh
 pnpm install --frozen-lockfile
+```
+
+首次配置时，将 [.env.example](.env.example) 复制为 `.env`；已有配置无需覆盖。修改以下变量：
+
+| 变量 | 用途 |
+| --- | --- |
+| `POSTGRES_PASSWORD` | 本地 PostgreSQL 密码 |
+| `DATABASE_URL` | 数据库连接地址，密码需与上项一致；特殊字符需 URL 编码 |
+| `MCP_SERVICE_TOKEN` | MCP 服务认证 Token，使用至少24字符的随机值 |
+| `WEB_ORIGIN` | 网页地址，默认 `http://localhost:3000` |
+| `MCP_ALLOWED_HOSTS` | MCP 请求允许的 Host，默认本机3002端口 |
+
+可用 `openssl rand -hex 32` 生成 Token。`.env` 包含本机凭证，不应提交到 Git。
+
+### 初始化与启动
+
+以下初始化步骤适用于**全新空数据库**：
+
+```sh
 pnpm db:up
 pnpm db:generate
 pnpm db:migrate
@@ -38,38 +68,76 @@ pnpm db:seed
 pnpm dev
 ```
 
-**已有旧流程数据库不能直接照此迁移。** 必须按 [受控切换说明](docs/engineering/TOOLING.md)准备具体目标、停写、清理清单与恢复方案，取得对应执行授权。当前清理脚本只允许隔离 `store_test`；不会自动切换业务库。已有新流程数据不得重复清空或seed，只能停写后前向修复。
+启动后访问：
 
-日常运行 `pnpm db:up && pnpm dev`，数据库已运行时只需 `pnpm dev`。入口加载根 `.env`，自动生成必要产物并监听Web/API/Apps；不会自动迁移或seed。默认 Web为`http://localhost:3000`，API健康检查为`http://localhost:3002/api/v1/health`，MCP为`http://localhost:3002/mcp`。端口通过`WEB_PORT`/`API_PUBLIC_PORT`配置，并同步Origin/Host白名单。
-
-Ctrl+C停止本次应用；`pnpm db:down`停止开发数据库但保留卷，禁止用`down -v`清理已有部署。开发卷`agent-ready-store-local_inventory`与交付卷`agent-ready-store_inventory`独立。`CATALOG_PATH`默认指向只读原件，原件不得上传或打入镜像。
-
-生产预览运行`pnpm db:generate && pnpm build && pnpm start`。`start`只运行构建产物；Apps资源编入`WEB_ORIGIN`，改变配置后须重建、刷新Host资源。单独API构建会清理dist，随后须重新构建Apps。
-
-## Docker 交付
-
-`compose.yaml`使用同一生产镜像运行API/Web，只读挂载`references/`，不将原件或源码打入交付镜像。`pnpm build:docker`只构建，不切换数据库；`pnpm start:docker`不隐式构建、迁移或seed。镜像构建与交付运行证据见当前Tasks，不等同发布。
-
-全新空环境可依次启动db、执行`pnpm db:migrate:docker`、一次性`pnpm db:seed:docker`，再启动应用。旧流程升级须先经过上述受控切换审批；新流程升级保持数据，停写后执行兼容迁移。迁移失败保持写服务停止，前向排障，不恢复旧写服务或重清新订单。`IMAGE_TAG`须在构建、迁移和运行时一致。
-
-默认仅暴露loopback Web3000/API3002，数据库无宿主映射；公网/TLS/发布不在当前授权范围。不得删除业务卷。`MAX_PENDING_ORDERS_PER_CART`默认10，降低配置不会取消已有订单。
-
-## 验证与协作
-
-基础检查：`pnpm test`、`pnpm typecheck`、`pnpm lint`、`pnpm build`。真实PostgreSQL/HTTP/MCP测试使用隔离`store_test`及测试API，串行执行会清理测试数据的套件；无环境时skip不算通过。浏览器新购物集成需`CHECKOUT_INTEGRATION=1`和匹配的`WEB_BASE_URL`，Apps替身Host另列；具体命令、端口及结果见Tasks。
-
-协作从 [AGENTS](AGENTS.md) 与 [Workflow Skill](.agents/skills/ai-native-workflow/SKILL.md)进入，按需使用 [Review Skill](.agents/skills/ai-native-review/SKILL.md)。OpenSpec是唯一变更级规格和任务来源。当前本地分支工作不代表Push、Merge、发布或最终验收已获批准。
-
-## 文档导航
-
-| 入口 | 职责 |
+| 入口 | 默认地址 |
 | --- | --- |
-| [Requirements](docs/product/REQUIREMENTS.md) / [Product Design](docs/product/PRODUCT_DESIGN.md) | 产品行为与体验基线 |
-| [Technical Design](docs/engineering/TECHNICAL_DESIGN.md) / [Engineering Decisions](docs/engineering/ENGINEERING_DECISIONS.md) | 技术方案、选择与批准范围 |
-| [DECISIONS](DECISIONS.md) | 产品取舍与Human判断 |
-| [TOOLING](docs/engineering/TOOLING.md) | 工具、迁移与运行入口 |
-| [AI_NOTES](AI_NOTES.md) | 精选真实协作时刻 |
-| [设计预览](design/index.html) | 设计资产导航 |
-| [Workflow讲解](docs/presentation/ai-native-workflow.html) | 离线讲解页，不是业务批准或最终Showcase |
+| 商店网页 | [localhost:3000](http://localhost:3000) |
+| API 健康检查 | [localhost:3002/api/v1/health](http://localhost:3002/api/v1/health) |
+| MCP | `http://localhost:3002/mcp` |
 
-正式Spec同步、真实三入口Host/Human验收与残余风险接受仍按当前Change办理；不以历史归档或自动化通过代替。
+日常开发只需 `pnpm db:up` 和 `pnpm dev`；数据库已运行时直接执行 `pnpm dev`。启动脚本读取根目录 `.env`，准备必要构建产物并监听 Web、API 与 Apps 的修改，不会自动迁移或导入数据。
+
+按 Ctrl+C 停止应用，`pnpm db:down` 停止开发数据库并保留数据卷。已有数据库不要重复清空或执行 seed；从旧订单流程升级时，先参阅[数据库切换说明](docs/engineering/TOOLING.md#订单生命周期受控切换入口)。
+
+## Agent 接入
+
+启动服务后，在支持 MCP Streamable HTTP 的客户端中配置：
+
+```text
+URL: http://localhost:3002/mcp
+Authorization: Bearer <MCP_SERVICE_TOKEN>
+```
+
+客户端需要能访问运行服务的机器。MCP 提供查询、购物车和订单工具；支持 MCP Apps 的客户端可在对话中展示商品与结算卡片，无需另建连接。不支持 Apps 时，仍可使用 MCP 工具，并通过网页完成支付。
+
+WebMCP 为支持该能力的浏览器 Agent 提供页面工具；其他浏览器仍可使用普通网页。Agent 可按明确购买意图准备订单，最终支付由用户在网页或内嵌界面完成。
+
+具体配置、工具参数与客户端兼容说明见 [MCP 接入指南](docs/engineering/MCP_CONNECT.md)。
+
+## 测试与检查
+
+```sh
+pnpm test          # 单元测试及具备环境条件的集成测试
+pnpm typecheck     # TypeScript 类型检查
+pnpm lint          # 代码规范
+pnpm format:check  # 格式检查
+pnpm build         # 生产构建
+```
+
+数据库、HTTP 和 MCP 集成测试需要隔离的 `store_test` 数据库及测试 API；未提供对应环境时部分用例会跳过。会重置数据的套件应串行执行，不使用日常开发库。完整集成环境及执行命令见 [CI 配置](.github/workflows/ci.yml)。
+
+浏览器测试使用本机 Chrome；先启动应用，再运行 `WEB_BASE_URL=http://localhost:3000 pnpm test:e2e`。交易集成另需隔离测试环境及 `CHECKOUT_INTEGRATION=1`；其他参数见 [Playwright 配置](playwright.config.ts)与[e2e用例](e2e/)。
+
+## 构建与运行
+
+本机生产模式：
+
+```sh
+pnpm db:generate
+pnpm build
+pnpm start
+```
+
+`start` 只运行构建产物。修改 `WEB_ORIGIN` 后需要重新构建 Apps，并刷新客户端连接以加载新资源。
+
+使用 Docker Compose 运行全套服务时，先完成 `.env` 配置。以下命令同样适用于全新空数据库：
+
+```sh
+pnpm build:docker
+docker compose up -d --wait db
+pnpm db:migrate:docker
+pnpm db:seed:docker
+pnpm start:docker
+```
+
+[compose.yaml](compose.yaml) 只向本机暴露 Web 与 API 端口；商品目录从 `references/` 只读挂载，不打入镜像。Compose 与本机开发使用独立数据卷。日常启动不需要重复迁移或 seed；停止服务可用 `docker compose down`，保留数据时不要加 `--volumes`。
+
+## 更多文档
+
+- [产品需求](docs/product/REQUIREMENTS.md)与[产品设计](docs/product/PRODUCT_DESIGN.md)：功能、用户流程和交互约定。
+- [产品决策](DECISIONS.md)：需求理解、业务取舍与 PM 沟通。
+- [技术方案](docs/engineering/TECHNICAL_DESIGN.md)与[工程决策](docs/engineering/ENGINEERING_DECISIONS.md)：领域模型、状态流转和架构选择。
+- [交易核心](docs/engineering/CHECKOUT_CORE.md)：订单、库存与失败恢复。
+- [协作入口](AGENTS.md)与[AI_NOTES](AI_NOTES.md)：开发约定与 AI 协作经验。
+- [交付状态](docs/engineering/DELIVERY_STATUS.md)：实现范围、验证记录和已知限制。
