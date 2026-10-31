@@ -2,10 +2,11 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  purchasePrepareInput,
-  cartOperateInput,
-  cartOperationSchema,
-  productInput,
+  getOrCreateCartInput,
+  persistentCartOperationInput,
+  createOrderInput,
+  listOrdersInput,
+  orderTargetInput,
   searchInput,
   pageInput,
   type Page,
@@ -14,11 +15,11 @@ import {
   type Result,
 } from '@store/contracts';
 import { useCartOperations } from '@/features/cart/provider';
-import {
-  preparePurchase,
-  readPurchase,
-} from '@/features/checkout/purchase-commands';
-import { getCart, type EditResult } from '@/features/cart/commands';
+import { z } from 'zod';
+import { readCart, readOrders } from '@/features/cart/lifecycle-commands';
+import { readLifecycleOrder } from '@/features/checkout/order-commands';
+import { useLifecycleOrders } from '@/features/checkout/order-memory';
+import type { EditResult } from '@/features/cart/commands';
 
 type Tool = {
   name: string;
@@ -40,6 +41,7 @@ type Props = {
   cartId?: string;
   readonly?: boolean;
   reviewId?: string;
+  orderId?: string;
   onCartChanged?: (result: EditResult) => void;
 };
 const schema = (
@@ -54,6 +56,7 @@ const queryKey = (params: URLSearchParams) => {
 };
 export function PageTools(props: Props) {
   const operations = useCartOperations();
+  const orders = useLifecycleOrders();
   const router = useRouter(),
     pathname = usePathname();
   const latest = useRef({ props, operations });
@@ -70,7 +73,7 @@ export function PageTools(props: Props) {
     resolve: (result: unknown) => void;
     timer: ReturnType<typeof setTimeout>;
   } | null>(null);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const pending = navigation.current;
     if (
       pending &&
@@ -197,161 +200,220 @@ export function PageTools(props: Props) {
         },
       );
     }
-    register(
-      'get_cart',
-      '讀取目前有合法權限的購物車及服務端報價，不改來源或確認購買。',
-      schema(),
-      true,
-      async (input) => {
-        if (!input || typeof input !== 'object' || Object.keys(input).length)
-          return failure('VALIDATION_ERROR');
-        const id =
-          latest.current.props.cartId ??
-          latest.current.operations.currentCartId;
-        if (!id) return failure('NO_CURRENT_CART');
-        const result = await getCart(id);
-        return active ? result : failure('STALE_CONTEXT');
-      },
-    );
-    if (props.reviewId && cartId) {
-      const reviewId = props.reviewId;
-      for (const name of ['get_purchase_status', 'wait_for_purchase'])
-        register(
-          name,
-          '只讀查詢目前準備與購買結果；pending 表示等待 Human 在網頁確認，不代為支付或重試。',
-          schema(),
-          true,
-          async (input) => {
-            if (
-              !input ||
-              typeof input !== 'object' ||
-              Object.keys(input).length
-            )
-              return failure('VALIDATION_ERROR');
-            const result = await readPurchase(cartId, reviewId);
-            return active &&
-              latest.current.props.reviewId === reviewId &&
-              latest.current.props.cartId === cartId
-              ? result
-              : failure('STALE_CONTEXT');
-          },
-        );
-    }
+    const currentCart = () => latest.current.operations.currentCartId;
+    const target = (id?: string) => id ?? currentCart();
+    const visible = (id: string) =>
+      active && latest.current.operations.isCurrentCart(id);
+    const jsonSchema = (input: z.ZodType) => ({
+      type: 'object',
+      ...z.toJSONSchema(input, { io: 'input' }),
+    });
+    const cartTarget = z.object({ cartId: z.uuid().optional() }).strict();
     if (!readonly) {
+      const initializationInput = z.union([
+        getOrCreateCartInput.options[0],
+        getOrCreateCartInput.options[1].extend({
+          stayOnPage: z.boolean().optional(),
+        }),
+      ]);
       register(
-        'prepare_checkout',
-        '準備目前購物車的完整摘要並前往確認頁，等待 Human 明確支付；不批准、不下單。原請求結果未知時僅明確使用同一請求鍵重試。',
-        schema(
-          {
-            prepareRequestId: { type: 'string', format: 'uuid' },
-            expectedCartVersion: { type: 'integer', minimum: 1 },
-          },
-          ['prepareRequestId', 'expectedCartVersion'],
-        ),
+        'get_or_create_cart',
+        '只在首次明確寫入且無目前車時初始化；純瀏覽/諮詢不呼叫。加購預設顯示車；購買的內部準備或用戶要求留頁設stayOnPage。重試沿原鍵與完整條目，已有ID用cartId恢復，不主動換車。',
+        jsonSchema(initializationInput),
         false,
         async (input) => {
-          const parsed = purchasePrepareInput.safeParse(input);
-          if (!parsed.success) return failure('VALIDATION_ERROR');
-          const id =
-            latest.current.props.cartId ??
-            latest.current.operations.currentCartId;
-          if (!id) return failure('NO_CURRENT_CART');
-          const lease = latest.current.operations.acquirePurchase(id);
-          if ('code' in lease) return failure(lease.code);
-          const current = () =>
-            active &&
-            lease.current() &&
-            (latest.current.props.cartId ??
-              latest.current.operations.currentCartId) === id;
-          try {
-            const result = await preparePurchase(id, parsed.data, current);
-            if (!current()) return failure('STALE_CONTEXT');
-            if (result.kind === 'success') {
-              if (result.data.reviewId)
-                router.push(
-                  `/checkout/${id}?reviewId=${encodeURIComponent(result.data.reviewId)}`,
-                );
-              else if (result.data.state === 'completed')
-                router.push(`/orders/${id}`);
-            }
+          const p = initializationInput.safeParse(input);
+          if (!p.success) return failure('VALIDATION_ERROR');
+          if ('cartId' in p.data) {
+            if (currentCart() && currentCart() !== p.data.cartId)
+              return failure('STALE_CONTEXT');
+            const result = await readCart(p.data.cartId);
+            if (
+              active &&
+              result.kind === 'success' &&
+              latest.current.operations.selectCart(p.data.cartId)
+            )
+              latest.current.operations.install(result.data);
             return result;
-          } finally {
-            lease.release();
           }
+          const { stayOnPage, ...body } = p.data;
+          const result = await latest.current.operations.toolInitialize(body);
+          if (
+            result.kind === 'success' &&
+            !stayOnPage &&
+            visible(result.data.cartId)
+          )
+            router.push(`/cart/${result.data.cartId}`);
+          return result;
+        },
+      );
+      register(
+        'get_cart',
+        '讀取目前持久購物車，不建立、不生單；ID只是Demo定位，不代表身份。',
+        jsonSchema(cartTarget),
+        true,
+        async (input) => {
+          const p = cartTarget.safeParse(input);
+          if (!p.success) return failure('VALIDATION_ERROR');
+          const id = target(p.data.cartId);
+          if (!id) return failure('NO_CURRENT_CART');
+          if (!visible(id)) return failure('STALE_CONTEXT');
+          const result = await readCart(id);
+          if (result.kind === 'success' && visible(id))
+            latest.current.operations.install(result.data);
+          return result;
+        },
+      );
+      const listInput = listOrdersInput.safeExtend({
+        cartId: z.uuid().optional(),
+      });
+      register(
+        'list_orders',
+        '按目前cartId分頁發現訂單；多個候選未指明目標時先澄清，不任意取消或重建。',
+        jsonSchema(listInput),
+        true,
+        async (input) => {
+          const p = listInput.safeParse(input);
+          if (!p.success) return failure('VALIDATION_ERROR');
+          const { cartId, ...query } = p.data,
+            id = target(cartId);
+          if (!id) return failure('NO_CURRENT_CART');
+          if (!visible(id)) return failure('STALE_CONTEXT');
+          return readOrders(id, query.offset, query.limit, query.pendingOnly);
+        },
+      );
+      const operationBase = persistentCartOperationInput
+        .omit({ operation: true })
+        .extend({
+          cartId: z.uuid(),
+          productId: z.string().min(1).max(64),
+          stayOnPage: z.boolean().optional(),
+        });
+      for (const [name, type] of [
+        ['add_cart_item', 'add_item'],
+        ['update_cart_item', 'set_quantity'],
+        ['remove_cart_item', 'remove_item'],
+      ] as const) {
+        const operationSchema =
+          type === 'remove_item'
+            ? operationBase
+            : operationBase.extend({
+                quantity: z.number().int().positive().max(2147483647),
+              });
+        register(
+          name,
+          '一次明確的加購/絕對改量/移除，使用原操作鍵及預期車版本；草稿或同車在途拒絕，未知重試同鍵，不縮減購買目標。加購通常顯示車；內部準備或用戶要求留頁設stayOnPage。',
+          jsonSchema(operationSchema),
+          false,
+          async (input) => {
+            const p = operationSchema.safeParse(input);
+            if (!p.success) return failure('VALIDATION_ERROR');
+            const {
+              cartId,
+              productId,
+              stayOnPage,
+              operationRequestId,
+              expectedCartVersion,
+            } = p.data;
+            const operation =
+              type === 'remove_item'
+                ? { type, productId }
+                : {
+                    type,
+                    productId,
+                    quantity: (
+                      p.data as z.infer<typeof operationBase> & {
+                        quantity: number;
+                      }
+                    ).quantity,
+                  };
+            const result = await latest.current.operations.toolOperate(cartId, {
+              operationRequestId,
+              expectedCartVersion,
+              operation,
+            });
+            if (
+              result.kind === 'success' &&
+              type === 'add_item' &&
+              !stayOnPage &&
+              visible(cartId)
+            )
+              router.push(`/cart/${cartId}`);
+            return result;
+          },
+        );
+      }
+      const createInput = createOrderInput.safeExtend({
+        cartId: z.uuid(),
+        stayOnPage: z.boolean().optional(),
+      });
+      register(
+        'create_order',
+        '僅明確購買且完整目標準備成功才生單。整行selectedItems及預算/幣別/規格必須完整；任一準備失敗先停止，不縮單。創建即預留15分鐘並固定金額，尚未支付；直接顯示原單等Human親自點支付，不代點。未知沿原鍵重試，留頁需求設stayOnPage。',
+        jsonSchema(createInput),
+        false,
+        async (input) => {
+          const p = createInput.safeParse(input);
+          if (!p.success) return failure('VALIDATION_ERROR');
+          const { cartId, stayOnPage, ...body } = p.data;
+          const result = await latest.current.operations.createOrder(
+            cartId,
+            body,
+            'webmcp',
+          );
+          if (result.kind === 'success' && visible(cartId)) {
+            latest.current.operations.install(result.data.cart);
+            if (!stayOnPage)
+              router.push(`/orders/${result.data.order.orderId}`);
+          }
+          return result;
         },
       );
     }
-    if (!readonly) {
-      if (hasCatalog || productId)
-        register(
-          'retry_cart_creation',
-          '僅重試結果未確認的原建立請求，沿用原通道、請求鍵與條目；不恢復購物車編輯。',
-          schema(),
-          false,
-          async (input) => {
-            if (
-              !input ||
-              typeof input !== 'object' ||
-              Object.keys(input).length
-            )
-              return failure('VALIDATION_ERROR');
-            const result = await latest.current.operations.retryTool(cartId);
-            return active ? result : failure('STALE_CONTEXT');
-          },
-        );
-      if (hasCatalog || productId)
-        register(
-          'add_to_cart',
-          '將商品加至目前車，無車時建立 AGENT 車；不扣庫存、不確認或提交購買。',
-          schema(
-            { productId: { type: 'string', minLength: 1, maxLength: 64 } },
-            ['productId'],
-          ),
-          false,
-          async (input) => {
-            const parsed = productInput.safeParse(input);
-            if (!parsed.success) return failure('VALIDATION_ERROR');
-            const result = await latest.current.operations.add(
-              parsed.data.productId,
-              'webmcp',
-            );
-            return active ? result : failure('STALE_CONTEXT');
-          },
-        );
-      if (cartId)
-        register(
-          'update_cart',
-          '按服務端版本提交一次加購、絕對設量或移除操作；草稿/忙碌時拒絕，衝突/未知須重新載入，不換版本重試，不提交購買。',
-          schema(
-            {
-              expectedCartVersion: {
-                type: 'integer',
-                minimum: 1,
-                maximum: 2147483646,
-              },
-              operation: cartOperationSchema,
-            },
-            ['expectedCartVersion', 'operation'],
-          ),
-          false,
-          async (input) => {
-            const parsed = cartOperateInput.safeParse(input);
-            if (!parsed.success) return failure('VALIDATION_ERROR');
-            const notify = latest.current.props.onCartChanged;
-            const result = await latest.current.operations.toolSave({
-              cartId: cartId!,
-              ...parsed.data,
-            });
-            if (
-              active &&
-              result &&
-              (result.kind !== 'success' || result.cart.cartId === cartId)
-            )
-              notify?.(result);
-            return active ? result : failure('STALE_CONTEXT');
-          },
-        );
-    }
+    const orderInput = orderTargetInput.partial({ orderId: true });
+    register(
+      'get_order',
+      '按原orderId只讀固定摘要及狀態；CHECKOUT不是支付成功，未知只查原單，不重建。',
+      jsonSchema(orderInput),
+      true,
+      async (input) => {
+        const p = orderInput.safeParse(input);
+        if (!p.success) return failure('VALIDATION_ERROR');
+        const id = p.data.orderId ?? latest.current.props.orderId;
+        if (!id) return failure('ORDER_TARGET_REQUIRED');
+        const result = await readLifecycleOrder(id);
+        if (
+          result.kind === 'success' &&
+          p.data.cartId &&
+          result.data.cartId !== p.data.cartId
+        )
+          return failure('ORDER_CART_MISMATCH');
+        return result;
+      },
+    );
+    if (!readonly)
+      register(
+        'cancel_order',
+        '只取消明確指定的未支付原單，不退款、不回車；多候選先澄清，未知只查原單，勿代替Human支付。',
+        jsonSchema(orderTargetInput),
+        false,
+        async (input) => {
+          const p = orderTargetInput.safeParse(input);
+          if (!p.success) return failure('VALIDATION_ERROR');
+          await orders.read(p.data.orderId);
+          if (!active) return failure('STALE_CONTEXT');
+          const state = orders.snapshot(p.data.orderId);
+          if (p.data.cartId && state.order?.cartId !== p.data.cartId)
+            return failure('ORDER_CART_MISMATCH');
+          await orders.act(p.data.orderId, 'cancel');
+          const result = orders.snapshot(p.data.orderId);
+          return {
+            order: result.order,
+            pendingAction: result.pendingAction,
+            message: result.message,
+          };
+        },
+      );
     return () => {
       active = false;
       controller.abort();
@@ -370,7 +432,9 @@ export function PageTools(props: Props) {
     hasCatalog,
     readonly,
     router,
-    props.reviewId,
+    props.orderId,
+    props.queryKey,
+    orders,
   ]);
   return unavailable ? (
     <p className="hint">

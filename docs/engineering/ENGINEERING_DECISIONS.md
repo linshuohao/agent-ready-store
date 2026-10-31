@@ -390,6 +390,8 @@ Human 已通过整体架构，授权收敛 [Technical Design v0.2（历史记录
 
 ### T-11 — 共享业务用例与契约，各端独立呈现和导航
 
+本条标题和下列正文保留2026-10-30的决策历史；当前Web/Apps完整共用应用的批准范围见本条末尾的[T-11限定替代](#t-11限定替代web与apps完整应用复用2026-10-31)，不得继续据旧范围维护两套购物界面/协调。
+
 - **Status：Accepted（复用既有T-01/T-04并采用本轮边界）；新增架构表达为Draft整合。** 2026-10-30。
 - **Problem：** 各端各自实现购买规则会分歧；强行共享页面又会耦合Next Router、React生命周期和Host SDK。
 - **Decision：** Nest用例唯一维护计价、库存、状态、幂等；HTTP/MCP适配器翻译协议。Web与WebMCP复用无React依赖Commands，Hook负责页面协调；Apps通过Host适配，不依赖Next环境。共享contracts和纯展示模型，有真实复用再抽组件。订单统一入口按状态显示不同内容，不用路由表示交易状态。查询副本按cartId/version和orderId隔离，局部未决操作不锁全局；迟到响应不覆盖终态或抢占导航，矛盾结果重查服务端。
@@ -397,3 +399,9 @@ Human 已通过整体架构，授权收敛 [Technical Design v0.2（历史记录
 - **Trade-offs：** 部分UI适配代码保留在各端，换取明确依赖与可测试性。前端保存的是查询副本和局部意图，数据库才是交易权威。
 - **Evidence：** [重设计前Technical Design §5.2](archive/TECHNICAL_DESIGN_HISTORY.md#snapshot-20261030)已有Commands/Hooks/Adapters边界，本轮继续复用并按Order生命周期调整；Human要求跨端流程、前端分层与维护性设计。没有新依赖选型或运行基准。
 - **Consequences：** 服务端用例、无React Commands、纯组件和真实Host分别验证；扩展入口不复制库存/金额规则。具体文件拆分在实施时按消费者决定，不预建通用编排框架。
+
+#### T-11限定替代：Web与Apps完整应用复用（2026-10-31）
+
+- **Status：Accepted。** Human明确要求「不要局部复用，我们要完整复用。我们的流程、交互、视觉都是一致的」，并对以Web为基准、共用完整界面与交互协调、仅保留环境适配的设计明确回复「确认这个设计，直接更新并实施」。
+- **替代范围：** 上述T-11中的各端独立呈现、仅适用时共享纯展示及Apps独立购物协调，改为commerce-ui唯一维护完整购物应用；Web/Apps只保留HTTP/Host Bridge、导航、存储、页面工具/工具结果及服务端首屏适配。旧决策正文保留历史，其余服务端唯一用例、实例隔离、迟到响应、Human支付和不依赖Next运行时约束继续有效。
+- **取舍与实际问题：** 两套界面/样式与交互协调已造成视觉分叉和反复修复；共享现有Web实现消除重复。沿用现有共享包及已使用依赖，不新增服务、万能状态框架或跨Host上下文；承担必要环境适配和双构建验证。完整架构正文见[Technical Design §5](TECHNICAL_DESIGN.md#frontend-architecture)，变更替代及验收见[当前Change Design §13](../../openspec/changes/checkout-lifecycle-redesign/design.md#13-web与apps完整应用复用2026-10-31-human确认)，不将替身回归视为真实Host/Human验收。

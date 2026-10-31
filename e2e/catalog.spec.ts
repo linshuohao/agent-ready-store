@@ -1,4 +1,13 @@
 import { test, expect } from '@playwright/test';
+const pageErrors = new WeakMap<import('@playwright/test').Page, string[]>();
+test.beforeEach(async ({ page }) => {
+  const errors: string[] = [];
+  pageErrors.set(page, errors);
+  page.on('pageerror', (error) => errors.push(error.message));
+});
+test.afterEach(async ({ page }) => {
+  expect(pageErrors.get(page)).toEqual([]);
+});
 test('pagination keeps native link keyboard behavior', async ({ page }) => {
   await page.goto('/');
   const next = page.getByRole('link', { name: '下一頁', exact: true });
@@ -39,7 +48,7 @@ test('valid numeric price notation submits as decimal and keeps range validation
     ['100.25', '100.25'],
     ['-0', '0'],
   ]) {
-    await page.getByLabel('最低價格').fill(input);
+    await page.getByRole('spinbutton', { name: '最低價格' }).fill(input);
     await page.getByRole('button', { name: '套用篩選' }).click();
     await expect(page).toHaveURL(
       new RegExp(`minPrice=${decimal.replace('.', '\\.')}(?:&|$)`),
@@ -49,8 +58,8 @@ test('valid numeric price notation submits as decimal and keeps range validation
       page.getByRole('heading', { name: '查詢條件有誤' }),
     ).toHaveCount(0);
   }
-  await page.getByLabel('最低價格').fill('100');
-  await page.getByLabel('最高價格').fill('1');
+  await page.getByRole('spinbutton', { name: '最低價格' }).fill('100');
+  await page.getByRole('spinbutton', { name: '最高價格' }).fill('1');
   await page.getByRole('button', { name: '套用篩選' }).click();
   await expect(
     page.getByRole('heading', { name: '查詢條件有誤' }),
@@ -68,7 +77,9 @@ test('discovery, URL navigation and all comments work without hydration errors',
   await expect(page.locator('.product-card')).toHaveCount(12);
   await page.getByRole('link', { name: '下一頁', exact: true }).click();
   await expect(page).toHaveURL(/offset=12/);
-  await page.getByLabel('搜尋商品').fill('impossible-product');
+  await page
+    .getByRole('searchbox', { name: '搜尋商品' })
+    .fill('impossible-product');
   await page.getByRole('button', { name: '套用篩選' }).click();
   await expect(page).not.toHaveURL(/offset=/);
   await expect(
@@ -131,20 +142,22 @@ test('comment failure can retry and a late old product response cannot mix into 
   });
   await page.goto('/products/P005');
   await page.goto('/products/P001');
-  await expect(page.locator('.reviews')).not.toContainText('[SYSTEM]');
-  await expect(page.locator('.review-content').first()).toBeVisible();
+  await expect(
+    page.getByRole('region', { name: '商品評論' }),
+  ).not.toContainText('[SYSTEM]');
+  await expect(page.locator('.review-content:visible').first()).toBeVisible();
 });
 test('page remains usable with keyboard and narrow viewport', async ({
   page,
 }) => {
   await page.goto('/');
-  await expect(page.getByLabel('搜尋商品')).toBeVisible();
+  await expect(page.getByRole('searchbox', { name: '搜尋商品' })).toBeVisible();
   await page.keyboard.press('Tab');
   await expect(page.getByRole('link', { name: '跳至主要內容' })).toBeFocused();
   await page.keyboard.press('Enter');
   await page.waitForURL('**/#main');
-  await page.getByLabel('搜尋商品').focus();
-  await expect(page.getByLabel('搜尋商品')).toBeFocused();
+  await page.getByRole('searchbox', { name: '搜尋商品' }).focus();
+  await expect(page.getByRole('searchbox', { name: '搜尋商品' })).toBeFocused();
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,

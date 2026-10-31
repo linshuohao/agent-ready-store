@@ -1,4 +1,5 @@
 import { build } from 'vite';
+import tailwind from '@tailwindcss/postcss';
 import { fileURLToPath } from 'node:url';
 import { appTools } from './resources.mjs';
 const root = fileURLToPath(new URL('.', import.meta.url));
@@ -11,6 +12,7 @@ if (url.origin !== origin || !['http:', 'https:'].includes(url.protocol))
 await build({
   root,
   configFile: false,
+  css: { postcss: { plugins: [tailwind()] } },
   logLevel: 'warn',
   define: { __CHECKOUT_ORIGIN__: JSON.stringify(origin) },
   plugins: [
@@ -33,7 +35,7 @@ await build({
         for (const tool of appTools) {
           this.emitFile({
             type: 'asset',
-            fileName: tool.replaceAll('_', '-') + '-v1.html',
+            fileName: tool.replaceAll('_', '-') + '-v5.html',
             source: `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Agent-Ready Store</title><style>${css}</style></head><body data-entry-tool="${tool}"><div id="root"></div><script type="module">${code}</script></body></html>`,
           });
         }
@@ -50,6 +52,15 @@ await build({
     target: 'es2022',
     minify: !watch,
     rolldownOptions: {
+      // Apps is entirely client-side; React Server Component boundary directives are inert here.
+      onwarn(warning, warn) {
+        if (
+          warning.code === 'MODULE_LEVEL_DIRECTIVE' &&
+          warning.message.includes('use client')
+        )
+          return;
+        warn(warning);
+      },
       input: root + 'src/main.tsx',
       output: { codeSplitting: false },
     },

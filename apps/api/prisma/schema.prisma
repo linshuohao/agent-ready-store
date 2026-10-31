@@ -1,68 +1,79 @@
 generator client {
-  provider     = "prisma-client"
-  output       = "../src/infrastructure/database/generated/prisma"
+  provider = "prisma-client"
+  output = "../src/infrastructure/database/generated/prisma"
   moduleFormat = "esm"
 }
-
 datasource db {
   provider = "postgresql"
 }
-
 model Inventory {
-  productId String @id
-  quantity  Int
+ productId String @id
+ quantity Int
+ reservedQuantity Int @default(0)
 }
-
 model Cart {
-  handoffIssuedAt    DateTime? @db.Timestamptz(3)
-  checkoutEpoch      BigInt   @default(0)
-  order              Order?
-  purchaseReviews    PurchaseReview[]
-  id                 String   @id @db.Uuid
-  origin             String   @default("HUMAN")
-  agentCreated       Boolean  @default(false)
-  items              Json
-  version            Int      @default(1)
-  createdAt          DateTime @db.Timestamptz(3)
-  createScope        String
-  createRequestId    String   @db.Uuid
-  createPayloadHash  String
-  encryptedCartToken String
-
-  @@unique([createScope, createRequestId])
+ id String @id @db.Uuid
+ agentCreated Boolean @default(false)
+ items Json
+ version Int @default(1)
+ createdAt DateTime @db.Timestamptz(3)
+ createRequestId String @unique @db.Uuid
+ createPayloadHash String
+ orders Order[]
+ operations CartOperation[]
 }
-
+model CartOperation {
+ cartId String @db.Uuid
+ cart Cart @relation(fields:[cartId],references:[id],onDelete:Restrict)
+ requestId String @db.Uuid
+ payloadHash String
+ createdAt DateTime @db.Timestamptz(3)
+ @@id([cartId,requestId])
+}
+enum OrderStatus {
+ CHECKOUT
+ PAID
+}
+enum OrderCloseReason {
+ CANCELLED
+ EXPIRED
+}
 model Order {
-  id                 String   @id @db.Uuid
-  cartId             String   @unique @db.Uuid
-  cart               Cart     @relation(fields: [cartId], references: [id], onDelete: Restrict)
-  createdAt          DateTime @db.Timestamptz(3)
-  cartVersion        Int
-  purchaseHash       String
-  catalogRevision    String
-  pricingRuleVersion String
-  origin             String
-  snapshot           Json
+ id String @id @db.Uuid
+ cartId String @db.Uuid
+ cart Cart @relation(fields:[cartId],references:[id],onDelete:Restrict)
+ sourceCartVersion Int
+ createRequestId String @db.Uuid
+ requestHash String
+ status OrderStatus @default(CHECKOUT)
+ createdAt DateTime @db.Timestamptz(3)
+ reservationExpiresAt DateTime @db.Timestamptz(3)
+ paidAt DateTime? @db.Timestamptz(3)
+ closedAt DateTime? @db.Timestamptz(3)
+ closeReason OrderCloseReason?
+ createdByChannel String
+ aiEligible Boolean
+ pricingRuleVersion String
+ currency String
+ subtotal Decimal @db.Decimal(20,2)
+ thresholdDiscount Decimal @db.Decimal(20,2)
+ aiDiscount Decimal @db.Decimal(20,2)
+ shipping Decimal @db.Decimal(20,2)
+ total Decimal @db.Decimal(20,2)
+ lines OrderLine[]
+ @@unique([cartId,createRequestId])
+ @@index([cartId,createdAt,id])
+ @@index([status,closedAt,reservationExpiresAt])
 }
-
-
-model PurchaseReview {
-  id                 String @id @db.Uuid
-  cartId             String @db.Uuid
-  cart               Cart @relation(fields: [cartId], references: [id], onDelete: Cascade)
-  prepareScope       String
-  prepareRequestId   String @db.Uuid
-  requestHash        String
-  channel            String
-  actorScope         String
-  cartVersion        Int
-  purchaseHash       String
-  checkoutEpoch      BigInt
-  summary            Json
-  createdAt          DateTime @db.Timestamptz(3)
-  expiresAt          DateTime @db.Timestamptz(3)
-  cancelled          Boolean @default(false)
-
-  @@unique([prepareScope, prepareRequestId])
-  @@index([cartId])
+model OrderLine {
+ orderId String @db.Uuid
+ order Order @relation(fields:[orderId],references:[id],onDelete:Restrict)
+ productId String
+ name String
+ brand String
+ specs Json
+ quantity Int
+ unitPrice Decimal @db.Decimal(20,2)
+ lineSubtotal Decimal @db.Decimal(20,2)
+ @@id([orderId,productId])
 }

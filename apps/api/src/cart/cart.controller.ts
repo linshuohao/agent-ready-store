@@ -1,27 +1,54 @@
-import { z } from 'zod';
-import { randomBytes } from 'node:crypto';
-import { checkoutReviewInput, cartCapabilityInput } from '@store/contracts';
 import {
+  All,
   Controller,
-  HttpCode,
   Get,
-  Post,
-  Put,
+  Inject,
   Param,
+  Post,
   Req,
   Res,
-  Inject,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
+import { z } from 'zod';
+import { orderTargetInput } from '@store/contracts';
 import { CartService } from './cart.service.js';
 import { AppError } from '../shared/app-error.js';
 import { result } from '../shared/result.js';
 
+const orderContext = orderTargetInput.omit({ orderId: true });
+const listQuery = z
+  .object({
+    offset: z
+      .string()
+      .regex(/^(0|[1-9]\d*)$/)
+      .transform(Number)
+      .optional(),
+    limit: z
+      .string()
+      .regex(/^[1-9]\d*$/)
+      .transform(Number)
+      .optional(),
+    pendingOnly: z
+      .enum(['true', 'false'])
+      .transform((value) => value === 'true')
+      .optional(),
+  })
+  .strict();
+function parse<T>(schema: z.ZodType<T>, input: unknown): T {
+  const parsed = schema.safeParse(input);
+  if (!parsed.success) throw new AppError('VALIDATION_ERROR', 400);
+  return parsed.data;
+}
+
 @Controller('api/v1')
 export class CartController {
   constructor(@Inject(CartService) private readonly carts: CartService) {}
-  private checkRequest(req: Request, write: boolean) {
-    if (Object.keys(req.query).length || req.headers['x-cart-token'])
+
+  private checkRequest(req: Request, write: boolean, query = false) {
+    if (
+      (!query && Object.keys(req.query).length) ||
+      req.headers['x-cart-token']
+    )
       throw new AppError('VALIDATION_ERROR', 400);
     if (
       write &&
@@ -30,14 +57,7 @@ export class CartController {
     )
       throw new AppError('FORBIDDEN', 403);
   }
-  private cookie(req: Request, id: string) {
-    const matches = (req.headers.cookie ?? '')
-      .split(';')
-      .map((s) => s.trim())
-      .filter((s) => s.startsWith(`cart_${id}=`));
-    if (matches.length !== 1) throw new AppError('FORBIDDEN', 403);
-    return matches[0].slice(`cart_${id}=`.length);
-  }
+
   private async send(res: Response, work: () => Promise<unknown>) {
     let status = 200;
     const response = await result(async () => {
@@ -49,94 +69,50 @@ export class CartController {
       }
     });
     res.setHeader('Cache-Control', 'no-store');
-    res
-      .status(res.statusCode === 201 && response.ok ? 201 : status)
-      .json(response);
+    res.status(status).json(response);
   }
-  private setCartCookie(
-    res: Response,
-    id: string,
-    token: string,
-    expiresAt: string,
-  ) {
-    const origin = new URL(process.env.WEB_ORIGIN!);
-    const local =
-      origin.protocol === 'http:' &&
-      ['127.0.0.1', 'localhost', '[::1]'].includes(origin.hostname);
-    res.cookie(`cart_${id}`, token, {
-      httpOnly: true,
-      sameSite: 'strict',
-      path: '/api/v1',
-      secure: !(local && process.env.CART_COOKIE_SECURE === 'false'),
-      expires: new Date(expiresAt),
-    });
-  }
-  @Post('handoffs/exchange')
-  @HttpCode(200)
-  async exchange(@Req() req: Request, @Res() res: Response) {
+
+  @Post('shopping/carts')
+  async initialize(@Req() req: Request, @Res() res: Response) {
     await this.send(res, async () => {
       this.checkRequest(req, true);
-      const parsed = cartCapabilityInput.safeParse(req.body);
-      if (!parsed.success) throw new AppError('VALIDATION_ERROR', 400);
-      const { cartId, cartAccessToken } = parsed.data;
-      const matches = (req.headers.cookie ?? '')
-        .split(';')
-        .map((s) => s.trim())
-        .filter((s) => s.startsWith(`cart_${cartId}=`));
-      if (
-        matches.length > 1 ||
-        (matches.length === 1 &&
-          matches[0] !== `cart_${cartId}=${cartAccessToken}`)
-      )
-        throw new AppError('FORBIDDEN', 403);
-      const cart = await this.carts.exchange(cartId, cartAccessToken);
-      this.setCartCookie(res, cartId, cartAccessToken, cart.expiresAt);
-      return cart;
+      return this.carts.getOrCreate(req.body, 'WEB');
     });
   }
-  @Post('carts') async create(@Req() req: Request, @Res() res: Response) {
+
+  @Post('shopping/webmcp/carts')
+  async initializeWebMcp(@Req() req: Request, @Res() res: Response) {
     await this.send(res, async () => {
       this.checkRequest(req, true);
-      const created = await this.carts.create(req.body);
-      this.setCartCookie(
-        res,
-        created.cart.cartId,
-        req.body.cartToken,
-        created.cart.expiresAt,
-      );
-      res.status(created.replayed ? 200 : 201);
-      return created.cart;
+      return this.carts.getOrCreate(req.body, 'WEBMCP');
     });
   }
-  @Post('webmcp/carts') async createWebMcp(
-    @Req() req: Request,
-    @Res() res: Response,
-  ) {
-    await this.send(res, async () => {
-      this.checkRequest(req, true);
-      const created = await this.carts.createWebMcp(req.body);
-      this.setCartCookie(
-        res,
-        created.cart.cartId,
-        req.body.cartToken,
-        created.cart.expiresAt,
-      );
-      res.status(created.replayed ? 200 : 201);
-      return created.cart;
-    });
-  }
-  @Put('webmcp/carts/:id/items') async replaceWebMcp(
+
+  @Post('shopping/webmcp/carts/:id/orders')
+  async createWebMcpOrder(
     @Param('id') id: string,
     @Req() req: Request,
     @Res() res: Response,
   ) {
     await this.send(res, async () => {
       this.checkRequest(req, true);
-      return this.carts.replaceWebMcp(id, this.cookie(req, id), req.body);
+      return this.carts.createOrder(id, req.body, 'WEBMCP');
     });
   }
-  @Post('carts/:id/operations')
-  @HttpCode(200)
+
+  @Get('shopping/carts/:id')
+  async get(
+    @Param('id') id: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    await this.send(res, async () => {
+      this.checkRequest(req, false);
+      return this.carts.get(id);
+    });
+  }
+
+  @Post('shopping/carts/:id/operations')
   async operate(
     @Param('id') id: string,
     @Req() req: Request,
@@ -144,293 +120,99 @@ export class CartController {
   ) {
     await this.send(res, async () => {
       this.checkRequest(req, true);
-      return this.carts.operate(id, this.cookie(req, id), req.body);
+      return this.carts.operate(id, req.body);
     });
   }
-  @Post('webmcp/carts/:id/operations')
-  @HttpCode(200)
-  async operateWebMcp(
+
+  @Post('shopping/carts/:id/quote')
+  async quote(
     @Param('id') id: string,
     @Req() req: Request,
     @Res() res: Response,
   ) {
     await this.send(res, async () => {
       this.checkRequest(req, true);
-      return this.carts.operate(id, this.cookie(req, id), req.body, true);
+      return this.carts.quoteSelection(id, req.body, 'WEB');
     });
   }
-  @Get('carts/:id') async get(
-    @Param('id') id: string,
-    @Req() req: Request,
-    @Res() res: Response,
-  ) {
-    await this.send(res, async () => {
-      this.checkRequest(req, false);
-      if (req.body && Object.keys(req.body).length)
-        throw new AppError('VALIDATION_ERROR', 400);
-      const token = this.cookie(req, id);
-      const cart = await this.carts.get(id, token);
-      this.setCartCookie(res, id, token, cart.expiresAt);
-      return cart;
-    });
-  }
-  @Put('carts/:id/items') async replace(
+
+  @Post('shopping/carts/:id/orders')
+  async createOrder(
     @Param('id') id: string,
     @Req() req: Request,
     @Res() res: Response,
   ) {
     await this.send(res, async () => {
       this.checkRequest(req, true);
-      return this.carts.replace(id, this.cookie(req, id), req.body);
+      return this.carts.createOrder(id, req.body, 'WEB');
     });
   }
-  private session(req: Request, res?: Response) {
-    const entries = (req.headers.cookie ?? '')
-      .split(';')
-      .map((s) => s.trim())
-      .filter((s) => s.startsWith('checkout_session='));
-    if (entries.length > 1) throw new AppError('FORBIDDEN', 403);
-    if (entries.length === 1) {
-      const value = entries[0].slice('checkout_session='.length);
-      if (!/^[A-Za-z0-9_-]{43}$/.test(value))
-        throw new AppError('FORBIDDEN', 403);
-      return value;
-    }
-    if (!res) return ''; // A completed Cart may return its order without a confirmation session.
-    const value = randomBytes(32).toString('base64url');
-    const origin = new URL(process.env.WEB_ORIGIN!);
-    const local =
-      origin.protocol === 'http:' &&
-      ['localhost', '127.0.0.1', '[::1]'].includes(origin.hostname);
-    res.cookie('checkout_session', value, {
-      httpOnly: true,
-      sameSite: 'strict',
-      path: '/api/v1',
-      secure: !(local && process.env.CART_COOKIE_SECURE === 'false'),
+
+  @Get('shopping/carts/:id/orders')
+  async listOrders(
+    @Param('id') id: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    await this.send(res, async () => {
+      this.checkRequest(req, false, true);
+      return this.carts.listOrders(id, parse(listQuery, req.query));
     });
-    return value;
   }
-  @Post('carts/:id/checkout-review')
-  @HttpCode(200)
-  async review(
+
+  @Get('shopping/orders/:id')
+  async getOrder(
+    @Param('id') id: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    await this.send(res, async () => {
+      this.checkRequest(req, false, true);
+      return this.carts.getOrder(id, parse(orderContext, req.query).cartId);
+    });
+  }
+
+  // UI interaction only; never registered as an Agent tool. Origin is not human identity proof.
+  @Post('shopping/orders/:id/pay')
+  async payOrder(
     @Param('id') id: string,
     @Req() req: Request,
     @Res() res: Response,
   ) {
     await this.send(res, async () => {
       this.checkRequest(req, true);
-      if (!checkoutReviewInput.safeParse(req.body).success)
-        throw new AppError('VALIDATION_ERROR', 400);
-      return this.carts.review(
-        id,
-        this.cookie(req, id),
-        this.session(req, res),
-      );
+      return this.carts.payOrder(id, parse(orderContext, req.body).cartId);
     });
   }
-  @Post('carts/:id/orders')
-  @HttpCode(200)
-  async submit(
+
+  @Post('shopping/orders/:id/cancel')
+  async cancelOrder(
     @Param('id') id: string,
     @Req() req: Request,
     @Res() res: Response,
   ) {
     await this.send(res, async () => {
       this.checkRequest(req, true);
-      return this.carts.submit(
-        id,
-        this.cookie(req, id),
-        this.session(req),
-        req.body,
-      );
+      return this.carts.cancelOrder(id, parse(orderContext, req.body).cartId);
     });
   }
-  @Get('carts/:id/order') async order(
-    @Param('id') id: string,
-    @Req() req: Request,
-    @Res() res: Response,
-  ) {
-    await this.send(res, async () => {
-      this.checkRequest(req, false);
-      if (req.body && Object.keys(req.body).length)
-        throw new AppError('VALIDATION_ERROR', 400);
-      return this.carts.order(id, this.cookie(req, id));
-    });
-  }
-  private purchaseContext(req: Request) {
-    const scope = this.session(req);
-    if (!scope) throw new AppError('FORBIDDEN', 403);
-    return { channel: 'webmcp' as const, scope };
-  }
-  @Post('webmcp/checkout-session')
-  @HttpCode(200)
-  async initializePurchaseSession(@Req() req: Request, @Res() res: Response) {
-    await this.send(res, async () => {
-      this.checkRequest(req, true);
-      if (!checkoutReviewInput.safeParse(req.body).success)
-        throw new AppError('VALIDATION_ERROR', 400);
-      this.session(req, res);
-      return { ready: true };
-    });
-  }
-  @Post('webmcp/carts/:id/purchases')
-  @HttpCode(200)
-  async preparePurchase(
-    @Param('id') id: string,
-    @Req() req: Request,
-    @Res() res: Response,
-  ) {
-    await this.send(res, async () => {
-      this.checkRequest(req, true);
-      return this.carts.preparePurchase(
-        id,
-        this.cookie(req, id),
-        this.purchaseContext(req),
-        req.body,
-      );
-    });
-  }
-  @Get('webmcp/carts/:id/purchases/:reviewId')
-  async purchaseStatus(
-    @Param('id') id: string,
-    @Param('reviewId') reviewId: string,
-    @Req() req: Request,
-    @Res() res: Response,
-  ) {
-    await this.send(res, async () => {
-      this.checkRequest(req, false);
-      return this.carts.purchaseStatus(
-        id,
-        this.cookie(req, id),
-        this.purchaseContext(req),
-        reviewId,
-      );
-    });
-  }
-  @Post('webmcp/carts/:id/purchases/:reviewId/materials')
-  @HttpCode(200)
-  async purchaseMaterials(
-    @Param('id') id: string,
-    @Param('reviewId') reviewId: string,
-    @Req() req: Request,
-    @Res() res: Response,
-  ) {
-    await this.send(res, async () => {
-      this.checkRequest(req, true);
-      if (!checkoutReviewInput.safeParse(req.body).success)
-        throw new AppError('VALIDATION_ERROR', 400);
-      return this.carts.purchaseMaterials(
-        id,
-        this.cookie(req, id),
-        this.purchaseContext(req),
-        reviewId,
-      );
-    });
-  }
-  @Post('webmcp/carts/:id/purchases/:reviewId/pay')
-  @HttpCode(200)
-  async payPurchase(
-    @Param('id') id: string,
-    @Param('reviewId') reviewId: string,
-    @Req() req: Request,
-    @Res() res: Response,
-  ) {
-    await this.send(res, async () => {
-      this.checkRequest(req, true);
-      return this.carts.payPurchase(
-        id,
-        this.cookie(req, id),
-        this.purchaseContext(req),
-        reviewId,
-        req.body,
-      );
-    });
-  }
-  @Post('webmcp/carts/:id/purchases/:reviewId/cancel')
-  @HttpCode(200)
-  async cancelPurchase(
-    @Param('id') id: string,
-    @Param('reviewId') reviewId: string,
-    @Req() req: Request,
-    @Res() res: Response,
-  ) {
-    await this.send(res, async () => {
-      this.checkRequest(req, true);
-      return this.carts.cancelPurchase(
-        id,
-        this.cookie(req, id),
-        this.purchaseContext(req),
-        reviewId,
-        req.body,
-      );
-    });
-  }
-  @Post('carts/:id/order-link')
-  @HttpCode(200)
-  async orderLink(
-    @Param('id') id: string,
-    @Req() req: Request,
-    @Res() res: Response,
-  ) {
-    await this.send(res, async () => {
-      this.checkRequest(req, true);
-      if (!checkoutReviewInput.safeParse(req.body).success)
-        throw new AppError('VALIDATION_ERROR', 400);
-      return this.carts.orderLink(id, this.cookie(req, id));
-    });
-  }
-  @Post('order-links/exchange')
-  @HttpCode(200)
-  async exchangeOrderLink(@Req() req: Request, @Res() res: Response) {
-    await this.send(res, async () => {
-      this.checkRequest(req, true);
-      const parsed = z
-        .object({
-          orderId: z.uuid(),
-          orderReadToken: z.string().min(1).max(4096),
-        })
-        .strict()
-        .safeParse(req.body);
-      if (!parsed.success) throw new AppError('VALIDATION_ERROR', 400);
-      const { orderId, orderReadToken } = parsed.data;
-      const { order, expiresAt } = await this.carts.readOrderCapability(
-        orderId,
-        orderReadToken,
-      );
-      const origin = new URL(process.env.WEB_ORIGIN!);
-      const local =
-        origin.protocol === 'http:' &&
-        ['localhost', '127.0.0.1', '[::1]'].includes(origin.hostname);
-      res.cookie(`order_read_${orderId}`, orderReadToken, {
-        httpOnly: true,
-        sameSite: 'strict',
-        path: '/api/v1/orders',
-        secure: !(local && process.env.CART_COOKIE_SECURE === 'false'),
-        expires: new Date(expiresAt),
-      });
-      return order;
-    });
-  }
-  @Get('orders/:orderId/read')
-  async readOrderLink(
-    @Param('orderId') orderId: string,
-    @Req() req: Request,
-    @Res() res: Response,
-  ) {
-    await this.send(res, async () => {
-      this.checkRequest(req, false);
-      const prefix = `order_read_${orderId}=`;
-      const entries = (req.headers.cookie ?? '')
-        .split(';')
-        .map((s) => s.trim())
-        .filter((s) => s.startsWith(prefix));
-      if (entries.length !== 1) throw new AppError('FORBIDDEN', 403);
-      return (
-        await this.carts.readOrderCapability(
-          orderId,
-          entries[0].slice(prefix.length),
-        )
-      ).order;
-    });
+
+  // Separate namespace: old clients cannot execute a legacy purchase on the new model.
+  @All([
+    'carts',
+    'carts/*path',
+    'handoffs/*path',
+    'orders/*path',
+    'order-details/*path',
+    'webmcp/*path',
+    'order-links/*path',
+  ])
+  async retired(@Res() res: Response) {
+    res.setHeader('Cache-Control', 'no-store');
+    res.status(410).json(
+      await result(() => {
+        throw new AppError('CHECKOUT_FLOW_REPLACED', 410);
+      }),
+    );
   }
 }

@@ -1,0 +1,1 @@
+export { MoneyBreakdown } from '../../index';

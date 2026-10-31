@@ -13,33 +13,46 @@ import {
   searchInput,
   pageInput,
   productInput,
-  agentCreateInput,
-  cartCapabilityInput,
-  agentUpdateInput,
-  handoffOutput,
-  purchasePrepareInput,
-  purchasePayInput,
-  purchaseCancelInput,
-  type PurchaseMaterials,
+  getOrCreateCartInput,
+  cartItemsInput,
+  persistentCartOperationInput,
+  createOrderInput,
+  quoteSelectionInput,
+  listOrdersInput,
+  orderTargetInput,
 } from '@store/contracts';
 import type { Express } from 'express';
 import type { CartService } from '../cart/cart.service.js';
 import type { CatalogService } from '../catalog/catalog.service.js';
 import { AppError } from '../shared/app-error.js';
 import { result } from '../shared/result.js';
-const purchaseInput = cartCapabilityInput
-  .extend(purchasePrepareInput.shape)
-  .extend({ target: z.enum(['apps', 'basic-mcp']) })
-  .strict();
-const purchaseReadInput = cartCapabilityInput
-  .extend({ reviewId: z.uuid() })
-  .strict();
-const appPayInput = purchaseReadInput.extend(purchasePayInput.shape).strict();
-const appCancelInput = purchaseReadInput
-  .extend(purchaseCancelInput.shape)
-  .strict();
-const appsContext = { channel: 'apps' as const, scope: 'store-mcp-v1' };
 const reviewInput = pageInput.extend({ productId: z.string().min(1).max(64) });
+const agentCartInput = z.union([
+  getOrCreateCartInput.options[0],
+  getOrCreateCartInput.options[1].extend({
+    initialItems: cartItemsInput.min(1),
+  }),
+]);
+const cartTarget = z.object({ cartId: z.uuid() }).strict();
+const operationBase = persistentCartOperationInput
+  .omit({ operation: true })
+  .extend({ cartId: z.uuid() });
+const itemFields = {
+  productId: z.string().min(1).max(64),
+  quantity: z.number().int().positive().max(2147483647),
+};
+const addItemInput = operationBase.extend(itemFields).strict();
+const removeItemInput = operationBase
+  .extend({ productId: itemFields.productId })
+  .strict();
+const orderCreation = createOrderInput.safeExtend({ cartId: z.uuid() });
+const selectionQuote = quoteSelectionInput.safeExtend({ cartId: z.uuid() });
+const orderList = listOrdersInput.extend({ cartId: z.uuid() }).strict();
+function parse<T>(schema: z.ZodType<T>, input: unknown): T {
+  const parsed = schema.safeParse(input);
+  if (!parsed.success) throw new AppError('VALIDATION_ERROR', 400);
+  return parsed.data;
+}
 export function attachMcp(
   app: Express,
   catalog: CatalogService,
@@ -81,17 +94,20 @@ export function attachMcp(
     const uiTools = [
       'search_products',
       'get_product',
-      'create_cart',
+      'get_or_create_cart',
       'get_cart',
-      'update_cart',
-      'create_handoff',
-      'prepare_checkout',
-      'get_purchase_status',
+      'add_cart_item',
+      'update_cart_item',
+      'remove_cart_item',
+      'create_order',
+      'get_order',
+      'list_orders',
+      'cancel_order',
     ];
     const resources = uiTools.map((tool) => ({
       tool,
-      uri: `ui://store/${tool.replaceAll('_', '-')}-v1.html`,
-      filename: `${tool.replaceAll('_', '-')}-v1.html`,
+      uri: `ui://store/${tool.replaceAll('_', '-')}-v5.html`,
+      filename: `${tool.replaceAll('_', '-')}-v5.html`,
     }));
     const uiMeta = (tool: string) => {
       const resource = resources.find((entry) => entry.tool === tool)!;
@@ -147,98 +163,9 @@ export function attachMcp(
     server.setRequestHandler(ListToolsRequestSchema, async () => ({
       tools: [
         {
-          name: 'prepare_checkout',
-          description:
-            '準備原車完整摘要，不購買。apps目標在App由Human支付；basic-mcp目前缺少已驗證原生確認會話，只能報價預覽。相同意圖重試用原prepareRequestId及版本。',
-          inputSchema: z.toJSONSchema(purchaseInput),
-          _meta: uiMeta('prepare_checkout'),
-          annotations: { ...annotations, readOnlyHint: false },
-        },
-        {
-          name: 'get_purchase_status',
-          description: '只讀原準備/訂單狀態，不批准、不重送支付。',
-          inputSchema: z.toJSONSchema(purchaseReadInput),
-          _meta: uiMeta('get_purchase_status'),
-          annotations,
-        },
-        ...[
-          'request_purchase_confirmation',
-          'submit_order',
-          'cancel_purchase',
-        ].map((name) => ({
-          name,
-          description:
-            '基礎MCP原生確認會話尚未實測通過；本入口明確拒絕，不可搬用Apps/WebMCP準備。',
-          inputSchema: z.toJSONSchema(purchaseReadInput),
-          annotations: { ...annotations, readOnlyHint: false },
-        })),
-        {
-          name: 'pay_purchase',
-          description: '受保護Apps支付；僅Human明確點擊，必須有UI專用材料。',
-          inputSchema: z.toJSONSchema(appPayInput),
-          _meta: { ui: { visibility: ['app'] } },
-          annotations: {
-            ...annotations,
-            readOnlyHint: false,
-            destructiveHint: true,
-          },
-        },
-        {
-          name: 'cancel_app_purchase',
-          description: '撤銷指定Apps準備，不取消已成交訂單。',
-          inputSchema: z.toJSONSchema(appCancelInput),
-          _meta: { ui: { visibility: ['app'] } },
-          annotations: { ...annotations, readOnlyHint: false },
-        },
-        {
-          name: 'get_order_link',
-          description: '已成交原訂單的限時只讀連結；不購買、不自動開啟。',
-          inputSchema: z.toJSONSchema(cartCapabilityInput),
-          _meta: { ui: { visibility: ['app'] } },
-          annotations,
-        },
-
-        {
-          name: 'create_cart',
-          _meta: uiMeta('create_cart'),
-          description:
-            '建立可信 Agent 購物車。使用隨機 UUID 建立請求鍵；結果未明時以相同鍵及原條目重試。回傳秘密憑證，請勿公開。建立不購買、不預留庫存。',
-          inputSchema: z.toJSONSchema(agentCreateInput, { io: 'input' }),
-          annotations: { ...annotations, readOnlyHint: false },
-        },
-        {
-          name: 'get_cart',
-          _meta: uiMeta('get_cart'),
-          description:
-            '以車憑證讀取原車與完整報價，已完成則另回原訂單；不產生購買確認。',
-          inputSchema: z.toJSONSchema(cartCapabilityInput),
-          annotations,
-        },
-        {
-          name: 'update_cart',
-          _meta: uiMeta('update_cart'),
-          description:
-            '按預期版本整車替換條目。衝突時重讀原車核對意圖，不自動覆蓋；不購買。',
-          inputSchema: z.toJSONSchema(agentUpdateInput),
-          annotations: {
-            ...annotations,
-            readOnlyHint: false,
-            destructiveHint: true,
-            idempotentHint: false,
-          },
-        },
-        {
-          name: 'create_handoff',
-          _meta: uiMeta('create_handoff'),
-          description:
-            '僅Human明確要求分享/交接時使用，不用於正常購買準備；分享同一車的有限存取能力；首次分享起固定24小時，重試不續期。回傳原車、報價和含秘密的連結；交Human在Hosted Checkout明確確認，勿自行提交購買。',
-          inputSchema: z.toJSONSchema(cartCapabilityInput),
-          annotations: { ...annotations, readOnlyHint: false },
-        },
-        {
           name: 'search_products',
-          description: '搜尋商品摘要，推薦分數排序；有界分頁，庫存為當次快照。',
           _meta: uiMeta('search_products'),
+          description: '搜尋商品摘要，推薦分數排序；有界分頁，庫存為當次快照。',
           inputSchema: z.toJSONSchema(searchInput, { io: 'input' }),
           annotations,
         },
@@ -256,116 +183,203 @@ export function attachMcp(
           inputSchema: z.toJSONSchema(reviewInput, { io: 'input' }),
           annotations,
         },
+        ...[
+          {
+            name: 'get_or_create_cart',
+            schema: agentCartInput,
+            readOnly: false,
+            description:
+              '仅首次明确加购/购买且无cartId时以新UUID requestId及完整非空initialItems原子建车；咨询零写。已有车仅传cartId恢复。未知结果沿原键原载荷重试，不另建车，不覆盖后续编辑。',
+          },
+          {
+            name: 'get_cart',
+            schema: cartTarget,
+            readOnly: true,
+            description:
+              '按明确cartId读取当前车、版本及待支付订单；读取不建车、不支付。',
+          },
+          {
+            name: 'add_cart_item',
+            schema: addItemInput,
+            readOnly: false,
+            description:
+              '明确加购时增加指定数量，不生单；传cartId、操作UUID及已读版本，同键原载荷恢复不重复加量。购买A+B时B准备失败须停止生单并说明A已在车，不能缩成A。',
+          },
+          {
+            name: 'update_cart_item',
+            schema: addItemInput,
+            readOnly: false,
+            description:
+              '明确改量直接设置该行最终数量，不生单；语义含糊才澄清。版本冲突先重读，不覆盖；未知沿原操作键恢复。',
+          },
+          {
+            name: 'remove_cart_item',
+            schema: removeItemInput,
+            readOnly: false,
+            description:
+              '移除明确指定车行，不取消或修改已有订单；未知沿原操作键恢复。',
+          },
+          {
+            name: 'quote_selection',
+            schema: selectionQuote,
+            readOnly: true,
+            description:
+              '按完整selectedItems及预算/币种/规格只读预估，不占库、不生单，非强制前置步骤。',
+          },
+          {
+            name: 'create_order',
+            schema: orderCreation,
+            readOnly: false,
+            description:
+              '仅Human明确购买意图并遵守Host审批后，为本次完整目标创建待支付订单、固定摘要并预留库存；selectedItems断言整行数量，显式传TWD及所有预算/规格约束。准备任一目标失败不可缩单；默认仅本次目标行。未知沿原requestId和原载荷恢复。返回网页orderUrl/shareUrl供Human亲自打开核对并点击支付；不得代开UI点击、代付或宣称已支付。',
+          },
+          {
+            name: 'get_order',
+            schema: orderTargetInput,
+            readOnly: true,
+            description:
+              '按原orderId读取真实状态、固定摘要、截止、操作及网页入口；不支付、不切换当前车。结果未知读取原单，不另生单。',
+          },
+          {
+            name: 'list_orders',
+            schema: orderList,
+            readOnly: true,
+            description:
+              '按明确cartId有界分页查询订单；多个候选先向Human澄清目标，不擅选一单。',
+          },
+          {
+            name: 'cancel_order',
+            schema: orderTargetInput,
+            readOnly: false,
+            description:
+              '仅取消Human明确指定的未支付orderId；多个候选先澄清。按真实返回确认关闭，未知查原单；停止等待/离页不等于取消，已支付不承诺撤销或退款，不影响其他订单。',
+          },
+        ].map(({ name, schema, readOnly, description }) => ({
+          name,
+          description,
+          ...(uiTools.includes(name) ? { _meta: uiMeta(name) } : {}),
+          inputSchema: {
+            ...z.toJSONSchema(schema, { io: 'input' }),
+            type: 'object' as const,
+          },
+          annotations: {
+            ...annotations,
+            readOnlyHint: readOnly,
+            destructiveHint:
+              name === 'cancel_order' || name === 'remove_cart_item',
+          },
+        })),
+        ...[
+          {
+            name: 'apps_get_or_create_cart',
+            schema: agentCartInput,
+            description:
+              'UI Bridge明确加购时初始化或恢复原车；未知沿原键，不自动另建。',
+          },
+          {
+            name: 'apps_create_order',
+            schema: orderCreation,
+            description: 'UI Bridge整行生单，完整选择及限制，不支付。',
+          },
+          {
+            name: 'apps_pay_order',
+            schema: orderTargetInput,
+            description:
+              '仅供Apps UI在Human查看完整原单后点击模拟支付；不通过模型调用。',
+          },
+        ].map(({ name, schema, description }) => ({
+          name,
+          description,
+          inputSchema: {
+            ...z.toJSONSchema(schema, { io: 'input' }),
+            type: 'object' as const,
+          },
+          _meta: { ui: { visibility: ['app'] } },
+          annotations: {
+            ...annotations,
+            readOnlyHint: false,
+            destructiveHint: name === 'apps_pay_order',
+          },
+        })),
       ],
     }));
     server.setRequestHandler(CallToolRequestSchema, async (request) => {
-      let purchaseMaterials: PurchaseMaterials | undefined;
       const r = await result(async () => {
         const input = request.params.arguments ?? {};
         switch (request.params.name) {
-          case 'prepare_checkout': {
-            const p = purchaseInput.safeParse(input);
-            if (!p.success) throw new AppError('VALIDATION_ERROR', 400);
-            const { cartId, cartAccessToken, target, ...prepare } = p.data;
-            if (target === 'basic-mcp')
-              return {
-                state: 'unavailable',
-                confirmationAvailable: false,
-                reason: 'NATIVE_CONFIRMATION_UNAVAILABLE',
-                ...(await carts.agentGet(cartId, cartAccessToken)),
-              };
-            const status = await carts.preparePurchase(
-              cartId,
-              cartAccessToken,
-              appsContext,
-              prepare,
-            );
-            if (status.state === 'pending' && status.reviewId)
-              purchaseMaterials = await carts.purchaseMaterials(
-                cartId,
-                cartAccessToken,
-                appsContext,
-                status.reviewId,
-              );
-            return status;
-          }
-          case 'get_purchase_status': {
-            const p = purchaseReadInput.safeParse(input);
-            if (!p.success) throw new AppError('VALIDATION_ERROR', 400);
-            return carts.purchaseStatus(
-              p.data.cartId,
-              p.data.cartAccessToken,
-              appsContext,
-              p.data.reviewId,
-            );
-          }
-          case 'pay_purchase': {
-            const p = appPayInput.safeParse(input);
-            if (!p.success) throw new AppError('VALIDATION_ERROR', 400);
-            return carts.payPurchase(
-              p.data.cartId,
-              p.data.cartAccessToken,
-              appsContext,
-              p.data.reviewId,
-              { payToken: p.data.payToken },
-            );
-          }
-          case 'cancel_app_purchase': {
-            const p = appCancelInput.safeParse(input);
-            if (!p.success) throw new AppError('VALIDATION_ERROR', 400);
-            return carts.cancelPurchase(
-              p.data.cartId,
-              p.data.cartAccessToken,
-              appsContext,
-              p.data.reviewId,
-              { cancelToken: p.data.cancelToken },
-            );
-          }
-          case 'get_order_link': {
-            const p = cartCapabilityInput.safeParse(input);
-            if (!p.success) throw new AppError('VALIDATION_ERROR', 400);
-            return carts.orderLink(p.data.cartId, p.data.cartAccessToken);
-          }
+          case 'prepare_checkout':
+          case 'get_purchase_status':
+          case 'pay_purchase':
+          case 'cancel_app_purchase':
+          case 'get_order_link':
           case 'request_purchase_confirmation':
           case 'submit_order':
-          case 'cancel_purchase': {
-            const p = purchaseReadInput.safeParse(input);
-            if (!p.success) throw new AppError('VALIDATION_ERROR', 400);
-            await carts.agentGet(p.data.cartId, p.data.cartAccessToken);
-            throw new AppError('NATIVE_CONFIRMATION_UNAVAILABLE', 409);
-          }
-
+          case 'cancel_purchase':
           case 'create_cart':
-            return carts.createAgent(input);
-          case 'get_cart': {
-            const p = cartCapabilityInput.safeParse(input);
-            if (!p.success) throw new AppError('VALIDATION_ERROR', 400);
-            return carts.agentGet(p.data.cartId, p.data.cartAccessToken);
+          case 'update_cart':
+          case 'create_handoff':
+            throw new AppError('CHECKOUT_FLOW_REPLACED', 410);
+          case 'apps_get_or_create_cart':
+            return carts.getOrCreate(parse(agentCartInput, input), 'APPS');
+          case 'apps_create_order': {
+            const { cartId, ...body } = parse(orderCreation, input);
+            return carts.createOrder(cartId, body, 'APPS');
           }
-          case 'update_cart': {
-            const p = agentUpdateInput.safeParse(input);
-            if (!p.success) throw new AppError('VALIDATION_ERROR', 400);
-            const { cartId, cartAccessToken, ...replacement } = p.data;
-            return carts.replace(cartId, cartAccessToken, replacement);
+          case 'apps_pay_order': {
+            const { orderId, cartId } = parse(orderTargetInput, input);
+            return carts.payOrder(orderId, cartId);
           }
-          case 'create_handoff': {
-            const p = cartCapabilityInput.safeParse(input);
-            if (!p.success) throw new AppError('VALIDATION_ERROR', 400);
-            const shared = await carts.handoff(
-              p.data.cartId,
-              p.data.cartAccessToken,
+          case 'get_or_create_cart':
+            return carts.getOrCreate(parse(agentCartInput, input), 'MCP');
+          case 'get_cart':
+            return carts.get(parse(cartTarget, input).cartId);
+          case 'add_cart_item':
+          case 'update_cart_item': {
+            const { cartId, productId, quantity, ...context } = parse(
+              addItemInput,
+              input,
             );
-            const url = new URL(`/checkout/${p.data.cartId}`, origin);
-            url.hash = `handoff=${p.data.cartAccessToken}`;
-            return handoffOutput.parse({
-              cart: shared.cart,
-              handoff: {
-                url: url.href,
-                issuedAt: shared.issuedAt,
-                expiresAt: shared.expiresAt,
+            return carts.operate(cartId, {
+              ...context,
+              operation: {
+                type:
+                  request.params.name === 'add_cart_item'
+                    ? 'add_item'
+                    : 'set_quantity',
+                productId,
+                quantity,
               },
-              requiresHumanConfirmation: true,
             });
+          }
+          case 'remove_cart_item': {
+            const { cartId, productId, ...context } = parse(
+              removeItemInput,
+              input,
+            );
+            return carts.operate(cartId, {
+              ...context,
+              operation: { type: 'remove_item', productId },
+            });
+          }
+          case 'quote_selection': {
+            const { cartId, ...body } = parse(selectionQuote, input);
+            return carts.quoteSelection(cartId, body, 'MCP');
+          }
+          case 'create_order': {
+            const { cartId, ...body } = parse(orderCreation, input);
+            return carts.createOrder(cartId, body, 'MCP');
+          }
+          case 'get_order': {
+            const { orderId, cartId } = parse(orderTargetInput, input);
+            return carts.getOrder(orderId, cartId);
+          }
+          case 'list_orders': {
+            const { cartId, ...page } = parse(orderList, input);
+            return carts.listOrders(cartId, page);
+          }
+          case 'cancel_order': {
+            const { orderId, cartId } = parse(orderTargetInput, input);
+            return carts.cancelOrder(orderId, cartId);
           }
           case 'search_products':
             return catalog.search(input);
@@ -385,7 +399,6 @@ export function attachMcp(
         }
       });
       return {
-        ...(r.ok && purchaseMaterials ? { _meta: { purchaseMaterials } } : {}),
         isError: !r.ok,
         structuredContent: r,
         content: [{ type: 'text' as const, text: JSON.stringify(r) }],

@@ -21,22 +21,22 @@ const token = process.env.MCP_SERVICE_TOKEN;
         (tool) => tool.name === 'search_products',
       );
       expect(tool?._meta?.ui).toMatchObject({
-        resourceUri: 'ui://store/search-products-v1.html',
+        resourceUri: 'ui://store/search-products-v5.html',
       });
       expect(tool?._meta?.['ui/resourceUri']).toBe(
-        'ui://store/search-products-v1.html',
+        'ui://store/search-products-v5.html',
       );
       const resource = await client.readResource({
-        uri: 'ui://store/search-products-v1.html',
+        uri: 'ui://store/search-products-v5.html',
       });
       const html = resource.contents[0];
       expect(html.mimeType).toBe('text/html;profile=mcp-app');
       if (!('text' in html)) throw new Error('Expected a text UI resource');
       expect(html.text).toContain('Agent-Ready Store');
       const resources = (await client.listResources()).resources;
-      expect(resources).toHaveLength(8);
+      expect(resources).toHaveLength(11);
       const tools = (await client.listTools()).tools;
-      expect(tools).toHaveLength(15);
+      expect(tools).toHaveLength(16);
       for (const resource of resources) {
         const entry = tools.find(
           (tool) =>
@@ -83,7 +83,7 @@ const token = process.env.MCP_SERVICE_TOKEN;
       jsonrpc: '2.0',
       id: 1,
       method: 'resources/read',
-      params: { uri: 'ui://store/get-cart-v1.html' },
+      params: { uri: 'ui://store/get-cart-v5.html' },
     };
     const headers = {
       'Content-Type': 'application/json',

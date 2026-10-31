@@ -1,10 +1,13 @@
 export const appTools = [
   'search_products',
   'get_product',
-  'create_cart',
+  'get_or_create_cart',
   'get_cart',
-  'update_cart',
-  'create_handoff',
-  'prepare_checkout',
-  'get_purchase_status',
+  'add_cart_item',
+  'update_cart_item',
+  'remove_cart_item',
+  'create_order',
+  'get_order',
+  'list_orders',
+  'cancel_order',
 ];

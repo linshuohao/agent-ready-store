@@ -1,6 +1,10 @@
-import { test, expect } from '@playwright/test';
-
-// Registration double for protocol/coordination tests only; real Host is verified separately.
+import { test, expect, type Page } from '@playwright/test';
+import { randomUUID } from 'node:crypto';
+test.skip(
+  process.env.CHECKOUT_INTEGRATION !== '1',
+  'isolated lifecycle API3003/Web3004 required',
+);
+// Registration double verifies client coordination, not a real WebMCP Host acceptance.
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
     const tools = new Map();
@@ -9,7 +13,7 @@ test.beforeEach(async ({ page }) => {
       value: {
         registerTool: (tool: any, options: any) => {
           tools.set(tool.name, tool);
-          options?.signal?.addEventListener('abort', () => {
+          options.signal.addEventListener('abort', () => {
             if (tools.get(tool.name) === tool) tools.delete(tool.name);
           });
         },
@@ -18,275 +22,236 @@ test.beforeEach(async ({ page }) => {
     (window as any).s5Tools = tools;
   });
 });
-const call = async (page: any, name: string, args: unknown = {}) => {
+async function call(page: Page, name: string, args: unknown = {}) {
   await expect
-    .poll(() =>
-      page.evaluate((name: string) => (window as any).s5Tools.has(name), name),
-    )
+    .poll(() => page.evaluate((n) => (window as any).s5Tools.has(n), name))
     .toBe(true);
   return page.evaluate(
-    async ({ name, args }: any) => {
-      const tool = (window as any).s5Tools.get(name);
-      if (!tool) throw new Error('Missing tool ' + name);
-      return tool.execute(args);
-    },
+    ({ name, args }) => (window as any).s5Tools.get(name).execute(args),
     { name, args },
   );
-};
-test('future tool version returns server conflict and offers a fresh reload', async ({
+}
+async function initialize(page: Page, stayOnPage = true) {
+  return call(page, 'get_or_create_cart', {
+    requestId: randomUUID(),
+    initialItems: [{ productId: 'P001', quantity: 1 }],
+    stayOnPage,
+  });
+}
+test('registration and queries do not write; explicit preparation creates an AI order and human UI pays that order', async ({
   page,
 }) => {
+  const writes: string[] = [];
+  page.on('request', (r) => {
+    if (r.method() === 'POST' && r.url().includes('/api/'))
+      writes.push(r.url());
+  });
   await page.goto('/products/P001');
-  await page.getByRole('button', { name: '加入購物車', exact: true }).click();
-  await page.getByRole('link', { name: '前往購物車' }).click();
-  await expect(page.getByRole('spinbutton').first()).toBeVisible();
-  const original = await call(page, 'get_cart');
-  const result = await call(page, 'update_cart', {
-    expectedCartVersion: original.cart.cartVersion + 1,
-    operation: { type: 'set_quantity', productId: 'P001', quantity: 2 },
+  await call(page, 'get_product');
+  expect(await call(page, 'get_cart')).toMatchObject({
+    error: { code: 'NO_CURRENT_CART' },
+  });
+  expect(writes).toEqual([]);
+  const created = await initialize(page);
+  expect(created.kind).toBe('success');
+  await expect(page).toHaveURL(/\/products\/P001$/);
+  const result = await call(page, 'create_order', {
+    cartId: created.data.cartId,
+    requestId: randomUUID(),
+    expectedCartVersion: created.data.cartVersion,
+    selectedItems: [{ productId: 'P001', expectedQuantity: 1 }],
+    constraints: { currency: 'TWD' },
   });
   expect(result).toMatchObject({
-    kind: 'failure',
-    error: { code: 'CART_VERSION_CONFLICT' },
-  });
-  await expect(page.locator('#cart-error')).toContainText(
-    '服務端的購物車已更新',
-  );
-  await page
-    .getByRole('button', {
-      name: '重新載入購物車（放棄未儲存修改）',
-      exact: true,
-    })
-    .click();
-  const input = page.getByRole('spinbutton').first();
-  await expect(input).toHaveValue('1');
-  await input.fill('2');
-  await page.getByRole('spinbutton').first().press('Enter');
-  await expect(
-    page.getByText('已儲存，內容與報價已更新。', { exact: true }),
-  ).toBeVisible();
-  expect((await call(page, 'get_cart')).cart.origin).toBe('HUMAN');
-});
-test('registered tool upgrades a Human cart and blocks unsaved draft overwrite', async ({
-  page,
-}) => {
-  await page.goto('/products/P001');
-  await page.getByRole('button', { name: '加入購物車', exact: true }).click();
-  await expect(page.getByRole('link', { name: '前往購物車' })).toBeVisible();
-  await page.getByRole('link', { name: '前往購物車' }).click();
-  await expect(
-    page.getByRole('heading', { name: '購物車', exact: true }),
-  ).toBeVisible();
-  await expect
-    .poll(() => page.evaluate(() => (window as any).s5Tools.has('update_cart')))
-    .toBe(true);
-  const original = await call(page, 'get_cart');
-  expect(original.cart.origin).toBe('HUMAN');
-  const args = {
-    expectedCartVersion: original.cart.cartVersion,
-    operation: { type: 'set_quantity', productId: 'P001', quantity: 1 },
-  };
-  const upgraded = await call(page, 'update_cart', args);
-  expect(upgraded.cart.origin).toBe('AGENT');
-  await expect(page.getByText('AI 優惠', { exact: true })).toBeVisible();
-  const input = page.getByRole('spinbutton').first();
-  await input.fill('2');
-  const blocked = await call(page, 'update_cart', {
-    ...args,
-    expectedCartVersion: upgraded.cart.cartVersion,
-  });
-  expect(blocked.error.code).toBe('UNSAVED_DRAFT');
-  await expect(input).toHaveValue('2');
-  const toolNames = await page.evaluate(() => [
-    ...(window as any).s5Tools.keys(),
-  ]);
-  expect(toolNames).not.toContain('submit_order');
-  await page.getByRole('spinbutton').first().press('Enter');
-  await page.getByRole('link', { name: '前往結帳', exact: true }).click();
-  await expect(
-    page.getByRole('button', { name: '確認購買', exact: true }),
-  ).toBeEnabled();
-  await expect
-    .poll(() => page.evaluate(() => [...(window as any).s5Tools.keys()]))
-    .toEqual(['get_cart']);
-  await page.getByRole('button', { name: '確認購買', exact: true }).click();
-  await expect(
-    page.getByRole('heading', { name: '購買成功', exact: true }),
-  ).toBeVisible();
-  await expect(page.getByText('AI 優惠', { exact: true })).toBeVisible();
-});
-test('tool creates an Agent cart, reads product and comments, and search navigates without stale tools', async ({
-  page,
-}) => {
-  await page.goto('/products/P001');
-  await expect
-    .poll(() => page.evaluate(() => (window as any).s5Tools.has('add_to_cart')))
-    .toBe(true);
-  const detail = await call(page, 'get_product');
-  expect(detail.ok).toBe(true);
-  const reviews = await call(page, 'list_product_reviews', {
-    offset: 0,
-    limit: 2,
-  });
-  expect(reviews.ok).toBe(true);
-  const added = await call(page, 'add_to_cart', { productId: 'P001' });
-  expect(added.cart.origin).toBe('AGENT');
-  await page.goto('/');
-  await expect
-    .poll(() =>
-      page.evaluate(() => (window as any).s5Tools.has('search_products')),
-    )
-    .toBe(true);
-  const search = await call(page, 'search_products', { q: '耳機' });
-  expect(search.ok).toBe(true);
-  await expect(page).toHaveURL(/q=/);
-  await expect(page.locator('button[data-product-id="P001"]')).toHaveCount(1);
-  await expect(page.locator('button[data-product-id="P001"]')).toBeVisible();
-  expect(
-    await page.evaluate(() => [...(window as any).s5Tools.keys()]),
-  ).not.toContain('get_product');
-});
-
-test('unknown tool edit does not inspect or replay and Human reload gets server state', async ({
-  page,
-}) => {
-  await page.goto('/products/P001');
-  await page.getByRole('button', { name: '加入購物車', exact: true }).click();
-  await page.getByRole('link', { name: '前往購物車' }).click();
-  await expect(page.getByRole('spinbutton').first()).toBeVisible();
-  const original = await call(page, 'get_cart');
-  let writes = 0;
-  await page.route('**/api/v1/webmcp/carts/*/operations', async (route) => {
-    writes++;
-    await route.fetch();
-    await route.abort();
-  });
-  expect(
-    (
-      await call(page, 'update_cart', {
-        expectedCartVersion: original.cart.cartVersion,
-        operation: { type: 'set_quantity', productId: 'P001', quantity: 2 },
-      })
-    ).kind,
-  ).toBe('unknown');
-  await expect(page.locator('#cart-error')).toContainText('保存結果未確認');
-  await expect(page.getByRole('spinbutton').first()).toBeDisabled();
-  expect(
-    await page.evaluate(() => [...(window as any).s5Tools.keys()]),
-  ).not.toContain('retry_cart_operation');
-  await page
-    .getByRole('button', {
-      name: '重新載入購物車（放棄未儲存修改）',
-      exact: true,
-    })
-    .click();
-  await expect(page.getByRole('spinbutton').first()).toHaveValue('2');
-  await expect(page.getByText('AI 優惠', { exact: true })).toBeVisible();
-  expect(writes).toBe(1);
-});
-
-test('unconfirmed creation retries the original intent once and survives service response loss', async ({
-  page,
-}) => {
-  await page.goto('/products/P001');
-  await expect
-    .poll(() => page.evaluate(() => (window as any).s5Tools.has('add_to_cart')))
-    .toBe(true);
-  let original: any;
-  await page.route('**/api/v1/webmcp/carts', async (route) => {
-    const response = await route.fetch();
-    original = (await response.json()).data;
-    await route.abort();
-  });
-  expect((await call(page, 'add_to_cart', { productId: 'P001' })).kind).toBe(
-    'unknown',
-  );
-  expect(
-    (await call(page, 'add_to_cart', { productId: 'P003' })).error.code,
-  ).toBe('CART_BUSY');
-  await page.unroute('**/api/v1/webmcp/carts');
-  let release!: () => void;
-  const barrier = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-  let retries = 0;
-  await page.route('**/api/v1/webmcp/carts', async (route) => {
-    retries++;
-    await barrier;
-    await route.continue();
-  });
-  await page.evaluate(() => {
-    (window as any).s5Recovery = (window as any).s5Tools
-      .get('retry_cart_creation')
-      .execute({});
-  });
-  await expect.poll(() => retries).toBe(1);
-  try {
-    expect(await call(page, 'retry_cart_creation')).toMatchObject({
-      kind: 'failure',
-      error: { code: 'CART_BUSY' },
-    });
-    expect(retries).toBe(1);
-  } finally {
-    release();
-  }
-  const recovered = await page.evaluate(() => (window as any).s5Recovery);
-  expect(recovered).toMatchObject({
     kind: 'success',
-    cart: { cartId: original.cartId, origin: 'AGENT', cartVersion: 1 },
-  });
-});
-
-test('unsupported browser keeps ordinary Web shopping available', async ({
-  page,
-}) => {
-  await page.addInitScript(() =>
-    Object.defineProperty(document, 'modelContext', {
-      value: undefined,
-      configurable: true,
-    }),
-  );
-  await page.goto('/products/P001');
-  await expect(
-    page.getByText('此瀏覽器無法使用 WebMCP 工具，可繼續使用一般購物操作。'),
-  ).toBeVisible();
-  await page.getByRole('button', { name: '加入購物車', exact: true }).click();
-  await expect(page.getByRole('link', { name: '前往購物車' })).toBeVisible();
-});
-
-test('tool conflict requires reload and never presents a merged draft', async ({
-  page,
-}) => {
-  await page.goto('/products/P001');
-  await page.getByRole('button', { name: '加入購物車', exact: true }).click();
-  await page.getByRole('link', { name: '前往購物車' }).click();
-  await expect(page.getByRole('spinbutton').first()).toBeVisible();
-  const original = await call(page, 'get_cart');
-  await page.request.put(`/api/v1/carts/${original.cart.cartId}/items`, {
-    headers: { Origin: 'http://localhost:3000' },
     data: {
-      expectedCartVersion: 1,
-      items: [{ productId: 'P001', quantity: 3 }],
+      order: {
+        createdByChannel: 'WEBMCP',
+        aiEligible: true,
+        status: 'CHECKOUT',
+      },
     },
   });
-  expect(
-    await call(page, 'update_cart', {
-      expectedCartVersion: 1,
-      operation: { type: 'set_quantity', productId: 'P001', quantity: 2 },
-    }),
-  ).toMatchObject({
-    kind: 'failure',
-    error: { code: 'CART_VERSION_CONFLICT' },
-  });
+  await expect(page).toHaveURL(
+    new RegExp(`/orders/${result.data.order.orderId}$`),
+  );
+  const tools = await page.evaluate(() => [...(window as any).s5Tools.keys()]);
+  expect(tools.some((n) => /pay|submit|prepare_checkout/.test(n))).toBe(false);
+  await page.getByRole('button', { name: '確認支付', exact: true }).click();
   await expect(
-    page.getByRole('heading', { name: '最新已儲存內容' }),
-  ).toHaveCount(0);
+    page.getByRole('heading', { name: '支付成功', exact: true }),
+  ).toBeVisible();
+  expect((await call(page, 'get_order')).data).toMatchObject({
+    orderId: result.data.order.orderId,
+    status: 'PAID',
+  });
+});
+test('add intent displays cart, protects drafts and retains original operation keys after response loss', async ({
+  page,
+}) => {
+  await page.goto('/products/P001');
+  const init = await initialize(page, false);
+  await expect(page).toHaveURL(new RegExp(`/cart/${init.data.cartId}$`));
+  await page.getByLabel('數量 P001', { exact: true }).fill('2');
+  const input = {
+    cartId: init.data.cartId,
+    operationRequestId: randomUUID(),
+    expectedCartVersion: 1,
+    productId: 'P001',
+    quantity: 3,
+  };
+  expect(await call(page, 'update_cart_item', input)).toMatchObject({
+    kind: 'failure',
+    error: { code: 'UNSAVED_DRAFT' },
+  });
+  await expect(page.getByLabel('數量 P001', { exact: true })).toHaveValue('2');
+  await page.getByRole('button', { name: '還原數量 P001' }).click();
+  let lost = true;
+  await page.route('**/shopping/carts/*/operations', async (route) => {
+    if (lost) {
+      lost = false;
+      await route.fetch();
+      await route.abort('failed');
+    } else await route.continue();
+  });
+  expect(await call(page, 'update_cart_item', input)).toMatchObject({
+    kind: 'unknown',
+  });
+  await page.reload();
+  expect(await call(page, 'update_cart_item', input)).toMatchObject({
+    kind: 'success',
+    data: { items: [{ quantity: 3 }] },
+  });
+});
+test('a stale page handle cannot write and a late creation never pulls navigation back', async ({
+  page,
+}) => {
+  await page.goto('/products/P001');
+  const init = await initialize(page);
+  await page.evaluate(() => {
+    (window as any).oldTool = (window as any).s5Tools.get('create_order');
+  });
+  let release!: () => void;
+  const gate = new Promise<void>((r) => (release = r));
+  let received!: () => void;
+  const started = new Promise<void>((r) => (received = r));
+  await page.route('**/shopping/webmcp/carts/*/orders', async (route) => {
+    const response = await route.fetch();
+    received();
+    await gate;
+    await route.fulfill({ response });
+  });
+  const input = {
+    cartId: init.data.cartId,
+    requestId: randomUUID(),
+    expectedCartVersion: 1,
+    selectedItems: [{ productId: 'P001', expectedQuantity: 1 }],
+    constraints: { currency: 'TWD' },
+  };
+  const creating = call(page, 'create_order', input);
+  await started;
+  await page.getByRole('link', { name: 'AGENT / STORE', exact: true }).click();
+  await expect(page).toHaveURL(/\/$/);
+  release();
+  const result = await creating;
+  expect(result.kind).toBe('success');
+  await expect(page).toHaveURL(/\/$/);
+  expect(
+    await page.evaluate((args) => (window as any).oldTool.execute(args), input),
+  ).toMatchObject({ error: { code: 'STALE_CONTEXT' } });
+  await call(page, 'cancel_order', { orderId: result.data.order.orderId });
+});
+test('ordinary Web order on a WebMCP-created cart does not inherit AI eligibility', async ({
+  page,
+}) => {
+  await page.goto('/products/P001');
+  const init = await initialize(page, false);
+  await page.getByLabel('選取 P001', { exact: true }).check();
   await page
-    .getByRole('button', {
-      name: '重新載入購物車（放棄未儲存修改）',
-      exact: true,
-    })
+    .getByRole('button', { name: '建立待支付訂單', exact: true })
     .click();
-  await expect(page.getByLabel('數量 P001', { exact: true })).toHaveValue('3');
-  expect((await call(page, 'get_cart')).cart.origin).toBe('HUMAN');
+  await expect(page).toHaveURL(/\/orders\//);
+  await expect(
+    page.getByRole('heading', { name: '待支付訂單', exact: true }),
+  ).toBeVisible();
+  await expect(page).toHaveURL(/\/orders\/[^/]+$/);
+  const result = await call(page, 'get_order');
+  expect(result.data).toMatchObject({
+    createdByChannel: 'WEB',
+    aiEligible: false,
+    cartId: init.data.cartId,
+  });
+  await page.getByRole('button', { name: '取消這筆訂單', exact: true }).click();
+  await expect(
+    page.getByRole('heading', { name: '訂單已取消', exact: true }),
+  ).toBeVisible();
+});
+
+test('lost WebMCP creation resumes the original channel and request after reload', async ({
+  page,
+}) => {
+  await page.goto('/products/P001');
+  const init = await initialize(page, false);
+  await expect(page).toHaveURL(new RegExp(`/cart/${init.data.cartId}$`));
+  let originalOrderId = '';
+  await page.route('**/shopping/webmcp/carts/*/orders', async (route) => {
+    const response = await route.fetch();
+    originalOrderId = (await response.json()).data.order.orderId;
+    await route.abort('failed');
+  });
+  const input = {
+    cartId: init.data.cartId,
+    requestId: randomUUID(),
+    expectedCartVersion: 1,
+    selectedItems: [{ productId: 'P001', expectedQuantity: 1 }],
+    constraints: { currency: 'TWD' },
+  };
+  expect(await call(page, 'create_order', input)).toMatchObject({
+    kind: 'unknown',
+  });
+  await page.unroute('**/shopping/webmcp/carts/*/orders');
+  await page.reload();
+  const recovered = await call(page, 'create_order', input);
+  expect(recovered).toMatchObject({
+    kind: 'success',
+    data: { order: { orderId: originalOrderId, createdByChannel: 'WEBMCP' } },
+  });
+  await expect(page).toHaveURL(new RegExp(`/orders/${originalOrderId}$`));
+  await page.getByRole('button', { name: '取消這筆訂單', exact: true }).click();
+  await expect(
+    page.getByRole('heading', { name: '訂單已取消', exact: true }),
+  ).toBeVisible();
+});
+
+test('a late creation does not replace a newer catalog query on the same pathname', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const init = await initialize(page);
+  let release!: () => void;
+  const gate = new Promise<void>((r) => (release = r));
+  let received!: () => void;
+  const started = new Promise<void>((r) => (received = r));
+  await page.route('**/shopping/webmcp/carts/*/orders', async (route) => {
+    const response = await route.fetch();
+    received();
+    await gate;
+    await route.fulfill({ response });
+  });
+  const creating = call(page, 'create_order', {
+    cartId: init.data.cartId,
+    requestId: randomUUID(),
+    expectedCartVersion: 1,
+    selectedItems: [{ productId: 'P001', expectedQuantity: 1 }],
+    constraints: { currency: 'TWD' },
+  });
+  await started;
+  expect((await call(page, 'search_products', { q: 'Aero' })).ok).toBe(true);
+  await expect(page).toHaveURL(/q=Aero/);
+  release();
+  const result = await creating;
+  expect(result.kind).toBe('success');
+  await expect(page).toHaveURL(/q=Aero/);
+  await call(page, 'cancel_order', { orderId: result.data.order.orderId });
+  await expect(page).toHaveURL(/q=Aero/);
 });

@@ -1,6 +1,6 @@
 import type { NestExpressApplication } from '@nestjs/platform-express';
-import { CartService } from './cart/cart.service.js';
 import { attachMcp } from './mcp/mcp.adapter.js';
+import { CartService } from './cart/cart.service.js';
 import { CatalogService } from './catalog/catalog.service.js';
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';

@@ -1,14 +1,16 @@
 # Proposal
 
-状态：**Planning Draft v0.13 / 下一里程碑规划，未批准实施**。2026-10-31，Asia/Shanghai。
+状态：**Implementation / 订单生命周期及Web与Apps完整应用复用已实施，剩余验收与正式Spec同步待完成**。2026-10-31，Asia/Shanghai。
 
-Human授权本轮整理设计，不开发。完整目标方案见[Technical Design](../../../docs/engineering/TECHNICAL_DESIGN.md)，变更级细节见[Design](design.md)：持久单车、一车多订单、整行选择、Agent生单后Human模拟支付；生单固定金额并预留库存15分钟，单车待支付上限env默认10。车和订单不设查看期限。
+Human本轮明确授权继续在实施分支按同一Change推进数据模型、共享契约和交易核心及相关验证，授权原话、规划Checkpoint和实际完成范围见[Tasks](tasks.md)。下文“本轮仅规划/未授权实施”等保留先前规划轮次的历史语境，以此当前状态为准；不扩展为实际环境清理、Push、Merge、发布或完整流程验收。
 
-本Change包含Proposal/Design、12份Delta Specs及Tasks规划草案。目录名用于追踪，不表示存在Checkout实体；产物齐全不代表独立Planning Review、Human批准或实施授权完成，不使用skip_specs绕过规格。权限、凭证、Review、独立Session实体、Redis、真实支付和旧流程兼容均不在本轮实现范围内。
+早期规划阶段仅授权整理设计，后续实施授权与执行事实见Tasks。完整技术方案见[Technical Design](../../../docs/engineering/TECHNICAL_DESIGN.md)，变更级细节见[Design](design.md)：持久单车、一车多订单、整行选择、Agent生单后Human模拟支付；生单固定金额并预留库存15分钟，单车待支付上限env默认10。车和订单不设查看期限。
+
+本Change包含Proposal/Design、12份Delta Specs及Tasks；当前31/33，正式Spec仍待最终接受后同步。目录名用于追踪，不表示存在Checkout实体；产物齐全不代表独立Planning Review、Human批准或实施授权完成，不使用skip_specs绕过规格。权限、凭证、Review、独立Session实体、Redis、真实支付和旧流程兼容均不在本轮实现范围内。
 
 ## Why
 
-现有系统只有成功购买时才创建 Order，并以整车版本、车级确认序号及每车唯一订单约束整个购买流程，无法支持勾选商品后的持续购物、多笔待支付订单和库存预留。下一里程碑将“创建待支付订单”与“确认支付”分开，使 Agent 可以按明确意图直接生单并展示支付界面，由 Human 支付同一笔订单。
+重构前的系统只有成功购买时才创建 Order，并以整车版本、车级确认序号及每车唯一订单约束整个购买流程，无法支持勾选商品后的持续购物、多笔待支付订单和库存预留。下一里程碑将“创建待支付订单”与“确认支付”分开，使 Agent 可以按明确意图直接生单并展示支付界面，由 Human 支付同一笔订单。
 
 ## What Changes
 
@@ -29,7 +31,7 @@ Human授权本轮整理设计，不开发。完整目标方案见[Technical Desi
 
 ## Capabilities
 
-以下能力均已在本Change生成Delta Specs，等待审查与批准；未同步正式Spec。支付前已有订单是新业务含义，不能只改命名而保留“支付时创建 Order”的旧契约。
+以下能力均已在本Change生成Delta Specs并按批准范围实施，正式Spec仍待最终接受及合并预览后同步。支付前已有订单是新业务含义，不能只改命名而保留“支付时创建 Order”的旧契约。
 
 ### New Capabilities
 
@@ -57,5 +59,9 @@ Human授权本轮整理设计，不开发。完整目标方案见[Technical Desi
 - 范围：Prisma Order/Inventory/Review 模型及迁移、CartService/Controller、Catalog 可售投影、共享 contracts、MCP adapter、Web 购物车/支付页、WebMCP 页面工具、Apps controller/view 和相关验证。见 Design §2。
 - 复用 Next.js/NestJS/PostgreSQL 与共享计价；不预建消息队列、库存服务、账户系统或新状态管理框架。释放任务采用现有服务内的数据库协调短事务。
 - 涉及 D-01、D-04～D-07、D-21～D-24、T-05/T-07 及基线的限定变更。已采用目标与后续验证工作分别记录，Decision/Baseline限定传播及Delta Specs已成稿，正式生效前完成相应审查/批准，保留历史批准与归档原文。
-- 本轮仅交付规划；[Tasks](tasks.md)列出基线传播、独立审查、实施、验证和清理切换顺序，不授权开发、真实库清理或发布。Human于2026-10-31明确“那就提交”，授权提交本次规划与基线文档；不包含合并、推送或实施，不继承上一轮文档整理的其他授权。基础MCP网页接手与真实Human验收仍待实测。
+- 规划阶段仅交付规划；后续实施、切换与完整共享应用的逐项授权和事实见[Tasks](tasks.md)，不由本Proposal推定发布或最终接受。Human于2026-10-31明确“那就提交”，授权提交本次规划与基线文档；不包含合并、推送或实施，不继承上一轮文档整理的其他授权。该规划阶段的待实测状态已由Tasks后续三入口主流程证据更新；当前只保留9.1/9.3所列真实Host/Human剩余缺口。
 - 2026-10-31 Human确认本轮不新增停售/禁售功能；`SALE_BLOCKED`仅为未来条件性规则，不进入本轮字段或功能实现。现有售罄/异常库存/零价不能自动解释为禁售。
+
+### 2026-10-31 完整应用复用修订
+
+Human确认并授权Web与Apps共用完整界面、交互、流程与视觉，替代仅共享适用展示组件的范围；沿现有commerce-ui交付，环境仅保留协议/导航/存储及工具结果接续。完整架构正文见[Technical Design §5](../../../docs/engineering/TECHNICAL_DESIGN.md#frontend-architecture)，本Change Design §13记录替代范围，Tasks §10记录实际实施与验证。不改变交易核心、Human支付与真实Host验收边界。

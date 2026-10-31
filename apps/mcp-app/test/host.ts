@@ -1,185 +1,235 @@
-// Test-only official AppBridge Host. It is not evidence of target Host compatibility.
+// Official SDK fixture, not evidence of a production Host or Human approval.
 import {
   AppBridge,
   PostMessageTransport,
 } from '@modelcontextprotocol/ext-apps/app-bridge';
-import type { OrderResult, PurchaseStatus } from '@store/contracts';
+import type { ShoppingCartView, OrderView } from '@store/contracts';
 declare const __APP_HTML__: string;
 const id = '10000000-0000-4000-8000-000000000001',
-  token = 'A'.repeat(43);
-let cart = {
+  oid = '20000000-0000-4000-8000-000000000001';
+let cart: ShoppingCartView = {
   cartId: id,
-  origin: 'AGENT',
   cartVersion: 1,
-  orderId: null,
-  items: [
-    {
-      productId: 'P001',
-      quantity: 1,
-      name: '同名耳機',
-      unitPrice: '10.00',
-      availability: { canPurchase: true, reasons: [], currentQuantity: 8 },
-    },
-    {
-      productId: 'P002',
-      quantity: 1,
-      name: '同名耳機',
-      unitPrice: '10.00',
-      availability: { canPurchase: true, reasons: [], currentQuantity: 8 },
-    },
-  ],
-  quote: {
-    currency: 'TWD',
-    items: [
-      {
-        productId: 'P001',
-        quantity: 1,
-        name: '同名耳機',
-        unitPrice: '10.00',
-        lineSubtotal: '10.00',
-      },
-      {
-        productId: 'P002',
-        quantity: 1,
-        name: '同名耳機',
-        unitPrice: '10.00',
-        lineSubtotal: '10.00',
-      },
-    ],
-    subtotal: '20.00',
-    thresholdDiscount: '0.00',
-    aiDiscount: '0.00',
-    shipping: '0.00',
-    total: '20.00',
-  },
-  quoteHash: 'a'.repeat(64),
+  agentCreated: true,
+  items: ['P001', 'P002'].map((productId) => ({
+    productId,
+    quantity: 1,
+    name: '同名耳機',
+    unitPrice: '10.00',
+    availability: { canPurchase: true, reasons: [], currentQuantity: 8 },
+  })),
   issues: [],
-  canCheckout: true,
-  expiresAt: '2099-01-01T00:00:00.000Z',
+  pendingOrders: [],
 };
-let purchase: PurchaseStatus | null = null;
-let order: OrderResult | null = null;
-const reviewId = '20000000-0000-4000-8000-000000000001';
+let order: OrderView | null = null;
 const calls: string[] = [],
   opens: string[] = [];
+const controls = {
+  failPayOnce: false,
+  conflictOnce: false,
+  failProductOnce: new URL(location.href).searchParams.has('failDiscovery'),
+};
+const productMode = new URL(location.href).searchParams.has('product');
+const productDetail = {
+  id: 'P001',
+  name: 'Aero 耳機',
+  brand: 'Pulso',
+  category: '3C',
+  currency: 'TWD',
+  price: '1890.00',
+  imagePath: null,
+  availability: { canPurchase: true, reasons: [], currentQuantity: 8 },
+  description: '商品詳情',
+  specs: { 連線: '藍牙' },
+  reviewOverview: { count: 0 },
+};
+const resourceHtml = productMode
+  ? __APP_HTML__.replace(
+      'data-entry-tool="get_cart"',
+      'data-entry-tool="get_product"',
+    )
+  : __APP_HTML__;
 const ok = (data: unknown) => ({
-  content: [{ type: 'text' as const, text: 'test fixture result' }],
-  structuredContent: { ok: true, data, requestId: 'fixture' },
+  content: [{ type: 'text' as const, text: 'fixture' }],
+  structuredContent: { ok: true, data },
 });
-const controls = { failPayOnce: false };
+const summary = (items: ShoppingCartView['items']) => ({
+  currency: 'TWD' as const,
+  pricingRuleVersion: 'fixture',
+  items: items.map((i) => ({
+    productId: i.productId,
+    name: i.name!,
+    brand: 'Fixture',
+    specs: { 顏色: '黑' },
+    quantity: i.quantity,
+    unitPrice: i.unitPrice!,
+    lineSubtotal: (i.quantity * 10).toFixed(2),
+  })),
+  subtotal: '20.00',
+  thresholdDiscount: '0.00',
+  aiDiscount: '1.00',
+  shipping: '100.00',
+  total: '119.00',
+});
 const bridge = new AppBridge(
   null,
-  { name: 'S6 test-only host', version: '1' },
+  { name: 'Lifecycle test Host', version: '1' },
   { openLinks: {}, serverTools: {} },
+  {
+    hostContext: {
+      toolInfo: {
+        id: 'fixture-cart-call',
+        tool: {
+          name: productMode ? 'get_product' : 'get_cart',
+          inputSchema: { type: 'object' },
+        },
+      },
+    },
+  },
 );
 bridge.oncalltool = async ({ name, arguments: args }) => {
   calls.push(name);
-  if (name === 'get_cart') return ok({ cart, order });
-  if (name === 'update_cart') {
-    const items = args!.items as { productId: string; quantity: number }[];
-    if (args!.expectedCartVersion !== cart.cartVersion)
+  if (name === 'get_cart') return ok(cart);
+  if (name === 'get_product') {
+    if (controls.failProductOnce) {
+      controls.failProductOnce = false;
       return {
+        structuredContent: {
+          ok: false,
+          error: { code: 'TEMPORARY_UNAVAILABLE' },
+        },
         content: [],
         isError: true,
+      };
+    }
+    return ok(productDetail);
+  }
+  if (name === 'search_products') {
+    const {
+      description: _,
+      specs: __,
+      reviewOverview: ___,
+      ...product
+    } = productDetail;
+    return ok({
+      items: [product],
+      total: 1,
+      nextOffset: null,
+      catalogRevision: 'fixture',
+    });
+  }
+  if (name === 'list_product_reviews')
+    return ok({
+      productId: 'P001',
+      items: [],
+      total: 0,
+      nextOffset: null,
+      catalogRevision: 'fixture',
+    });
+  if (name === 'quote_selection')
+    return ok(
+      summary(
+        cart.items.filter((i) =>
+          (args!.selectedItems as { productId: string }[]).some(
+            (s) => s.productId === i.productId,
+          ),
+        ),
+      ),
+    );
+  if (name === 'update_cart_item') {
+    if (controls.conflictOnce) {
+      controls.conflictOnce = false;
+      return {
         structuredContent: {
           ok: false,
           error: { code: 'CART_VERSION_CONFLICT' },
         },
+        content: [],
+        isError: true,
       };
+    }
     cart = {
       ...cart,
       cartVersion: cart.cartVersion + 1,
-      items: items.map((x) => ({
-        ...cart.items.find((i) => i.productId === x.productId)!,
-        quantity: x.quantity,
-      })),
-    };
-    cart.quote = {
-      ...cart.quote,
-      items: cart.items.map((item) => ({
-        productId: item.productId,
-        name: item.name,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice,
-        lineSubtotal: item.quantity === 2 ? '20.00' : '10.00',
-      })),
-      subtotal: '30.00',
-      total: '30.00',
+      items: cart.items.map((i) =>
+        i.productId === args!.productId
+          ? { ...i, quantity: args!.quantity as number }
+          : i,
+      ),
     };
     return ok(cart);
   }
-  if (name === 'prepare_checkout') {
-    purchase ??= {
-      reviewId,
-      cartId: id,
-      channel: 'apps',
-      state: 'pending',
-      expiresAt: cart.expiresAt,
-      order: null,
-      summary: {
-        cartId: id,
-        cartVersion: cart.cartVersion,
-        origin: 'AGENT',
-        pricingRuleVersion: 'pricing-v1',
-        quote: { ...cart.quote, currency: 'TWD' },
-        items: cart.quote.items.map((item) => ({
-          ...item,
-          brand: 'Fixture',
-          specs: { 顏色: '黑' },
-        })),
-      },
+  if (name === 'remove_cart_item') {
+    cart = {
+      ...cart,
+      cartVersion: cart.cartVersion + 1,
+      items: cart.items.filter((i) => i.productId !== args!.productId),
     };
-    return {
-      ...ok(purchase),
-      _meta: {
-        purchaseMaterials: {
-          payToken: 'fixture-pay',
-          cancelToken: 'fixture-cancel',
-        },
-      },
-    };
+    return ok(cart);
   }
-  if (name === 'get_purchase_status') return ok(purchase);
-  if (name === 'pay_purchase') {
+  if (name === 'apps_create_order') {
+    const selected = cart.items.filter((i) =>
+      (args!.selectedItems as { productId: string }[]).some(
+        (s) => s.productId === i.productId,
+      ),
+    );
+    order ??= {
+      orderId: oid,
+      cartId: id,
+      sourceCartVersion: cart.cartVersion,
+      status: 'CHECKOUT',
+      effectiveStatus: 'CHECKOUT',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      reservationExpiresAt: '2099-01-01T00:00:00.000Z',
+      paidAt: null,
+      closedAt: null,
+      closeReason: null,
+      createdByChannel: 'APPS',
+      aiEligible: true,
+      summary: summary(selected),
+      allowedActions: { canPay: true, canCancel: true },
+      navigation: {
+        orderUrl: `http://localhost:3000/orders/${oid}`,
+        shareUrl: `http://localhost:3000/orders/${oid}?view=share`,
+      },
+    };
+    cart = {
+      ...cart,
+      cartVersion: cart.cartVersion + 1,
+      items: cart.items.filter((i) => !selected.includes(i)),
+      pendingOrders: [order],
+    };
+    return ok({ order, cart });
+  }
+  if (name === 'get_order') return ok(order);
+  if (name === 'list_orders')
+    return ok({ items: order ? [order] : [], nextOffset: null });
+  if (name === 'apps_pay_order' && order) {
     if (controls.failPayOnce) {
       controls.failPayOnce = false;
-      throw new Error('Fixture lost response');
+      throw Error('lost response');
     }
-    if (!purchase || args?.payToken !== 'fixture-pay')
-      throw new Error('Missing fixture material');
     order = {
-      orderId: reviewId,
-      cartId: id,
-      createdAt: '2026-10-30T00:00:00.000Z',
-      purchaseHash: 'a'.repeat(64),
-      catalogRevision: 'fixture',
-      snapshot: purchase.summary,
+      ...order,
+      status: 'PAID',
+      effectiveStatus: 'PAID',
+      paidAt: '2026-01-01T00:01:00.000Z',
+      allowedActions: { canPay: false, canCancel: false },
     };
-    purchase = { ...purchase, state: 'completed', order };
+    cart = { ...cart, pendingOrders: [] };
     return ok(order);
   }
-  if (name === 'cancel_app_purchase') {
-    if (!purchase || args?.cancelToken !== 'fixture-cancel')
-      throw new Error('Missing fixture material');
-    purchase = { ...purchase, state: 'cancelled' };
-    return ok(purchase);
+  if (name === 'cancel_order' && order) {
+    order = {
+      ...order,
+      effectiveStatus: 'CANCELLED',
+      closedAt: '2026-01-01T00:01:00.000Z',
+      closeReason: 'CANCELLED',
+      allowedActions: { canPay: false, canCancel: false },
+    };
+    return ok(order);
   }
-  if (name === 'get_order_link' && order)
-    return ok({
-      url: `http://localhost:3000/order-details/${order.orderId}#order-read=fixture-order`,
-      expiresAt: cart.expiresAt,
-    });
-  if (name === 'create_handoff')
-    return ok({
-      cart,
-      handoff: {
-        url: `http://localhost:3000/checkout/${id}#handoff=${token}`,
-        issuedAt: '2026-10-30T00:00:00.000Z',
-        expiresAt: '2099-01-01T00:00:00.000Z',
-      },
-      requiresHumanConfirmation: true,
-    });
-  throw new Error('Unexpected fixture tool');
+  throw Error('Unexpected fixture call');
 };
 bridge.onopenlink = async ({ url }) => {
   opens.push(url);
@@ -187,13 +237,26 @@ bridge.onopenlink = async ({ url }) => {
 };
 bridge.oninitialized = async () => {
   await bridge.sendToolInput({
-    arguments: { cartId: id, cartAccessToken: token },
+    arguments: productMode ? { productId: 'P001' } : { cartId: id },
   });
-  await bridge.sendToolResult(ok({ cart, order: null }));
+  await bridge.sendToolResult(ok(productMode ? productDetail : cart));
 };
 const iframe = document.querySelector('iframe')!;
 await bridge.connect(
   new PostMessageTransport(iframe.contentWindow!, iframe.contentWindow!),
 );
-iframe.srcdoc = __APP_HTML__;
-Object.assign(window, { fixture: { calls, opens, controls } });
+iframe.srcdoc = resourceHtml;
+Object.assign(window, {
+  fixture: {
+    calls,
+    opens,
+    controls,
+    deliverCart: async (cartId: string) => {
+      await bridge.sendToolInput({ arguments: { cartId } });
+      await bridge.sendToolResult(ok({ ...cart, cartId }));
+    },
+    remount: () => {
+      iframe.srcdoc = resourceHtml;
+    },
+  },
+});
