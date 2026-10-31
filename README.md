@@ -1,10 +1,10 @@
 # Agent-Ready Store
 
-**接入术语说明：** MCP Apps 是现有 MCP Server 的交互式 UI 协议扩展，不新增独立 MCP Server。下文及历史记录中的“三入口/三种接入”按交互形态与验收路径理解；协议、连接和构建关系见 [Technical Design §1.1](docs/engineering/TECHNICAL_DESIGN.md#11-系统全景与请求路径)。历史批准与各路径分别验收的要求不变。
+**接入术语说明：** MCP 与 WebMCP 是两类 Agent 接入；MCP Apps 是 MCP 的 UI 增强，不兼容时降级为无 Apps UI 的 MCP。协议、连接和构建关系见 [Technical Design §1.1](docs/engineering/TECHNICAL_DESIGN.md#11-系统全景与请求路径)。本次统一术语不改变历史批准、业务行为与尚未完成的验证事实。
 
 ## 当前购买增量（2026-10-30）
 
-本轮收尾：`agent-confirmed-purchase`、S5、S6已于2026-10-30按Human授权归档，六份正式规格已同步；下文旧阶段描述保留历史语境，当前状态以本节及归档Tasks末尾为准。Apps历史准备重挂载P2已修复并独立复核；最终完整Review无新增发现，本地测试89通过、76环境依赖跳过。未完成的基础MCP原生确认/实施、真实Host/Human购买与显式分享验收仍为后续工作，归档不代表三入口全部交付。
+本轮收尾：`agent-confirmed-purchase`、S5、S6已于2026-10-30按Human授权归档，六份正式规格已同步；下文旧阶段描述保留历史语境，当前状态以本节及归档Tasks末尾为准。Apps历史准备重挂载P2已修复并独立复核；最终完整Review无新增发现，本地测试89通过、76环境依赖跳过。未完成的基础MCP原生确认/实施、真实Host/Human购买与显式分享验收仍为后续工作，归档不代表Agent接入全部交付。
 
 [agent-confirmed-purchase](openspec/changes/archive/2026-10-30-agent-confirmed-purchase/proposal.md) 按Human授权先实现Apps/WebMCP与共享交易核心，基础MCP保持原生确认Host阻塞；本节替代下文S5/S6中正常购买外跳Checkout及“无新增购买工具”的现状描述，旧验收事实保留。实施与验证见[Tasks](openspec/changes/archive/2026-10-30-agent-confirmed-purchase/tasks.md)，Human已授权保留已披露缺口归档并本地合入；真实Host/Human最终验收及基础MCP原生确认仍未完成。
 

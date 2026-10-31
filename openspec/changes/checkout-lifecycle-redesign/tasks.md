@@ -79,6 +79,6 @@
 | P3 Proposal遗留停售旧句 | Proposal、Technical Design、决策传播统一无禁售功能；关闭仅CANCELLED/EXPIRED，SALE_BLOCKED条件性后置 | 已解决 |
 
 - 文档验证：OpenSpec 1.15.0的`validate checkout-lifecycle-redesign --strict --json`通过（1项，0 issues）；status四类产物done，仅表示齐全。相对文件链接、能力覆盖及Delta目标/合并去重另做静态检查，`git diff --check`通过；历史快照正文保留由独立审阅者复核。2/30任务完成（1.1、1.2），其余28项未完成。
-- 行为限制：未运行业务测试；真实PostgreSQL并发/回滚、正常负载5秒释放目标、清理演练/实际切换、真实三入口Host/Human验收均未完成，旧证据不用于宣称新模型通过。
+- 行为限制：未运行业务测试；真实PostgreSQL并发/回滚、正常负载5秒释放目标、清理演练/实际切换、真实Agent接入Host/Human验收均未完成，旧证据不用于宣称新模型通过。
 - 可视化：沿用目标方案已有状态/流程图和本次限定替代矩阵，足以审阅本轮传播与修订；没有新建Recap或发布展示。
 - 阶段边界：Planning Review已pass，Human规划批准/实施授权未取得；此前尚无checkpoint；本轮针对22份成果路径执行Guard，实际返回BLOCKED，仅因Human Approval pending与缺少checkpoint；Review已pass，不进入Implementation。Human随后于2026-10-31明确“那就提交”，授权提交本次规划与基线文档；该授权不等于规划整体批准或实施授权。实际提交由Git历史核对，未获Push/Merge授权。原main及两个未跟踪目录保持原状。

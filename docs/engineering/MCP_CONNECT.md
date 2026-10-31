@@ -1,6 +1,6 @@
 # Agent-Ready Store MCP 接入
 
-**接入术语说明：** MCP Apps 是现有 MCP Server 的交互式 UI 协议扩展，不新增独立 MCP Server。下文及历史记录中的“三入口/三种接入”按交互形态与验收路径理解；协议、连接和构建关系见 [Technical Design §1.1](TECHNICAL_DESIGN.md#11-系统全景与请求路径)。历史批准与各路径分别验收的要求不变。
+**接入术语说明：** MCP 与 WebMCP 是两类 Agent 接入；MCP Apps 是 MCP 的 UI 增强，不兼容时降级为无 Apps UI 的 MCP。协议、连接和构建关系见 [Technical Design §1.1](TECHNICAL_DESIGN.md#11-系统全景与请求路径)。本次统一术语不改变历史批准、业务行为与尚未完成的验证事实。
 
 本文件说明如何把本机商店 MCP 手动接入支持 Streamable HTTP 的 Agent Host。服务提供七个工具，商品查询唯读，原车编辑与交接仍不包含订单提交；运行契约见 [README](../../README.md#s6-mcp-apps)。
 
