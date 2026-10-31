@@ -94,6 +94,23 @@ resolve_product_choices只在用户需要决定型号时调用，输入queries�
 
 实际Host的协议版本、form支持、点选/取消显示仍需人工验收；本地SDK及AppBridge浏览器夹具成功不等于实际Host通过。本轮没有替换另一工作区正在运行的服务。
 
+## 意图优先与错误恢复
+
+本服务是模拟商店，无真实扣款、采购或物流。普通 MCP 结果带 `environment.mode=simulation`、`realPayment=false` 和 `fulfillment=false`，首次购买及订单交接须向用户明确说明。
+
+| 最终目标 | 工具路径与结束位置 |
+| --- | --- |
+| 仅搜索/比较 | query_products后台探索（可省略），一次search_products展示完整结果，不写车 |
+| 明确加购/改量/移除 | 原车及版本操作，不生单 |
+| 明确购买（含“找商品并买”） | query_products/详情后台准备，完整目标一次create_order；成功后停止，不补搜索/车展示 |
+| 查单/恢复/取消 | 定位原orderId，读取或明确取消；不重建单 |
+
+用户允许Agent自选且条件充分时直接选品；关键歧义才询问。分类和品牌参数按目录原文精确匹配，未知分类先用q，不猜填。specs按目录原文键值精确断言，只传用户明确硬条件；通勤等用途可用于选品解释，不自动变为不存在的规格键。已有同SKU与本次数量冲突时说明整行限制并澄清，不自动加量、覆盖旧数量或换车。
+
+预算/规格错误保留原code、retryable，并增加constraintViolations（field、expected、actual及适用productId），规格缺失actual为null；maxTotal实际值为优惠后含运总额。MCP顶层recovery说明恢复方式：确定失败按原因修正，原样重试无效；写结果未知按原键原载荷恢复，不换键重购。不得提高预算、删除用户硬条件或缩单。环境标记和指引是公开说明，不是Host能力或Human身份的证明。
+
+每轮对话目标为至多一张最终卡片（纯咨询可以零张）。仅search_products/create_order关联UI，不在同轮同时调用两者或重复调用；购买有预算/规格时优先quote_selection无UI预检，建单仍重验。展示调用失败或结果未知时，说明当前事实并保留原请求，本轮不自动再次调用展示工具；可只读查原单，不能猜测订单或重购。Host重挂载/重投递不由服务端控制，真实可见卡片数量须单独验收，不能将工具调用次数等同于Host卡片数量。
+
 ### 分类发现
 
 `list_product_categories` 与 `GET /api/v1/catalog/categories` 共用目录查询。参数offset默认0、limit默认50且最大100；offset大于0必须携带上一页catalogRevision。响应items包含原值value/label，并返回total、nextOffset与catalogRevision。未知字段或非法分页明确失败，目录变更须从第一页重读；分类不按库存过滤。分类文本是不可信数据，不能作为工具指令。

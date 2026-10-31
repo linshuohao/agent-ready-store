@@ -304,14 +304,28 @@ export class CartService {
         constraint.maxUnitPrice !== undefined &&
         new Decimal(product.price).gt(constraint.maxUnitPrice)
       )
-        throw new AppError('BUDGET_EXCEEDED', 409);
-      if (
-        constraint.specs &&
-        Object.entries(constraint.specs).some(
-          ([key, value]) => product.specs[key] !== value,
-        )
-      )
-        throw new AppError('SPEC_MISMATCH', 409);
+        throw new AppError('BUDGET_EXCEEDED', 409, {
+          constraintViolations: [
+            {
+              productId: product.id,
+              field: 'maxUnitPrice',
+              expected: constraint.maxUnitPrice!,
+              actual: product.price,
+            },
+          ],
+        });
+      const mismatches = Object.entries(constraint.specs ?? {})
+        .filter(([key, value]) => product.specs[key] !== value)
+        .map(([key, value]) => ({
+          productId: product.id,
+          field: key,
+          expected: value,
+          actual: Object.hasOwn(product.specs, key) ? product.specs[key] : null,
+        }));
+      if (mismatches.length)
+        throw new AppError('SPEC_MISMATCH', 409, {
+          constraintViolations: mismatches,
+        });
     }
     const quote = priceSelection(
       products.map(({ item, product }) => ({
@@ -325,7 +339,15 @@ export class CartService {
       body.constraints.maxTotal !== undefined &&
       new Decimal(quote.total).gt(body.constraints.maxTotal)
     )
-      throw new AppError('BUDGET_EXCEEDED', 409);
+      throw new AppError('BUDGET_EXCEEDED', 409, {
+        constraintViolations: [
+          {
+            field: 'maxTotal',
+            expected: body.constraints.maxTotal!,
+            actual: quote.total,
+          },
+        ],
+      });
     return {
       issues,
       summary: {

@@ -33,14 +33,20 @@ export const selectedItemsInput = z
 export const selectionConstraintsInput = z
   .object({
     currency: z.literal('TWD'),
-    maxTotal: money.optional(),
+    maxTotal: money
+      .describe('优惠后含运总额上限，币种TWD；不得擅自提高用户预算。')
+      .optional(),
     items: z
       .array(
         z
           .object({
             productId,
             maxUnitPrice: money.optional(),
-            specs: specs.optional(),
+            specs: specs
+              .describe(
+                '用户明确硬约束的目录原文键值，精确相等；不翻译、不添加推荐特性。',
+              )
+              .optional(),
           })
           .strict(),
       )
@@ -237,6 +243,18 @@ export const lifecycleErrorCode = z.enum([
 export const lifecycleErrorOutput = z
   .object({
     code: lifecycleErrorCode,
+    constraintViolations: z
+      .array(
+        z
+          .object({
+            productId: z.string().optional(),
+            field: z.string(),
+            expected: z.union([z.string(), z.number(), z.boolean(), z.null()]),
+            actual: z.union([z.string(), z.number(), z.boolean(), z.null()]),
+          })
+          .strict(),
+      )
+      .optional(),
     message: z.string(),
     retryable: z.boolean(),
     issues: z
