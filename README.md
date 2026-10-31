@@ -133,6 +133,8 @@ pnpm start:docker
 
 [compose.yaml](compose.yaml) 只向本机暴露 Web 与 API 端口；商品目录从 `references/` 只读挂载，不打入镜像。Compose 与本机开发使用独立数据卷。日常启动不需要重复迁移或 seed；停止服务可用 `docker compose down`，保留数据时不要加 `--volumes`。
 
+云端演示部署采用 Vercel 前端、Render Docker 后端与 Neon PostgreSQL，配置与操作顺序见[部署指南](docs/engineering/DEPLOYMENT.md)。
+
 ## 更多文档
 
 - [产品需求](docs/product/REQUIREMENTS.md)与[产品设计](docs/product/PRODUCT_DESIGN.md)：功能、用户流程和交互约定。

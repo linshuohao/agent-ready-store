@@ -1,0 +1,30 @@
+# Apply after merging this configuration and completing DEPLOYMENT.md setup.
+# The catalog is a runtime secret file, not part of the Docker image.
+services:
+  - type: web
+    name: agent-ready-store-api
+    runtime: docker
+    plan: free
+    region: virginia
+    branch: main
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    autoDeployTrigger: off
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: CATALOG_PATH
+        value: /etc/secrets/products.json
+      - key: DATABASE_URL
+        sync: false
+      # Used both as a Docker build argument (MCP Apps) and at runtime.
+      - key: WEB_ORIGIN
+        sync: false
+      # Exact Render hostname, without scheme or path.
+      - key: MCP_ALLOWED_HOSTS
+        sync: false
+      - key: MCP_SERVICE_TOKEN
+        generateValue: true

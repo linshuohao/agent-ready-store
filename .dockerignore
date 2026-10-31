@@ -20,3 +20,7 @@ openspec
 **/test
 **/tests
 e2e
+
+# Render copies secret files into the build context root.
+/products.json
+**/.vercel
