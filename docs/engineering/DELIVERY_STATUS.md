@@ -44,6 +44,6 @@ Requirements / Product Design表达产品与体验结果，Technical Design表�
 
 ## 分类发现增量（本地分支，2026-10-31）
 
-`feat/catalog-discovery`已实现共享分类API/MCP及Web分类下拉框，尚未Push、Merge或部署。Human已批准分类入口限定豁免到期扫描；其他入口维持现有行为。实际命令、审查和Host验收进度集中在[Change Tasks](../../openspec/changes/catalog-discovery/tasks.md)。真实Codex CLI已执行四类只读场景，但CLI不提供Apps卡片渲染证据；支持Apps的真实Host视觉验收及最终Human验收仍待完成，不据此宣称线上已更新。向量／混合搜索仅保留为[后续评估方向](../../openspec/changes/catalog-discovery/design.md#future-evolution)。
+`feat/catalog-discovery`已实现共享分类API/MCP及Web分类下拉框，尚未Push、Merge或部署。Human已批准分类入口限定豁免到期扫描；其他入口维持现有行为。实际命令、审查和Host验收进度集中在[Change Tasks](../../openspec/changes/archive/2026-10-31-catalog-discovery/tasks.md)。真实Codex CLI已执行四类只读场景，但CLI不提供Apps卡片渲染证据；支持Apps的真实Host视觉验收及最终Human验收仍待完成，不据此宣称线上已更新。向量／混合搜索仅保留为[后续评估方向](../../openspec/changes/archive/2026-10-31-catalog-discovery/design.md#future-evolution)。
 
 2026-10-31后续：真实Codex Apps Host已通过同卡分组、空结果、预算保留、售罄按钮禁用、隐藏表单及卡片内重查验收，补齐上段CLI的视觉限制；详情见上述Change Tasks最新验收节。Human已授权验收通过后归档、合并与推送，线上部署状态需另核对，不能仅由本地验收推定。

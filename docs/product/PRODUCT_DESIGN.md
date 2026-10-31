@@ -120,4 +120,4 @@ Agent：咨询只读，明确加购只改车，明确购买在完整目标及预
 
 ## 分类发现增量（2026-10-31）
 
-Human已批准[catalog-discovery](../../openspec/changes/catalog-discovery/proposal.md)的限定范围。普通Web的分类筛选改为真实目录选项下拉框，含“全部分類”；品牌仍使用输入框。分类支持分页加载、明确错误/重试、保留URL已有但尚未加载的值，避免静默扩大查询。Apps继续隐藏搜索表单，不额外加载分类。具体异常与交互契约见[增量Spec](../../openspec/changes/catalog-discovery/specs/product-discovery/spec.md)，不扩大本文全局批准范围。
+Human已批准[catalog-discovery](../../openspec/changes/archive/2026-10-31-catalog-discovery/proposal.md)的限定范围。普通Web的分类筛选改为真实目录选项下拉框，含“全部分類”；品牌仍使用输入框。分类支持分页加载、明确错误/重试、保留URL已有但尚未加载的值，避免静默扩大查询。Apps继续隐藏搜索表单，不额外加载分类。具体异常与交互契约见[增量Spec](../../openspec/changes/archive/2026-10-31-catalog-discovery/specs/product-discovery/spec.md)，不扩大本文全局批准范围。

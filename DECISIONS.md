@@ -171,7 +171,7 @@
 
 ### 2026-10-31 — 分类发现与后续语义搜索方向
 
-Human 已确认按“共享分类发现、Web分类下拉框、MCP目录探索”制作方案，并将向量／混合搜索保留为后期演进方向。确认范围为方向与规划，不包含具体接口设计、实施或向量数据库选型。当前增量与后续评估条件统一见 [catalog-discovery](openspec/changes/catalog-discovery/proposal.md) 及其 [Design](openspec/changes/catalog-discovery/design.md#future-evolution)；D-15现有精确约束与排序规则保持，后续如需改变须另行批准。
+Human 已确认按“共享分类发现、Web分类下拉框、MCP目录探索”制作方案，并将向量／混合搜索保留为后期演进方向。确认范围为方向与规划，不包含具体接口设计、实施或向量数据库选型。当前增量与后续评估条件统一见 [catalog-discovery](openspec/changes/archive/2026-10-31-catalog-discovery/proposal.md) 及其 [Design](openspec/changes/archive/2026-10-31-catalog-discovery/design.md#future-evolution)；D-15现有精确约束与排序规则保持，后续如需改变须另行批准。
 
 <a id="current-d-16"></a>
 ## D-16 — 商品评论采用分页查询

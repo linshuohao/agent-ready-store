@@ -444,4 +444,4 @@ flowchart LR
 
 ## 分类发现增量（2026-10-31）
 
-Human已批准[catalog-discovery](../../openspec/changes/catalog-discovery/proposal.md)：补充CAT-01/02，Human通过分类下拉框选择真实筛选值，Agent通过只读MCP按需发现分类，再使用既有搜索和详情。分类来自全部目录，不保证可购性或用途匹配。无结果或目录变化不得静默放宽已有预算/分类。其具体行为归[增量Spec](../../openspec/changes/catalog-discovery/specs/product-discovery/spec.md)，保持本基线其余状态。语义／混合搜索仅为后续评估方向，不属于当前可用能力。
+Human已批准[catalog-discovery](../../openspec/changes/archive/2026-10-31-catalog-discovery/proposal.md)：补充CAT-01/02，Human通过分类下拉框选择真实筛选值，Agent通过只读MCP按需发现分类，再使用既有搜索和详情。分类来自全部目录，不保证可购性或用途匹配。无结果或目录变化不得静默放宽已有预算/分类。其具体行为归[增量Spec](../../openspec/changes/archive/2026-10-31-catalog-discovery/specs/product-discovery/spec.md)，保持本基线其余状态。语义／混合搜索仅为后续评估方向，不属于当前可用能力。
