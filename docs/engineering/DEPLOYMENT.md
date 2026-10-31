@@ -4,6 +4,20 @@
 
 仓库配置不代表服务已经上线。实际发布前确认目标账户、免费方案、提交与域名；所有密码和 Token 只放平台密钥设置或本机被忽略的环境文件。
 
+## 当前部署状态
+
+2026-10-31：部署配置已提交并推送，见 [PR #3](https://github.com/linshuohao/agent-ready-store/pull/3)；配置提交 `e5fb0dc` 的 Verify 与 Delivery image 均通过。当前云资源情况：
+
+| 平台 | 已完成 | 剩余工作 |
+| --- | --- | --- |
+| Vercel | Hobby 团队中已创建 `agent-ready-store`，Node.js 24、Root Directory `apps/web`；已分配 `agent-ready-store.vercel.app` | 等待后端地址后配置环境变量、发布与验收，当前未上线 |
+| Neon | 通过已有 Vercel 集成创建专用 Free 项目 `agent-ready-store-demo`（`fancy-salad-72400395`），PostgreSQL 18；7 个迁移完成、库存 30 条 | 后端上线后验证实际购物连接 |
+| Render | 控制台已登录，创建表单已填写 Docker、Virginia、Free $0/月、环境变量与商品 Secret File | 提交创建时要求银行卡验证，已取消；服务尚未创建 |
+
+本轮已获授权让云平台访问仓库资料。Render 插件在当前会话返回 `Unknown tool`，故使用控制台配置。控制台即使选择 Free 仍要求绑卡，并提示 $1 临时预授权；是否完成验证由账户持有人决定，不自动添加付款方式或升级实例。若绑定银行卡，还需核对额外带宽与构建用量的费用控制，不能把 Free 实例等同于所有超额用量免费。
+
+当前尝试发布的是已通过 CI 的 `codex/deploy-free-demo` 分支；PR 尚未合并，Blueprint 的长期目标仍是 `main`。实际后端服务创建和网页/MCP 购物验收完成前，不将资源创建或本地构建通过写成上线成功。
+
 ## 配置入口
 
 | 文件 | 作用 |
@@ -18,14 +32,14 @@ Vercel 的 Root Directory 是项目设置，不能写入 `vercel.json`。Render 
 ## 首次部署顺序
 
 1. 确认配置已合入 `main` 且该提交 CI 通过。确认云端可访问仓库的授权：Git 集成会拉取仓库，其中包含 `references/` 原件；`.dockerignore` 只限制镜像构建上下文，不限制 Git 拉取。原件访问未获授权时不要连接 Git 部署，先另行确定脱敏交付方式。
-2. 在 Neon 建立专用演示项目，选择 Free 和 PostgreSQL 18；推荐 AWS US East，与 Blueprint 的 Render Virginia 靠近。不要复用未确认用途的已有数据库。保留自动休眠，检查用量限制，不启用付费升级。
+2. 在 Neon 建立专用演示项目，选择 Free 和 PostgreSQL 18；推荐 AWS US East，与 Blueprint 的 Render Virginia 靠近。不要复用未确认用途的已有数据库。检查账户的实际休眠策略与用量限制，不启用付费升级。Vercel 管理的 Neon 账户可能不允许通过 Neon API 修改休眠时间，不能把请求值当作已生效值。
 3. 配置 Vercel 项目并确定稳定的正式域名；配置 Render 服务并取得其实际域名。记录两个真实地址，不假定项目名一定对应同名域名。
 4. 按下文初始化新数据库、配置 Render 环境变量与商品 Secret File，再构建启动后端。Blueprint 初次创建可能立即触发构建；文件未配置完成的失败部署不能算上线成功。`autoDeployTrigger: off` 只关闭后续自动部署。
 5. 将后端地址填入 Vercel 的 Production 环境变量，构建部署前端，完成购物与 MCP 验收。
 
 ## Neon：数据库初始化
 
-运行连接使用 Neon 提供的 pooled URL，迁移使用同一项目、同一 branch/database 的 direct URL；保留 Neon 提供的 TLS 参数。这里使用标准 PostgreSQL 驱动，不需要 Neon SDK 或新数据库抽象。
+运行连接使用 Neon 提供的 pooled URL，迁移使用同一项目、同一 branch/database 的 direct URL（主机名不含 `-pooler`；MCP 返回的默认连接也可能是 pooled，必须核对）；保留 Neon 提供的 TLS 参数。这里使用标准 PostgreSQL 驱动，不需要 Neon SDK 或新数据库抽象。
 
 在独立 checkout 中创建被 Git 忽略的 `.env`，安全填入 `DATABASE_URL`（direct URL）和 `CATALOG_PATH`（已授权商品文件的绝对路径）。核对目标确实是新演示数据库后，在仓库根目录执行：
 
