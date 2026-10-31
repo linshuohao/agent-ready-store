@@ -1,0 +1,523 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Agent-Ready Store 交付导览：了解项目、运行购物 Demo、阅读关键设计解答并核验工程证据。"
+    />
+    <title>Agent-Ready Store · 交付与体验导览</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <a class="skip" href="#content">跳至正文</a>
+    <header>
+      <a class="brand" href="#top">ARS<span>AGENT-READY STORE</span></a
+      ><a class="repo" href="../README.md">仓库 README ↗</a>
+    </header>
+    <main id="content">
+      <div class="hero" id="top">
+        <p class="eyebrow">PROJECT DELIVERY / 2026.10</p>
+        <h1>一个商店。<br />两种购物方式。</h1>
+        <p class="subtitle">
+          为 Human 与 AI Agent 构建共享的购物能力。<br />从产品体验，到设计取舍，再到可核验的工程证据。
+        </p>
+        <div class="hero-actions">
+          <a class="primary" href="#demos">体验 Demo <span>↘</span></a
+          ><a href="#usage">本地运行 <span>↘</span></a
+          ><a href="#decisions">理解设计 <span>↘</span></a>
+        </div>
+        <div class="scope">
+          <span>本地可运行</span><span>模拟支付</span
+          ><span>Web · MCP · WebMCP · MCP Apps</span>
+        </div>
+      </div>
+      <nav aria-label="页面章节">
+        <a href="#intro">项目介绍</a><a href="#start">阅读入口</a
+        ><a href="#usage">使用方式</a><a href="#demos">体验 Demo</a
+        ><a href="#decisions">设计解答</a><a href="#evidence">交付证据</a>
+      </nav>
+      <div class="reading">
+        <section id="intro" aria-labelledby="title-intro">
+          <div class="section-heading">
+            <span>01</span>
+            <h2 id="title-intro">项目在做什么</h2>
+          </div>
+          <p>
+            Agent-Ready Store 是一个同时服务人类与 AI Agent
+            的商店。用户可以自行浏览、加购与购买，也可以让 Agent
+            搜索商品、比较规格、管理购物车，在明确购买意图后准备待支付订单。用户核对订单明细后，亲自完成最终模拟支付。
+          </p>
+          <p>项目重点处理三个问题：</p>
+          <ul>
+            <li>
+              <strong>授权如何明确？</strong>
+              咨询只查询，加购只改车，明确购买才生单；评论或模型自述不能成为支付授权。
+            </li>
+            <li>
+              <strong>不同入口如何保持一致？</strong> Web 与 Agent
+              共用商品、计价、库存和订单能力；Web 与 MCP Apps
+              进一步共用完整购物应用。
+            </li>
+            <li>
+              <strong>交易发生异常时如何继续？</strong>
+              生单固定金额并预留库存15分钟；支付、取消、到期及网络未知均围绕原订单处理。
+            </li>
+          </ul>
+          <p>
+            当前是可本地体验的
+            Demo，使用模拟支付，不包含账户、真实金流、退款和物流。按 ID
+            接续购物车与订单不构成生产级身份和访问隔离。
+          </p>
+        </section>
+        <section id="start" aria-labelledby="title-start">
+          <div class="section-heading">
+            <span>02</span>
+            <h2 id="title-start">从哪里开始</h2>
+          </div>
+          <div
+            class="table-scroll"
+            tabindex="0"
+            role="region"
+            aria-label="阅读入口对照表"
+          >
+            <table>
+              <thead>
+                <tr>
+                  <th>你想做什么</th>
+                  <th>建议入口</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>快速了解产品与关键取舍</td>
+                  <td>阅读本文，再看<a href="../DECISIONS.md">产品决策</a></td>
+                </tr>
+                <tr>
+                  <td>实际运行与体验</td>
+                  <td>
+                    按
+                    <a href="../README.md#本机开发">README 本机开发</a
+                    >配置，再走下方 Demo
+                  </td>
+                </tr>
+                <tr>
+                  <td>在 Agent 中购物</td>
+                  <td>
+                    查看
+                    <a href="../docs/engineering/MCP_CONNECT.md"
+                      >MCP 接入指南</a
+                    >
+                  </td>
+                </tr>
+                <tr>
+                  <td>检查架构和源码</td>
+                  <td>从下方“设计解答”进入对应设计、实现与测试</td>
+                </tr>
+                <tr>
+                  <td>核对题目交付、CI 和缺口</td>
+                  <td>
+                    查看<a href="../docs/engineering/DELIVERY_STATUS.md"
+                      >交付状态与证据</a
+                    >
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <section id="usage" aria-labelledby="title-usage">
+          <div class="section-heading">
+            <span>03</span>
+            <h2 id="title-usage">如何运行</h2>
+          </div>
+          <p>
+            需要 Node.js 24（<code>&gt;=24.11 &lt;25</code>）、pnpm
+            12.11.2，以及 PostgreSQL；本仓库提供 Docker Compose
+            数据库入口。还需要商品数据文件
+            <code>references/products.json</code>，或通过
+            <code>CATALOG_PATH</code>
+            指向可用数据。原始材料受分享范围限制；如果检出的仓库未包含数据，请向交付者确认获取方式，不能假设文件一定随仓库提供。
+          </p>
+          <p>
+            首次运行按
+            <a href="../README.md#本机开发"
+              >README 的安装、环境变量和空数据库初始化步骤</a
+            >操作；Docker 整套运行方式见
+            <a href="../README.md#构建与运行">README 构建与运行</a>。README
+            是启动命令的维护入口，本文不另维护一套环境配置。
+          </p>
+          <p>环境初始化完成后，日常启动：</p>
+          <pre><code class="language-sh">pnpm db:up
+pnpm dev
+</code></pre>
+          <p>
+            打开<a href="http://localhost:3000">本地商店</a
+            >。已有数据库不要重复清空或 seed。停止应用使用 Ctrl+C；<code
+              >pnpm db:down</code
+            >
+            停止开发数据库并保留数据卷。
+          </p>
+          <p>
+            Agent 客户端连接地址默认是
+            <code>http://localhost:3002/mcp</code>，使用本机配置的
+            <code>MCP_SERVICE_TOKEN</code>
+            认证。客户端必须能访问服务所在机器；远程 Host 的
+            <code>localhost</code> 不代表你的电脑。具体连接与兼容前提见
+            <a href="../docs/engineering/MCP_CONNECT.md">MCP 接入指南</a>。
+          </p>
+        </section>
+        <section id="demos" aria-labelledby="title-demos">
+          <div class="section-heading">
+            <span>04</span>
+            <h2 id="title-demos">可以体验哪些 Demo</h2>
+          </div>
+          <p>
+            以下是可自行操作的体验路线，不是预录视频，也不代表本次文档更新重新执行了全部验收。
+          </p>
+          <article class="demo">
+            <h3>1. 网页购物：从选购到支付</h3>
+            <ol>
+              <li>
+                打开商品列表，搜索并查看一件当前可购买商品的详情、规格与评论。
+              </li>
+              <li>
+                加入购物车，修改数量，保存后勾选要购买的商品，核对选中金额。
+              </li>
+              <li>
+                生成待支付订单，查看固定的商品、数量、优惠、运费、总额与付款期限。
+              </li>
+              <li>亲自点击模拟支付，查看原订单的支付结果；返回继续购物。</li>
+            </ol>
+            <p>
+              <strong>值得观察：</strong>
+              购物车可以持续使用；已创建订单具有独立明细，后续改车不会重写原订单。商品实际库存决定当时能否购买。
+            </p>
+          </article>
+          <article class="demo">
+            <h3>2. Agent 购物：明确意图与 Human 接手</h3>
+            <p>
+              在已连接的客户端中分步表达意图。下面是示例提示，不是既有真实对话：
+            </p>
+            <blockquote>
+              <p>
+                请查找当前有库存的耳机，比较几个候选的价格和规格，先不要加购或下单。
+              </p>
+            </blockquote>
+            <p>选定实际返回的商品后：</p>
+            <blockquote>
+              <p>请把刚才选定的这款商品加入购物车，数量1，先不要生成订单。</p>
+            </blockquote>
+            <p>核对目标后：</p>
+            <blockquote>
+              <p>
+                我要购买这件商品，数量1。请生成待支付订单，并展示完整金额和支付入口。
+              </p>
+            </blockquote>
+            <p>核对订单摘要并亲自支付，再请 Agent 查询这张订单的状态。</p>
+            <div
+              class="table-scroll"
+              tabindex="0"
+              role="region"
+              aria-label="体验 Demo对照表"
+            >
+              <table>
+                <thead>
+                  <tr>
+                    <th>体验方式</th>
+                    <th>支付如何承接</th>
+                    <th>使用前提</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>基础 MCP</td>
+                    <td>Agent 返回网页订单入口，用户打开后支付</td>
+                    <td>支持 MCP Streamable HTTP 的客户端与可达服务</td>
+                  </tr>
+                  <tr>
+                    <td>MCP Apps</td>
+                    <td>在对话内嵌的共享购物界面核对并支付</td>
+                    <td>Host 支持相应 Apps 能力</td>
+                  </tr>
+                  <tr>
+                    <td>WebMCP</td>
+                    <td>页面工具生单后导航到订单页，由用户支付</td>
+                    <td>支持相应能力的浏览器 Agent</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p>
+              <strong>值得观察：</strong>
+              咨询、加购和购买分别对应不同写入范围；支付未向模型开放；Apps
+              通过仅供 UI 使用的 <code>apps_pay_order</code> Bridge 工具承接
+              Human 点击。MCP Apps 是 MCP 的 UI 增强，不是另一套交易系统。
+            </p>
+          </article>
+          <article class="demo">
+            <h3>3. 取消订单：观察短期承诺如何结束</h3>
+            <p>
+              另建一张待支付订单，记录订单号，在付款前取消，然后再次查看原单。应看到关闭结果，不能继续支付。取消释放该单预留，但不会自动把商品放回购物车，也不会取消其他订单。
+            </p>
+            <p>
+              到期释放、支付与关闭竞争、丢响应后的未知恢复，可进一步查看<a
+                href="../docs/engineering/CHECKOUT_CORE.md"
+                >交易核心</a
+              >和<a href="../apps/api/test/cart/lifecycle-db.test.ts"
+                >数据库生命周期测试</a
+              >。不需要为了阅读 Demo
+              等待15分钟，也不要把关闭浏览器当作取消成功。
+            </p>
+          </article>
+          <article class="demo">
+            <h3>Demo 与录影的证据状态</h3>
+            <p>
+              <a
+                href="../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/tasks.md"
+                >结算验收记录</a
+              >包含基础 MCP、WebMCP 与 Apps
+              的真实购物验收摘要。<strong>可直接观看的完整对话导出或录影仍待补充</strong>；摘要、浏览器测试和真实录影各有不同用途。当前导览提供本地运行入口，不提供已部署的在线商城链接。
+            </p>
+          </article>
+        </section>
+        <section id="decisions" aria-labelledby="title-decisions">
+          <div class="section-heading">
+            <span>05</span>
+            <h2 id="title-decisions">设计解答：为什么这样做</h2>
+          </div>
+          <details class="answer" open>
+            <summary>为什么让 Agent 生单，却保留 Human 支付？</summary>
+            <div>
+              <p>
+                用户让 AI
+                搜索或加购时可能仍在比较，不能据此推定购买同意。明确购买后允许
+                Agent
+                准备订单，减少中间步骤；最后由用户核对固定内容并支付。这个选择保留一次确认成本，但使购买对象和最终操作明确。是否改善转化与误购，需要真实业务数据验证。
+              </p>
+              <p>
+                依据：<a href="../DECISIONS.md">产品决策 D-01、D-02</a>、<a
+                  href="../openspec/specs/agent-purchase-authorization/spec.md"
+                  >购买授权 Spec</a
+                >。Demo 的 UI 边界不能替代生产身份与访问控制。
+              </p>
+            </div>
+          </details>
+          <details class="answer">
+            <summary>为什么建车不锁库，生单后只预留15分钟？</summary>
+            <div>
+              <p>
+                购物车可以用于比较和暂存，长时间占库会影响其他顾客；用户已经准备付款时则需要短期确定性。因此生单固定明细并预留，支付消费预留，取消或到期释放。原单可继续查看，但重新购买需要按当前条件生成新单。15分钟是本次采用的默认值，不是经运营数据证明的最优时长。
+              </p>
+              <p>
+                依据：<a href="../DECISIONS.md">产品决策 D-04～D-06</a>、<a
+                  href="../openspec/specs/inventory-reservation/spec.md"
+                  >库存预留 Spec</a
+                >。
+              </p>
+            </div>
+          </details>
+          <details class="answer">
+            <summary>前端复用具体复用了什么？</summary>
+            <div>
+              <p>
+                Web 与 Apps 共用
+                <code>packages/commerce-ui</code>
+                中的页面、Hooks、Commands、组件与样式。Web 注入 Next 导航、HTTP
+                与浏览器存储；Apps 注入 Host
+                Bridge、内嵌导航与对应存储。环境适配不再实现另一套购物状态机。
+              </p>
+              <p>
+                各实例仍有独立的查询副本、输入草稿和未决请求；共享代码不意味着自动共享会话。服务端负责金额与库存事实，前端负责交互协调。
+              </p>
+              <p>
+                依据：<a href="../docs/engineering/FRONTEND_DESIGN.md"
+                  >前端设计</a
+                >、<a href="../packages/commerce-ui/src/application.tsx"
+                  >共享应用入口</a
+                >、<a href="../packages/commerce-ui/src/runtime.tsx">环境接口</a
+                >。
+              </p>
+            </div>
+          </details>
+          <details class="answer">
+            <summary>如何避免多入口计价不一致，以及重复操作？</summary>
+            <div>
+              <p>
+                HTTP 与 MCP
+                进入共享业务用例，计价集中在服务端。客户端不自行推算最终交易金额。交易使用原请求键与订单标识处理幂等和恢复；响应丢失时保留未知状态并查询事实，不能直接判断失败后换单重买。本地倒计时也不能替代数据库中的关闭事实。
+              </p>
+              <p>
+                依据：<a href="../apps/api/src/cart/pricing.ts">统一计价实现</a
+                >、<a href="../docs/engineering/CHECKOUT_CORE.md">交易核心</a
+                >、<a href="../apps/api/test/cart/lifecycle-db.test.ts"
+                  >生命周期数据库测试</a
+                >。
+              </p>
+            </div>
+          </details>
+          <details class="answer">
+            <summary>为什么实现多个 Agent 体验？是否增加了复杂度？</summary>
+            <div>
+              <p>
+                基础 MCP 提供结构化购物能力；WebMCP 面向已有网页上下文；Apps
+                将完整购物 UI
+                放入对话。这些体验复用业务和前端基础，但仍增加了协议适配、Host
+                兼容和分入口验收成本。它们属于项目的能力扩展，不能把入口数量本身当作质量证明。
+              </p>
+              <p>
+                依据：<a href="../docs/engineering/MCP_CONNECT.md"
+                  >接入与兼容边界</a
+                >、<a href="../docs/engineering/ENGINEERING_DECISIONS.md"
+                  >工程决策</a
+                >。
+              </p>
+            </div>
+          </details>
+          <details class="answer">
+            <summary>AI 参与了什么，人负责什么？</summary>
+            <div>
+              <p>
+                项目通过 AGENTS 与自写 Workflow Skill
+                约束上下文、范围和决策边界，OpenSpec 保存具体变更的 Spec、Design
+                与 Tasks。Human 负责关键业务和架构取舍、权限边界及验收；AI
+                在授权范围内实施、验证与修复。局部可逆修改可以轻量执行，不为每次修改建立完整规划流程。
+              </p>
+              <p>
+                <a href="../AI_NOTES.md">AI_NOTES</a
+                >精选四个真实协作时刻，包括上下文权威、Skill
+                职责收敛，以及审查发现数据库切换竞态后通过真实反例修复的过程。<a
+                  href="../docs/engineering/TOOLING.md"
+                  >工具记录</a
+                >给出 Skill
+                版本、限定使用次数和验证口径；不将记录下限冒充总调用量，也没有量化效率提升的结论。
+              </p>
+            </div>
+          </details>
+        </section>
+        <section id="evidence" aria-labelledby="title-evidence">
+          <div class="section-heading">
+            <span>06</span>
+            <h2 id="title-evidence">如何核验交付质量</h2>
+          </div>
+          <p>
+            建议从<a href="../docs/engineering/DELIVERY_STATUS.md"
+              >交付状态与证据</a
+            >开始，它集中维护题目要求、对应结果、实际 CI
+            版本、验收记录与剩余缺口。
+          </p>
+          <div
+            class="table-scroll"
+            tabindex="0"
+            role="region"
+            aria-label="交付证据对照表"
+          >
+            <table>
+              <thead>
+                <tr>
+                  <th>核验对象</th>
+                  <th>直接入口</th>
+                  <th>阅读时关注</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>产品与取舍</td>
+                  <td><a href="../DECISIONS.md">DECISIONS</a></td>
+                  <td>当前决定、代价与历史替代关系；PM回复是草案</td>
+                </tr>
+                <tr>
+                  <td>架构与实现</td>
+                  <td>
+                    <a href="../docs/engineering/TECHNICAL_DESIGN.md"
+                      >总体技术设计</a
+                    >
+                  </td>
+                  <td>从前后端详细设计进入对应源码</td>
+                </tr>
+                <tr>
+                  <td>正式行为</td>
+                  <td>
+                    <a href="../openspec/specs/">OpenSpec specs</a>与<a
+                      href="../openspec/changes/archive/"
+                      >归档变更</a
+                    >
+                  </td>
+                  <td>行为契约、规划与实施证据</td>
+                </tr>
+                <tr>
+                  <td>测试与 CI</td>
+                  <td>
+                    <a href="../README.md#测试与检查">运行测试说明</a>、<a
+                      href="../.github/workflows/ci.yml"
+                      >CI 配置</a
+                    >
+                  </td>
+                  <td>
+                    隔离数据库、环境依赖及跳过用例；历史通过只对应记录版本
+                  </td>
+                </tr>
+                <tr>
+                  <td>AI 协作</td>
+                  <td>
+                    <a href="../AI_NOTES.md">AI_NOTES</a>、<a
+                      href="../.agents/skills/ai-native-workflow/SKILL.md"
+                      >Workflow Skill</a
+                    >
+                  </td>
+                  <td>真实纠偏、决策责任与验证范围</td>
+                </tr>
+                <tr>
+                  <td>Git 历史</td>
+                  <td>
+                    <a href="https://github.com/linshuohao/agent-ready-store"
+                      >GitHub 仓库</a
+                    >
+                  </td>
+                  <td>规划、实现、修复及合并记录；需具备仓库权限</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            单元、数据库、浏览器与真实 Host
+            验收分别覆盖不同层次。本文是交付导览，不宣称当前检出版本已重新通过所有检查。真实支付、账户隐私、生产部署与十万商品性能不在当前承诺内；可观看
+            Agent 材料和现场增量开发演练的缺口以交付状态为准。
+          </p>
+        </section>
+      </div>
+    </main>
+    <footer>
+      <strong>Agent-Ready Store</strong>
+      <p>交付导览 · 面向面试官与仓库读者</p>
+      <div>
+        <a href="../DELIVERY.md">Markdown 原文</a
+        ><a href="../docs/engineering/DELIVERY_STATUS.md">交付状态与缺口</a
+        ><a href="#top">返回顶部 ↑</a>
+      </div>
+    </footer>
+    <script>
+      const links = [...document.querySelectorAll('nav a')];
+      if ('IntersectionObserver' in window) {
+        const observer = new IntersectionObserver(
+          (entries) => {
+            for (const e of entries) {
+              if (e.isIntersecting) {
+                links.forEach((a) => {
+                  if (a.hash === '#' + e.target.id)
+                    a.setAttribute('aria-current', 'location');
+                  else a.removeAttribute('aria-current');
+                });
+              }
+            }
+          },
+          { rootMargin: '-10% 0px -65% 0px' },
+        );
+        document
+          .querySelectorAll('.reading section')
+          .forEach((s) => observer.observe(s));
+      }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Agent-Ready Store · 展示与答辩</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="slides.js" defer></script>
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip" href="#screen">跳至正文</a>
+    <aside class="sidebar">
+      <a class="brand" href="#overview">ARS<span>AGENT-READY STORE</span></a>
+      <p class="edition">INTERVIEW / 2026.10</p>
+      <div class="switch" role="group" aria-label="内容分组">
+        <button id="main-mode" aria-pressed="true">主讲 <span>10</span></button
+        ><button id="backup-mode" aria-pressed="false">
+          备查 <span>04</span>
+        </button>
+      </div>
+      <nav id="chapters" aria-label="章节导航"></nav>
+      <div class="sidebar-foot">
+        <span>PROJECT / EVIDENCE</span>
+        <p>结果 → 判断 → 架构 → 协作</p>
+        <a href="../README.md" target="_blank" rel="noopener">项目 README ↗</a>
+      </div>
+    </aside>
+    <div class="workspace">
+      <header class="toolbar">
+        <span id="location">主讲 / 01</span>
+        <div>
+          <button id="fullscreen">全屏</button>
+        </div>
+      </header>
+      <main id="screen" tabindex="-1" aria-labelledby="slide-title"></main>
+      <footer class="pagination">
+        <span id="progress" aria-live="polite"></span
+        ><span class="shortcut">← → 翻页 · M 主讲 · B 备查</span>
+        <div>
+          <button id="previous" aria-label="上一屏">← 上一屏</button
+          ><button id="next" aria-label="下一屏">下一屏 →</button>
+        </div>
+      </footer>
+      <div id="notice" role="status"></div>
+    </div>
+    <noscript
+      >本展示需要启用 JavaScript；项目资料可直接阅读
+      <a href="../README.md">README</a>。</noscript
+    >
+  </body>
+</html>

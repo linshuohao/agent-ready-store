@@ -34,6 +34,6 @@ Demo的ID接续和分享页不提供生产级身份/访问隔离；Host存储、
 
 ## 文档与证据职责
 
-Requirements / Product Design表达产品与体验结果，Technical Design表达当前架构，DECISIONS / ENGINEERING_DECISIONS解释取舍，OpenSpec保存具体变更及其实施验收，AI_NOTES精选协作事件。设计原型和Workflow讲解页不是实际产品证据；Showcase HTML不是题目硬性要求，但项目既有最终展示约定仍有效；当前尚无presentation/index.html，Workflow讲解页不能替代它，本轮不新增展示页面。
+Requirements / Product Design表达产品与体验结果，Technical Design表达当前架构，DECISIONS / ENGINEERING_DECISIONS解释取舍，OpenSpec保存具体变更及其实施验收，AI_NOTES精选协作事件。设计原型和Workflow讲解页不是实际产品证据；Showcase HTML不是题目硬性要求，但项目既有最终展示约定仍有效；现已提供[展示与答辩入口](../../presentation/index.html)，含10屏主讲与4屏备查；它是摘要与证据导航，不替代产品、CI或真实Agent证据。
 
 面试阅读顺序：运行README → 业务决策 → 技术方案 → AI_NOTES → 按追问查看Spec、测试与历史。CI已有当前修复版本的通过证据；仍需补充真实购物可观看材料。

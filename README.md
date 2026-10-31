@@ -4,6 +4,8 @@
 
 网页与 Agent 共用商品查询、计价、库存和订单能力；MCP Apps 与网页进一步共享完整的购物界面和交互逻辑。
 
+首次了解项目或评审交付，可先阅读[交付与体验导览](DELIVERY.md)（[HTML 阅读版](delivery/index.html)）：项目说明、Demo 路线、关键设计解答及证据入口。
+
 ## 功能
 
 - **商品发现**：商品列表、规格、库存与评论查询，支持多目标分组搜索、简繁匹配和受控中英文别名。
@@ -134,6 +136,8 @@ pnpm start:docker
 [compose.yaml](compose.yaml) 只向本机暴露 Web 与 API 端口；商品目录从 `references/` 只读挂载，不打入镜像。Compose 与本机开发使用独立数据卷。日常启动不需要重复迁移或 seed；停止服务可用 `docker compose down`，保留数据时不要加 `--volumes`。
 
 ## 更多文档
+
+- [展示与答辩](presentation/index.html)：主讲、备查、设计说明与证据；[打开方式](presentation/README.md)。
 
 - [产品需求](docs/product/REQUIREMENTS.md)与[产品设计](docs/product/PRODUCT_DESIGN.md)：功能、用户流程和交互约定。
 - [产品决策](DECISIONS.md)：需求理解、业务取舍与 PM 沟通。
