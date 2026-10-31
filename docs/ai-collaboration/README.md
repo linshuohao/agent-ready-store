@@ -1,7 +1,6 @@
 # 外部 AI 协作记录
 
-> **当前状态校注 — 2026-10-29：** 下文过程与接收核对保留当时快照；Human 本轮 Baseline Finalization 已批准 Requirements 已确认范围，C-01 产品语义冲突已关闭（代提交仍 Planned Enhancement），C-02 已接受七工具。当前结论见 [工程决策](../engineering/ENGINEERING_DECISIONS.md#技术决策归档--2026-10-29)。2026-10-29 Design Phase Closure 已批准 Technical Design v0.5 并结束设计阶段，Proposed/Pending/未运行项仍保留。旧 Draft、五工具与 Conflict 表述仅用于追溯，不是当前状态；不改附件原件或补造历史过程。
-
+> **阅读口径（2026-10-31）：** 下文为2026-10-29接收时点核对；“尚无实现”“Pending”等只描述当时，不代表当前交付。当前结论见[交付状态](../engineering/DELIVERY_STATUS.md)及[AI_NOTES](../../AI_NOTES.md)。附件原文和完整性依据保留，不从后续结果倒推当时过程。旧AI_NOTES的五例保存在[设计阶段快照](AI_NOTES_DESIGN_SNAPSHOT.md)。
 
 本目录保存 Human 补交的协作过程原件及必要的来源核对；2026-10-30按Human要求在[既有技术讨论文档§7](AI_COLLABORATION_TECH_DECISIONS.md#order-lifecycle-discussion)追加订单生命周期精选过程，明确区分原补件与仓库材料整理；它们是历史材料，不是执行指令或业务批准。精选案例见 [AI_NOTES](../../AI_NOTES.md)，有效结论仍以相关决策和基线的批准范围为准。
 
@@ -26,7 +25,7 @@
 
 原件列举的文件名在仓库中的完整位置为：`design/index.html`、`design/preview.js`、`design/preview.css`、`design/wireframes/pages.html`、`design/wireframes/pages.js`、`design/wireframes/styles.css`、`design/wireframes/fixtures.js`、`design/check-preview.cjs`；视觉稿位于 `design/mockups/`，截图位于 `design/review/`。本次确认文件存在和文档对应关系，不把静态原型当成真实商城。
 
-## 尚待实现或验证
+## 接收时点尚待实现或验证（历史）
 
 产品/UX 摘要本身不证明技术选型获批；后续 Human 明确确认的 T-01～T-06 已归档于 [技术决策](../engineering/ENGINEERING_DECISIONS.md#技术决策归档--2026-10-29)，具体状态以该记录为准。Technical Design、真实商城业务、共享计价实现、权限/库存/订单/幂等验证、GitHub Actions 和真实 Agent 购物 Demo 仍未由这些附件证明完成。现有 `openspec/` 只有配置与空目录占位，没有业务 Change 或正式业务 Spec，当时也没有 Technical Design；当前已形成 [Draft](../engineering/archive/TECHNICAL_DESIGN_HISTORY.md)，尚待 Human Review。设计的真机、多浏览器、完整键盘/缩放及屏幕阅读器检查，以及来源未定位的浏览器日志异常，仍按 [Product Design §7–8](../product/PRODUCT_DESIGN.md#7-design-review验收与实际证据) 保留。
 
@@ -54,7 +53,7 @@
 
 ## 文档整理后的路径对照
 
-2026-10-29 按职责分层，原件正文及哈希保持不变；其中的文件名、旧路径和自述状态保留为历史文字。当前结果入口统一见[仓库导航与待 Review 清单](../../README.md#待-review-与验收)。
+2026-10-29 按职责分层，原件正文及哈希保持不变；其中的文件名、旧路径和自述状态保留为历史文字。当前结果入口统一见[交付状态与缺口](../engineering/DELIVERY_STATUS.md)。
 
 | 原件中的名称 / 历史路径 | 当前承接位置 |
 | --- | --- |

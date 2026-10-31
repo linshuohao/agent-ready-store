@@ -1,10 +1,6 @@
 # Agent-Ready Store — Requirements Baseline
 
-- **Status：Draft v0.3 / 订单生命周期目标修订，待Human批准。** 2026-10-31（Asia/Shanghai）；该全局稿仍非整体Approved；相关已批准增量已实施、验收并归档。
-- **依据与范围：** [结算生命周期决定与限定替代](../../DECISIONS.md#checkout-lifecycle-20261031)、[T-08～T-11](../engineering/ENGINEERING_DECISIONS.md#order-lifecycle-decisions)及[当前Change](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/proposal.md)。规划阶段Human仅授权传播与审查，后续实施授权与验收见归档Tasks；上一轮明确不新增禁售功能。
-- **批准与历史：** 已批准v0.2及其后续限定补充完整保留于[传播前快照](archive/2026-10-31-REQUIREMENTS.md)，包括2026-10-29 Human批准来源。本稿承接已采用设计选择，不据此新增整体Approved或实施授权；相关正式Spec已按已批准Change同步。
-- **取代范围：** 目标流程以持续Cart、单车多Order、生单锁价预留、Human支付原单、ID长期接续取代旧整车确认/凭证期限/成功才生单；未改变的商品发现、价格算法、原件边界及工程交付要求继续保留。各需求ID沿用并明确新含义，旧含义由快照追溯。
-- **Pending：** 规划审查结果见同一Change Tasks；相关增量的限定批准、实施授权及Human验收已完成；直接证据与自动化范围分开记录于归档Tasks。真实支付、账户隐私、禁售功能和生产级权限均不在本轮范围。
+**状态：Draft v0.3，全局基线未整体批准。** 本文汇总当前需求；已批准增量的依据与历史见§12.3，实际完成情况见[交付状态](../engineering/DELIVERY_STATUS.md)。
 
 ## 1. 阅读口径与产品目标
 
@@ -20,15 +16,59 @@ Human可选购、生单、审阅固定摘要、模拟支付或取消未支付单
 
 ### 3.1 Human 直接购物
 
-浏览/评论 → 加购/改量 → 车内勾选完整商品行及预估 → 创建待支付订单（固定金额、预留15分钟、选中行转出） → 核对固定摘要 → Human模拟支付同单或取消。车可持续选购，同车多笔订单独立；普通Web生单无AI资格。
+```mermaid
+flowchart TD
+    Browse["浏览商品、规格与评论"] --> Cart["加购或修改数量"]
+    Cart --> Select["勾选完整商品行，查看预估金额"]
+    Select --> Create["创建待支付订单：固定金额、预留15分钟、选中行转出"]
+    Create --> Review["Human核对固定订单摘要"]
+    Review --> Pay["Human点击模拟支付"]
+    Pay --> Paid["支付成功：原订单变为已支付"]
+    Review --> Cancel["取消未支付订单"]
+    Create --> Expire["未支付订单到期关闭"]
+    Cancel --> Release["释放预留，不自动回车"]
+    Expire --> Release
+    Create -.-> Continue["原车可继续选购，各订单独立"]
+    Continue --> Cart
+```
+
+普通Web生单无AI优惠资格。生单失败不转出商品行或留下部分预留；支付结果未知时查询原单，不自动再次支付。
 
 ### 3.2 Agent 辅助购物与交接
 
-咨询只读；明确加购只改车；充分明确的购买意图允许Agent准备完整目标后直接生单、展示支付界面，不强制车页中转或逐步确认。明确改量可以执行，歧义先澄清，必要Host审批保留。A准备成功B失败不能自动只买A；预算、币种和规格在生单时验证。已成功加购保留并如实报告。
+```mermaid
+flowchart TD
+    Request["用户向Agent表达需求"] --> Intent{"意图是否明确？"}
+    Intent -->|有歧义| Clarify["先澄清商品、数量或购买约束"]
+    Clarify --> Intent
+    Intent -->|咨询或比较| Read["只读查询商品与评论，不改车、不生单"]
+    Intent -->|仅加购或改量| Edit["更新购物车，不生单"]
+    Intent -->|明确购买| Prepare["准备完整购买目标"]
+    Prepare --> Complete{"所有目标是否准备成功？"}
+    Complete -->|否| Report["报告未完成项，保留已成功加购，不自动部分购买"]
+    Complete -->|是| Create["按完整目标生单，验证预算、币种和规格等约束"]
+    Create -->|成功| Handoff["展示原订单与支付入口"]
+    Create -->|失败| Failed["报告原因，不留下部分订单或预留"]
+    Handoff --> Human["Human审阅并亲自点击模拟支付"]
+```
 
-### 3.3 当前需求：Agent交互形态的生单与Human支付
+明确购买可直接生单并展示支付界面，不强制经过车页或逐步确认；必要的Host审批保留。Agent不能代点或调用支付工具。
 
-Agent接入分为 MCP 与 WebMCP。MCP Apps 是 MCP 的交互式 UI 增强，复用现有 MCP Server、连接和业务用例，不构成额外入口或路径。支持 Apps 的 Host 展示内嵌 UI；不兼容时降级为 MCP 文本与结构化结果。降级保留可用工具能力；购买仍遵循适用契约与Human确认要求，不能把文本返回视为完整购买验收通过。当前订单生命周期目标由网页订单入口承接无 Apps 时的Human支付，实际可用性须验证。验收覆盖 MCP 的 UI 增强与无 Apps 兼容模式，以及 WebMCP 页面工具。 具体协议与构建关系见 [Technical Design §1.1](../engineering/TECHNICAL_DESIGN.md#11-系统全景与请求路径)。
+### 3.3 Agent交互形态的生单与Human支付
+
+Agent接入分为 MCP 与 WebMCP。MCP Apps 是 MCP 的交互式 UI 增强，复用现有 MCP Server、连接和业务用例，不构成额外入口或路径。支持 Apps 的 Host 展示内嵌 UI；不兼容时降级为 MCP 文本与结构化结果。降级保留可用工具能力；购买仍遵循适用契约与Human确认要求，不能把文本返回视为完整购买验收通过。无 Apps 时由网页订单入口承接Human支付。验收覆盖 MCP 的 UI 增强与无 Apps 兼容模式，以及 WebMCP 页面工具。 具体协议与构建关系见 [Technical Design §1.1](../engineering/TECHNICAL_DESIGN.md#11-系统全景与请求路径)。
+
+```mermaid
+flowchart TD
+    Order["Agent成功创建待支付订单"] --> Entry{"接入与呈现模式"}
+    Entry -->|WebMCP| Web["导航至网页订单页"]
+    Entry -->|MCP，无Apps UI| Link["返回网页订单链接，Human打开"]
+    Entry -->|MCP，Apps UI增强| App["Host内嵌展示原订单"]
+    Web --> Review["Human核对固定摘要并点击模拟支付"]
+    Link --> Review
+    App --> Review
+    Review --> Result["展示同一订单的支付结果"]
+```
 
 | 接入及其呈现模式 | 生单后的承接 | 恢复 |
 | --- | --- | --- |
@@ -45,13 +85,13 @@ Agent接入分为 MCP 与 WebMCP。MCP Apps 是 MCP 的交互式 UI 增强，复
 | ID | 产品需求 | 来源 |
 | --- | --- | --- |
 | <a id="cat-01"></a>CAT-01 | Web 提供商品浏览与商品详情；Agent 可搜索商品、查询规格和库存，以支持比较及选购 | [PM 三 1～2][PM-三] |
-| <a id="cat-02"></a>CAT-02 | Agent 商品查询支持条件搜索、必要筛选、确定性排序、分页及按需详情；单次结果有明确数量边界，不能一次无边界返回全部商品 | [D-19] |
-| <a id="cat-03"></a>CAT-03 | 先筛选符合查询条件的候选商品，再按原始 recommendation_score 降序排列；同分采用确定性次级排序，相同数据和条件下结果稳定；不进行毛利加权 | [PM 三 7][PM-三]；[D-14]、[D-15] |
+| <a id="cat-02"></a>CAT-02 | Agent 商品查询支持条件搜索、必要筛选、确定性排序、分页及按需详情；支持有界多目标独立查询和同卡分组展示，单次结果有明确数量边界，不能一次无边界返回全部商品 | [D-19] |
+| <a id="cat-03"></a>CAT-03 | 文字匹配采用统一简繁规范化及受控中英文别名；先筛选符合查询条件的候选商品，再按原始 recommendation_score 降序排列；同分采用确定性次级排序，相同数据和条件下结果稳定；不进行毛利加权 | [PM 三 7][PM-三]；[D-14]、[D-15] |
 | <a id="cat-04"></a>CAT-04 | 搜索只提供必要商品摘要；详情提供基本信息、规格及必要评论概览；评论列表独立分页，Agent 能连续翻页读取某商品全部评论；Web 与 Agent 复用同一评论查询能力和数据规则 | [PM 三 8][PM-三]；[D-16] |
 | <a id="cat-05"></a>CAT-05 | 对外提供购物判断所需信息，例如 ID、名称、品牌、类别、描述、价格、库存或可购买状态、规格及评论查询能力；确切公开字段按场景细化。公开商品接口不得直接返回内部 margin_rate；原始 recommendation_score 可用于排序，不要求公开数值 | [D-20] |
 | <a id="cat-06"></a>CAT-06 | 商品名称允许重复，以唯一商品 ID 区分，搜索、购物车和订单都不能按名称合并商品；不得虚构供应商或变体资料 | [D-18] |
 
-2026-10-31增量（Human授权审查后实施）：CAT-02增加有界多目标独立查询和同卡分组展示；CAT-03的文字匹配增加统一简繁规范化及受控中英文别名，硬筛选与推荐/ID排序不变。候选型号优先经客户端结构化选择，选择不等于购买或支付授权。具体契约、验收及实施状态见[grouped-multilingual-search](../../openspec/changes/archive/2026-10-31-grouped-multilingual-search/proposal.md)，不将本增量视为基线整体重批。其余查询细则沿正式product-discovery规格；未来变更按第11节处理。当前样例评论少、商品仅 30 件，不能成为取消分页和结果边界的理由。
+候选型号可经客户端结构化选择，选择不等于购买或支付授权。查询细则见正式[商品发现规格](../../openspec/specs/product-discovery/spec.md)。当前样例评论少、商品仅30件，不能成为取消分页和结果边界的理由。
 
 ### 4.2 商品可购买状态与数据边界
 
@@ -171,7 +211,7 @@ $\operatorname{HALF\_UP}_{2}$ 表示按 HALF_UP 舍入到两位小数。商品�
 | --- | --- |
 | <a id="order-01"></a>ORDER-01 | 明确购买可先创建待支付单；完整摘要后Human点击模拟支付，Agent不代点、不提供支付工具；UI直接请求不等Agent消息 |
 | <a id="order-02"></a>ORDER-02 | 生单按当前选中集合计价并固定；支付校验原快照、预留、状态和服务端截止，不实时重算、不比较当前车版本 |
-| <a id="order-03"></a>ORDER-03 | Order创建即CHECKOUT，支付更新同ID为PAID；closedAt/closeReason表达CANCELLED或EXPIRED，不新增Checkout实体或禁售功能 |
+| <a id="order-03"></a>ORDER-03 | 创建后为待支付订单，支付后同一订单成为已支付；未支付订单可因取消或到期关闭，保留关闭原因，不产生另一笔订单。持久状态的表达见[技术方案](../engineering/TECHNICAL_DESIGN.md#order-state) |
 | <a id="order-04"></a>ORDER-04 | 生单转行/预留/明细/金额全有或全无；支付原单状态与实际量/预留消费全有或全无；失败保留已存在订单及原预留期限 |
 | <a id="order-05"></a>ORDER-05 | 创建时保存唯一固定商品/金额快照；价格涨跌、活动结束或运费变化不改变原单，历史长期可查看 |
 | <a id="order-06"></a>ORDER-06 | 创建按原车+原键恢复，支付/取消按原orderId恢复；成功重复不扣量，同键异载荷冲突，已关闭不复活，响应未知不自动重付/重建 |
@@ -254,13 +294,13 @@ flowchart LR
 <a id="p-04"></a>
 **P-04限定收敛：** 本次目标已明确ID长期接续、车与订单无业务查看TTL、不自动清理、按原键/原单恢复未知；这些不再作为本轮产品未决。真实支付、身份/访问隔离、隐私保留政策、ID全部丢失后的身份找回仍不在范围，不从Demo推导生产承诺。
 
-未完成：Human规划批准和实施授权、真实PostgreSQL竞态及5秒释放目标、MCP增强/兼容模式与WebMCP真实Host/Human验收。数据清理先隔离演练，实际环境须明确目标/范围及对应授权，不因选择清空旧流程自动执行。禁售功能按Human 2026-10-31答复后置。
+订单生命周期增量的规划批准、实施授权及Human验收已记录于归档Tasks，不能继续列为产品未决。自动化、真实Host及交付证据的覆盖与缺口统一见[交付状态](../engineering/DELIVERY_STATUS.md)。5秒释放仍须结合负载与运行条件评估，不能由功能验收推导生产时延保证。禁售功能按Human 2026-10-31答复后置；后续范围变化需单独确认。
 
 ## 12. 产品验收场景与来源覆盖
 
 ### 12.1 关键验收场景
 
-以下是目标，非本轮已通过的运行事实；原AC编号保留，旧预期见历史快照，细化场景唯一维护在当前Change Delta Specs。
+以下是目标，非本轮已通过的运行事实；原AC编号保留，旧预期见历史快照，细化行为与场景维护在正式OpenSpec规格，变更经过留在归档Change。
 
 | ID | 验收结果 |
 | --- | --- |
@@ -286,9 +326,27 @@ flowchart LR
 | <a id="ac-20"></a>AC-20 接续分享 | 本人冲突先看单，分享无车/其他单/取消且不改指针 |
 | <a id="ac-21"></a>AC-21 乱序截止 | 迟到创建不抢页，派生超时不覆盖PAID，矛盾终态重查 |
 
-### 12.2 需求来源与限定传播
+### 12.2 需求、设计与验证的对应关系
 
-D-01/03～07/21～24的替代矩阵见DECISIONS的本轮记录；D-02/08～20未改部分继续有效，金额范围和时点按§6限定。工程交付仍见§10。所有后续批准、实现与验收证据归同一Change，不以本次文档传播追认旧讨论或测试。
+| 需求组 | 关键验收 | 正式行为来源 | 技术设计落点 |
+| --- | --- | --- | --- |
+| CAT-01～06 商品发现 | AC-03～05、14 | [商品发现](../../openspec/specs/product-discovery/spec.md) | [目录与数据边界](../engineering/TECHNICAL_DESIGN.md#21-商品发现与运行数据) |
+| CART-01～08 持续选购 | AC-07、12、18 | [购物车](../../openspec/specs/shopping-cart/spec.md) | [领域模型](../engineering/TECHNICAL_DESIGN.md#domain-model)、[状态归属](../engineering/TECHNICAL_DESIGN.md#53-状态归属与保存范围) |
+| PRICE-01～02 价格一致性 | AC-06、10 | [计价](../../openspec/specs/cart-pricing/spec.md) | [库存、期限与计价事实](../engineering/TECHNICAL_DESIGN.md#62-库存期限与计价事实) |
+| ORDER-01～06 订单与库存 | AC-01、08、11、21 | [订单](../../openspec/specs/order-placement/spec.md)、[库存预留](../../openspec/specs/inventory-reservation/spec.md) | [业务状态](../engineering/TECHNICAL_DESIGN.md#order-state)、[后端边界](../engineering/TECHNICAL_DESIGN.md#backend-guarantees) |
+| HAND-01～05、SEC-01～03 接续与授权 | AC-02、09、16、17、19、20 | [购买授权](../../openspec/specs/agent-purchase-authorization/spec.md)、[交接](../../openspec/specs/cart-handoff/spec.md) | [用户旅程](../engineering/TECHNICAL_DESIGN.md#shopping-journeys)、[安全边界](../engineering/TECHNICAL_DESIGN.md#65-运行数据初始化与安全边界) |
+
+此表连接需求与设计，不代表测试已通过；验证入口见技术方案§7，执行结果见交付状态。NFR与METRIC继续约束对应功能，不因表中按功能分组而成为可选项。
+
+### 12.3 批准范围与历史
+
+- **版本状态：Draft v0.3，全局基线未整体批准。** 2026-10-31（Asia/Shanghai）；该全局稿仍非整体Approved；相关已批准增量已实施、验收并归档。
+- **依据与范围：** [结算生命周期决定与限定替代](../../DECISIONS.md#checkout-lifecycle-20261031)、[T-08～T-11](../engineering/ENGINEERING_DECISIONS.md#order-lifecycle-decisions)及[归档Change](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/proposal.md)。规划阶段Human仅授权传播与审查，后续实施授权与验收见归档Tasks；上一轮明确不新增禁售功能。
+- **批准与历史：** 已批准v0.2及其后续限定补充完整保留于[传播前快照](archive/2026-10-31-REQUIREMENTS.md)，包括2026-10-29 Human批准来源。本稿承接已采用设计选择，不据此新增整体Approved或实施授权；相关正式Spec已按已批准Change同步。
+- **取代范围：** 目标流程以持续Cart、单车多Order、生单锁价预留、Human支付原单、ID长期接续取代旧整车确认/凭证期限/成功才生单；未改变的商品发现、价格算法、原件边界及工程交付要求继续保留。各需求ID沿用并明确新含义，旧含义由快照追溯。
+- **Pending：** 规划审查结果见同一Change Tasks；相关增量的限定批准、实施授权及Human验收已完成；直接证据与自动化范围分开记录于归档Tasks。真实支付、账户隐私、禁售功能和生产级权限均不在本轮范围。
+
+查询增量的批准与实施依据见[grouped-multilingual-search](../../openspec/changes/archive/2026-10-31-grouped-multilingual-search/proposal.md)。D-01/03～07/21～24的限定替代关系见DECISIONS；D-02/08～20未改部分继续有效。文档整理不追认旧讨论，不新增实施授权。
 
 <!-- 来源链接：使用引用式链接保持正文简洁，目标均为只读原件或已有决策。 -->
 

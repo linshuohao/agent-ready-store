@@ -2,6 +2,29 @@
 
 **接入术语说明：** MCP 与 WebMCP 是两类 Agent 接入；MCP Apps 是 MCP 的 UI 增强，不兼容时降级为无 Apps UI 的 MCP。协议、连接和构建关系见 [Technical Design §1.1](TECHNICAL_DESIGN.md#11-系统全景与请求路径)。本次统一术语不改变历史批准、业务行为与尚未完成的验证事实。
 
+## 当前技术判断：问题、选择与代价
+
+当前实现见[Technical Design](TECHNICAL_DESIGN.md)，实际验证见[交付状态](DELIVERY_STATUS.md)。下表是既有选择的当前阅读索引，不新增技术决策或扩大批准。下文原条目的“未实施／Pending”保留其记录时点。
+
+| 问题 | 已采用选择及理由 | 代价／重访条件 | 决策依据 |
+| --- | --- | --- | --- |
+| 熟悉度与真实交易能力如何兼顾 | Next.js/React、NestJS薄模块单体、Prisma/PostgreSQL；目录只读、交易持久化 | 承担双应用与数据库运行成本；不引入无需求的微服务 | T-01、T-03、T-06及其演进 |
+| 网页与Agent如何避免算出不同价格 | 共享服务端用例及唯一计价；前端消费结果 | API依赖与契约维护成本；不复制折扣算法 | T-04、D-09～D-13 |
+| 继续购物与待支付如何并存 | 持续Cart、独立Order固定快照与15分钟预留 | 释放任务、库存对账及统计语义变化；真实支付/退款出现时重访 | [T-08](#t-08--cart持续选购order承载独立交易生命周期) |
+| 如何控制Demo权限复杂度 | 持久ID接续、明确分享展示；不引入账户与车凭证 | 无生产身份与访问隔离；涉及隐私或真金流必须重新设计 | [T-09](#t-09--demo以持久cart-id接续权限与确认基础设施后置) |
+| 重试与并发如何不重复购买 | 同库短事务、版本与操作幂等；终态竞争按数据库事实裁决 | 整车版本可能造成无关行冲突，释放可能短暂延迟；实测瓶颈再考虑细化 | [T-10](#t-10--同库短事务与操作幂等取代整车结算锁) |
+| 多入口如何共享体验又适配环境 | commerce-ui完整购物应用；Web HTTP与Apps Bridge等保留环境适配 | 两种构建及Host验证成本；不共享运行内存或假定Host兼容 | [T-11限定替代](#t-11限定替代web与apps完整应用复用2026-10-31) |
+| Agent如何搜索和选型 | 有界分组查询、受控语言匹配、新协议能力判断及对话兜底 | 不承诺任意翻译；真实Host能力与SDK测试分开 | 搜索Change及MCP SDK增量 |
+
+## 范围与投入反思
+
+题目只要求一种结构化Agent接口，不要求集齐协议或Skill。本项目选择MCP、WebMCP与Apps增强，是为了验证共享业务与不同Human接续方式；它也实际增加了UI复用迁移、Host资源缓存、能力兼容与验收成本。若以最短交付闭环为目标，基础MCP与网页支付即可先满足接口要求；多入口收益应由真实体验证明。此处是对已发生投入的反思，不撤销已批准交付范围，不虚构两天工时或节省比例。
+
+工程治理条目ENG-*解释协作方式；业务技术条目T-*解释架构。优先读T-08～T-11及技术方案，再按需要追溯T-01～T-07。Skill不是越多越好，记录和审批也有维护成本；使用与改版证据集中在TOOLING。
+
+<details>
+<summary>查看2026-10-29～30阶段授权与已替代方向</summary>
+
 **下一里程碑阅读入口：** [T-08～T-11：订单生命周期、demo接续、事务与跨端分层](#order-lifecycle-decisions)。仅记录已采用设计选择，不授权实施；限定替代关系见该节。
 
 **最新实施授权（2026-10-30）：** Human已明确接受当前购买Change §4.3可信Host/浏览器UI隔离与§6短期可转交订单只读权限，并授权提交、验证与实施。以下“仅修订/尚未批准”保留历史语境；真实Host证据与验收条件不变，见[权限补充](../../DECISIONS.md)及[当前Design](../../openspec/changes/archive/2026-10-30-agent-confirmed-purchase/design.md)。
@@ -17,6 +40,9 @@
 
 
 > **当前基线状态 — 2026-10-29：** Human「Design Phase Closure & Git History Consolidation」已批准 [Technical Design v0.5](archive/TECHNICAL_DESIGN_HISTORY.md) 并结束本轮设计阶段。下文 Draft/待审记录保留其当时范围；Proposed 实施候选、L-01/P-04 等 Pending 与未运行证据不因整体批准自动升级，既有 Accepted 决策不重写。
+
+
+</details>
 
 本文件保存工程治理与重要技术选择，保留原有 ENG-* 决策 ID，业务技术专题按需使用 T-*。针对 PM 需求的假设、判断、取舍及回复另见 [DECISIONS.md](../../DECISIONS.md)，不在这里混合维护；不另建职责相同的 TECH_DECISIONS.md。
 
@@ -343,7 +369,7 @@ Human 已通过整体架构，授权收敛 [Technical Design v0.2（历史记录
 替代的仅是此前 v0.5 中尚未批准的实现候选：去除普通 Web 建车前的创建身份 Cookie/引导与跨标签初始化协调，推荐使用浏览器此次生成的同一 Cart Token 证明建车重试；每车 Cookie 保留，确认会话绑定不预设第二个每页身份。服务器单密文恢复方案不变。该候选需 S2 安全/恢复验证；首次响应前浏览器丢失 Token 且 Cookie 未到达时不能自动恢复或重复建车，其体验限制需在 S2 Review 接受或调整。旧候选保留为演进历史，不作为当前实施默认。L-01、P-04 与浏览器会话绑定细化继续 Pending，不新增业务表/身份服务/全局 Store。本轮仅文档自查，无实现或运行证据，Technical Design 仍 Draft。
 
 <a id="order-lifecycle-decisions"></a>
-## 订单生命周期重构：下一里程碑技术决策 — 2026-10-30
+## 订单生命周期重构：技术决策与演进 — 2026-10-30
 
 **来源与范围：** 本聊天Human明确选择单一Order、单车多订单、固定15分钟库存/金额、长期上下文、demo权限简化，并多轮明确要求“按建议统一更新、不进入开发”；本轮要求记录技术决策及更新技术方案。以下Accepted仅指这些已采用设计选择，不代表新增架构整合稿整体Approved、独立Review通过或实施授权。证据为实际对话与[OpenSpec Design](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/design.md)，无本轮运行实验。架构说明见[Technical Design架构总览](TECHNICAL_DESIGN.md#order-lifecycle-architecture)，精选推导与Human纠偏见[既有讨论文档§7](../ai-collaboration/AI_COLLABORATION_TECH_DECISIONS.md#order-lifecycle-discussion)。本次补充复用原ID，不改变上述确认日期与批准范围。
 
@@ -355,6 +381,8 @@ Human 已通过整体架构，授权收敛 [Technical Design v0.2（历史记录
 | T-11 | 无部署选型替换；收敛各端复用范围 | T-01薄模块化单体、T-04 Monorepo/contracts、T-06最小闭环 |
 
 旧条目不整体标Superseded，因为其余范围仍有效。产品规则D-01/D-03～07/D-21～24的限定传播现见[2026-10-31记录](../../DECISIONS.md#checkout-lifecycle-20261031)与Requirements/Product Design v0.3 Draft；审批及审查由当前Change追踪，不用技术记录静默覆盖原批准历史。2026-10-31 Human确认本轮不新增停售/禁售功能，关闭仅CANCELLED/EXPIRED；SALE_BLOCKED保留未来条件性讨论。
+
+本节T-08～T-11正文保留设计时点；相关实现、Human验收、Spec同步与归档已完成，见[交付状态](DELIVERY_STATUS.md)。T-11完整应用复用限定替代仍适用，未采集的Host证据不补造。
 
 ### T-08 — Cart持续选购，Order承载独立交易生命周期
 

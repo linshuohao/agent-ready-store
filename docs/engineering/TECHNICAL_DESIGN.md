@@ -16,6 +16,8 @@
 | 如何保证统一契约、计价、库存及可复现运行 | §6 后端用例、共享契约与运行边界 |
 | 如何验证以及何时扩展 | §7 验证与演进 |
 
+当前模型的契约核对入口：[购物车](../../openspec/specs/shopping-cart/spec.md)定义可变选购，[订单](../../openspec/specs/order-placement/spec.md)定义固定快照与同单支付，[库存预留](../../openspec/specs/inventory-reservation/spec.md)定义占用/消费/释放，[计价](../../openspec/specs/cart-pricing/spec.md)定义所选集合与精度。阅读下方状态图时，注意CHECKOUT是持久状态，取消/到期由关闭事实表达，effectiveStatus和页面请求状态不应被当作另一套持久状态机。选择这些边界的理由见[工程决策当前索引](ENGINEERING_DECISIONS.md#当前技术判断问题选择与代价)。
+
 历史方案与批准记录统一收于[归档](archive/TECHNICAL_DESIGN_HISTORY.md)，仅供追溯；关键推导见[技术讨论记录](../ai-collaboration/AI_COLLABORATION_TECH_DECISIONS.md#order-lifecycle-discussion)。本文件不维护历史逐轮记录或实施流水账。
 
 ## 1. 体验目标与系统全景
@@ -34,9 +36,21 @@
 
 本方案延续[T-01～T-06](ENGINEERING_DECISIONS.md#技术决策归档--2026-10-29)中未被替代的技术栈、目录、前端与运行边界；T-08～T-11及T-11完整复用限定替代约束订单生命周期、Demo接续及共用应用边界。列表、详情、评论、购物车和订单共同组成商店，不因本次交易重构退化为单独支付演示。
 
+### 设计驱动与约束
+
+| 产品问题 | 设计响应 | 接受的代价与边界 |
+| --- | --- | --- |
+| 等待支付时仍要继续购物，金额不能随车变化 | 可变Cart与固定Order分离；生单同时转出整行并预留 | 多单导航、配额与关闭恢复增加复杂度；取消不自动回车 |
+| 网页与Agent需得到同一价格和交易结果 | 后端用例统一计价和事务，协议适配器复用；前端共享完整购物应用 | Host与浏览器仍需独立环境适配和真实入口验证 |
+| 请求超时不能造成重复购买，迟到结果不能改变用户正在看的页面 | 服务端持久幂等与同单恢复；前端按目标、版本和导航意图安装结果 | 保留请求键与未知状态，恢复时需要查询；不能用通用自动重试掩盖业务差异 |
+| 多笔订单竞争有限库存 | 单库短事务协调订单、预留和库存；支付与关闭互斥 | 锁等待和热点商品会限制吞吐；没有容量证据前不拆服务 |
+| 支持Agent操作，又保留人的最终购买控制 | 模型工具允许生单但无支付能力；Human在UI审阅固定摘要并支付 | Demo的ID接续不构成顾客身份或数据隔离，真实支付上线前必须重审权限 |
+
+这里以用户结果组织架构，前端负责可理解、可继续的交互，后端负责不可被入口绕过的交易约束；Agent是这些用例的消费者。AI开发协作方法另见[AI_NOTES](../../AI_NOTES.md)，不作为运行时架构的一层。
+
 ### 1.1 系统全景与请求路径
 
-Agent接入分为 MCP 与 WebMCP。MCP Apps 是 MCP 的交互式 UI 增强，复用现有 MCP Server、连接和业务用例，不构成额外入口或路径。支持 Apps 的 Host 展示内嵌 UI；不兼容时降级为 MCP 文本与结构化结果。降级保留可用工具能力；购买仍遵循适用契约与Human确认要求，不能把文本返回视为完整购买验收通过。当前订单生命周期目标由网页订单入口承接无 Apps 时的Human支付，实际可用性须验证。验收覆盖 MCP 的 UI 增强与无 Apps 兼容模式，以及 WebMCP 页面工具。
+Agent接入分为 MCP 与 WebMCP。MCP Apps 是 MCP 的交互式 UI 增强，复用现有 MCP Server、连接和业务用例，不构成额外入口或路径。支持 Apps 的 Host 展示内嵌 UI；不兼容时降级为 MCP 文本与结构化结果。降级保留可用工具能力；购买仍遵循适用契约与Human确认要求，不能把文本返回视为完整购买验收通过。无 Apps 时由网页订单入口承接Human支付；真实入口的验证记录见交付状态。验收覆盖 MCP 的 UI 增强与无 Apps 兼容模式，以及 WebMCP 页面工具。
 
 `apps/mcp-app` 是 UI 源码与构建单元，静态 HTML 产物由 `apps/api` 的既有 `/mcp` 端点通过资源读取提供；目录独立不代表常驻服务独立。基础工具与 Apps 资源注册在同一 MCP Server，UI 经 Host Bridge 调用所属 Server 的工具。
 
@@ -666,7 +680,7 @@ AI资格由服务端生单入口确定，不接受客户端自报资格，也不
 
 ### 6.4 共享契约与失败语义
 
-[packages/contracts](../../packages/contracts/src/index.ts)是共享schema、DTO和错误定义的代码入口，OpenSpec是正式行为来源。当前contracts仍包含旧流程，新订单契约须随授权实施更新，不能用旧代码反推目标模型。HTTP envelope、MCP structuredContent与Bridge消息包装可不同，业务含义必须一致；不返回Prisma实体或原始JSON。
+[packages/contracts](../../packages/contracts/src/index.ts)是共享schema、DTO和错误定义的代码入口，OpenSpec是正式行为来源。新订单契约与保留的旧流程定义需区分使用，旧类型的存在不表示旧入口仍受支持；行为以适用正式Spec为准。HTTP envelope、MCP structuredContent与Bridge消息包装可不同，业务含义必须一致；不返回Prisma实体或原始JSON。
 
 | 契约族 | 对消费者的承诺 |
 | --- | --- |
@@ -719,10 +733,25 @@ HTTP与MCP继续校验适用的输入、网络来源和服务接入边界；Demo
 | 多端与分享 | 基础MCP网页接手、WebMCP真实导航、Apps重挂载与UI支付、跨车不自动覆盖、分享展示边界 |
 | 运行与交付 | dev/HMR、生产构建和启动、反代动态响应、重启不重置库存、独立测试库及切换演练 |
 
+### 7.1 可执行验证入口
+
+以下链接指向现有测试与验收记录，说明如何检查设计，不表示本轮重新运行或当前CI全绿。
+
+| 场景与观察结果 | 验证入口 |
+| --- | --- |
+| 金额跨过免运、满减和舍入边界，明细仍能对账 | [计价测试](../../apps/api/test/cart/pricing.test.ts) |
+| 并发生单、重复请求、支付/关闭竞争，检查订单事实与库存净变化 | [真实数据库生命周期测试](../../apps/api/test/cart/lifecycle-db.test.ts) |
+| 车编辑和报价响应乱序，草稿与当前选择不被旧结果覆盖 | [车命令测试](../../apps/web/test/cart-lifecycle-commands.test.ts)、[报价测试](../../apps/web/test/selection-quote.test.ts) |
+| 支付响应未知、订单刷新与导航变化，恢复同单并保留正确终态 | [订单命令测试](../../apps/web/test/order-lifecycle-commands.test.ts)、[订单浏览器测试](../../e2e/order-lifecycle.spec.ts) |
+| 同一购物能力在不同入口呈现，协议差异不改变交易规则 | [MCP生命周期](../../apps/api/test/mcp/lifecycle-mcp.test.ts)、[WebMCP](../../e2e/webmcp.spec.ts)、[Apps浏览器测试](../../e2e/mcp-app.spec.ts) |
+| 实际Host中的呈现与Human点击流程 | [归档验收记录](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/tasks.md)、[交付证据与缺口](DELIVERY_STATUS.md)；模拟Host测试不能替代 |
+
+### 7.2 验证边界与演进
+
 并发检查最终订单数、订单状态与库存净变化，不仅检查HTTP成功码；用确定性协调验证关键竞争，Mock不替代事务或Host。金额反例涵盖989.99/990、999.99/1000、2000只减一次以及100.30的95.285舍入为95.29。业务测试不能指向演示业务库，测试故障注入不作为业务参数暴露。
 
 详细新增验收场景集中于OpenSpec Design §12，实施Tasks、真实Host记录、CI具体run与Human验收才提供运行证据；配置存在、脚本模拟、静态图或历史通过计数不能代替当前验证。进度集中在交付状态，本文不重复维护里程碑清单。
 
-同一Change已记录规划批准、实施授权、交易核心与完整共享应用的实现/审查/验证；当前剩余真实Host/Human验收及正式Spec同步见Tasks，不以本方案或自动化通过替代最终接受。旧D-01、D-04～D-07、D-21～D-24及T-05/T-07的批准不追溯改写；T-11完整复用限定替代有独立Human确认来源。
+同一Change已记录规划批准、实施授权、交易核心与完整共享应用的实现/审查/验证；后续Human验收与正式Spec同步已记录于归档Tasks；可直接查看的演示证据与当前CI结果仍按交付状态分别核对，不以本方案或自动化通过替代最终接受。旧D-01、D-04～D-07、D-21～D-24及T-05/T-07的批准不追溯改写；T-11完整复用限定替代有独立Human确认来源。
 
 旧流程一次性切换已按Human具体授权执行，证据留当前Change Tasks；该事实不授权重清、再次seed或回退旧写服务。后续升级保持新车、订单和库存事实，按兼容数据的构建与服务更新执行；新流程长期保留、取消和到期不沿用一次性切换清理。

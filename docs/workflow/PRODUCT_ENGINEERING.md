@@ -107,7 +107,7 @@ Technical Design 整合足够的 Accepted Tech Decisions 和适用产品/体验�
 | --- | --- |
 | Project Overview | 题目背景、目标、产品能力、工程亮点、实际完成范围与限制 |
 | Product Experience | Web Store、关键页面、完整购物流程、重要交互/异常说明；本地服务需启动说明 |
-| Agent Demo | 真实 Agent 对话/录影、实际工具调用、建车 → Handoff → Human 确认的可追溯链路 |
+| Agent Demo | 真实 Agent 对话/录影、实际工具调用、选购 → 生待支付订单 → Human支付原单的可追溯链路 |
 | Product Decisions & UX | DECISIONS、Requirements、Product Design、Wireframes/关键视觉设计；只摘录重要理由 |
 | Architecture & Technical Design | ENGINEERING_DECISIONS 的技术条目、Technical Design、架构/状态图与接口契约，说明业务规则如何共享 |
 | AI-Native Engineering | Workflow、两个自定义 Skills、OpenSpec、AI_NOTES 和真实 Skill 使用/版本记录；可链接既有 Workflow 讲解页 |
@@ -115,47 +115,18 @@ Technical Design 整合足够的 Accepted Tech Decisions 和适用产品/体验�
 
 面试默认叙事为 **Show the Result → Product Decisions → Architecture → AI Collaboration → Quality**，允许任意跳转，不改变开发顺序。
 
-关键产物存在后才制作对应入口；不存在的资产在下方清单标 Pending，正式页面不伪装可用链接。模拟与真实 Agent 证据分别标识，测试/Review 对应实际对象、版本、环境和结果；禁止虚构截图、调用、次数或 CI 状态，旧证据说明覆盖范围。最终用浏览器打开页面、检查锚点/本地相对路径/远程链接与访问前提，README 启动测试、真实 Agent 链路及质量证据分别验收。外部链接和发布在相应授权下验证；离线材料不依赖商城服务，服务入口明确启动依赖。静态页面不代替产品验收。
+关键产物存在后才制作对应入口；不存在的资产在交付状态中标 Pending，正式页面不伪装可用链接。模拟与真实 Agent 证据分别标识，测试/Review 对应实际对象、版本、环境和结果；禁止虚构截图、调用、次数或 CI 状态，旧证据说明覆盖范围。最终用浏览器打开页面、检查锚点/本地相对路径/远程链接与访问前提，README 启动测试、真实 Agent 链路及质量证据分别验收。外部链接和发布在相应授权下验证；离线材料不依赖商城服务，服务入口明确启动依赖。静态页面不代替产品验收。
 
 ## 最终交付映射
 
-来源以只读 [作业说明](../../references/home-quiz.md) 为准。以下状态更新为文档整理快照（2026-10-29，Asia/Shanghai）；映射按重要里程碑、交付 Review 或实际交付状态变化维护，不作每日开发进度表；OpenSpec 与 Git 承接具体实施进度和变更历史。维护时检查文件当前状态与仓库事实，不根据对话推断文件已批准、实现或测试完成。**Existing** 只表示存在，**Partial** 仍有缺口，**Pending** 尚未交付，均不代表 Human 验收。
+题目来源为只读[作业说明](../../references/home-quiz.md)。逐项要求、当前结果、直接证据与缺口统一维护在[DELIVERY_STATUS](../engineering/DELIVERY_STATUS.md)，本页只维护产物职责及验收标准，不再复制阶段状态表。旧2026-10-29映射可由Git历史追溯，不能据旧“无实现／无远程”状态安排工作。
 
-### Required by Assignment
+### 交付验收原则
 
-| 产物 | 来源 | 当前状态 / 位置 | 最终验收 |
-| --- | --- | --- | --- |
-| 可运行 Human Web | 二.1；PM 三.1 及有效决策 | Pending；无商城代码 | 按 README 启动，完成浏览、详情、建车、确认、模拟结账与结果，核对异常 |
-| 真实 Agent 可用结构化接口 | 二.1；PM 三.2 及有效决策 | Pending；基础 MCP + Hosted Checkout 已选，尚无实现，C-02 已接受七工具，具体契约待设计 | 真实外部 Agent 能搜索、查询详情/可购买状态、逐页评论、建车、修改购物车并交接；Human 最终确认 |
-| README 启动/测试说明 | 二.1 | Partial；README 目前是治理导航 | 从干净环境依说明安装、启动、测试；本地演示可用，依赖与限制可见 |
-| 产品判断与 PM 回应 | 二.2 | Existing；DECISIONS D-01～D-22 | 调整/存疑需求可追溯；假设、取舍、确认依据和 Pending 准确 |
-| Agent Context | 二.3 | Existing；AGENTS + Workflow/Review Skills | Agent 按需取得有效约束、授权和当前任务，不误用数据指令 |
-| 实现前 Spec / Plan / Tasks | 二.3 | Partial；OpenSpec 已配置，无业务产物 | 当前切片的 OpenSpec Spec / Design（承载实现方案）/ Tasks 在实现前准备，批准及历史可追溯 |
-| 至少一个自写 Skill、真实使用次数与版本变化 | 二.3 | Partial；两个项目 Skill 已存在且已有本地提交，限定集成使用证据见 TOOLING | 按实际应用对象/范围统计，区分加载、发现、模拟验证与业务使用；不得将验证表当总调用量 |
-| GitHub Actions 自动测试 | 二.3 | Pending；无远程/业务 CI | 对应实际 revision 的 Actions run、结果和日志可访问，不能仅有 YAML 或本地绿测 |
-| 唯一计价实现供 Web / Agent 共用 | 二.3；D-09～D-13 | Pending；尚无计价代码 | 追踪两端到同一实现，运行门槛、叠加、舍入/对账和变价重验等相关测试 |
-| 真实 AI Agent 购物记录或录影 | 二.3 | Pending | 确认真客户端、实际调用与结果；演示建车、交接、Human 确认和订单，模拟记录不替代 |
-| 完整 Git 历史与 GitHub repo | 二；二.3 | Partial；设计成果按 Design Phase Closure 授权分批保留本地历史，无远程 | 历史真实且不 squash 有意义提交；获得分享/Push 授权后提供可访问仓库 |
-| AI_NOTES 3–5 个关键时刻 | 二.3 | Existing；当前 5 个精选关键时刻 | 精选 3–5 个真实协作事件及判断/改进，不为凑数造记录 |
-| 面试现场增量能力 | 三；一的时间建议 | Pending；尚无可运行开发环境 | 备好环境与屏幕分享，能用现有流程新增并验证小功能；约两工作日是建议投入，不伪称实耗 |
+- 可运行产品、需求判断、实现前OpenSpec、Agent context、自写Skill及版本/使用记录、实际GitHub Actions、单一计价、真实Agent购物对话或录影、完整Git历史、AI_NOTES是题目交付内容；文件存在不等于验收通过。
+- Human已选择MCP、WebMCP与Apps增强为本项目交付范围；当前由Agent明确购买生单、Human网页或内嵌支付同单。各入口分别举证，基础闭环和降级不替代全部已选范围。当前契约由正式Spec及DECISIONS限定替代定义。
+- Requirements、Product Design、Technical Design等是支持解释和实施的工程产物；各自批准范围仍按文件记录，不从增量已验收推导全局整体Approved。
+- Showcase不是题目原始强制项，但本项目已批准的最终展示入口约定继续保留，制作与验收适用上节标准；本轮不制作、不撤销该约定，也不能用它替代产品、CI或真实Agent证据。
+- 公网部署、Figma/完整Design System、额外高保真页面、生产级十万商品压测及大型基础设施不是原题强制内容；商业排序及免费商品按D-14/D-18后置。未来工作按实际价值另定范围。
 
-### Added for Engineering Quality
-
-| 产物 | 当前状态 / 依据 | 验收方式 |
-| --- | --- | --- |
-| Requirements | Approved Product Requirements Baseline；[v0.2](../product/REQUIREMENTS.md)，本轮 Human Baseline Finalization 确认已确认范围 | 按领域整合，来源/验收/Pending 明确，Human Review 后 Approved |
-| Product Design、Wireframes、Visual Guidelines | Approved Baseline / Direction；[设计结构与方向已批准、验证未完成](../product/PRODUCT_DESIGN.md)，完整验收未完成 | 可打开设计资产、覆盖关键状态和响应式，Design/Human Review |
-| Tech Decisions | Partial；[T-01～T-06](../engineering/ENGINEERING_DECISIONS.md#决策索引)主要方向 Accepted，C-02 已解决，具体技术细节待审 | 重要选择有比较、证据与确认来源；不把治理选择当技术栈 |
-| Technical Design | Approved；[v0.5](../engineering/archive/TECHNICAL_DESIGN_HISTORY.md) 已获 Human Design Phase Closure 最终批准；Proposed/Pending/运行验证保留，未启动实施 | 满足产品/体验约束，架构/状态/信任边界与验证策略清楚，Design/Human Review |
-| 产物职责与交付治理契约 | Approved v1.0；本文及 ENG-012 的批准限产物职责与交付契约，ENG-008/009 仍 Proposed | 与项目 Baseline 状态分开核对，不将本次批准扩展为 Skill 或实现批准 |
-| Project Showcase HTML | Pending；本文件已规划入口和更新规则 | 页面可打开、链接真实、能找到全部要求的交付材料，状态/限制准确 |
-
-### 本次完整交付与运行边界
-
-MVP 为基础 MCP 七工具 + Hosted Checkout 的真实购物闭环；C-02 为 Resolved / Accepted，具体契约仍待设计。Human 已明确基础 MCP、WebMCP、MCP Apps 均为本次完整交付范围；先基础闭环、再完成页面工具与 Apps 是实施顺序，不代表未来可选项。MCP增强/兼容模式与WebMCP分别验收，不能以基础闭环或降级替代完整交付；当前均无业务实现或真实 Host 验证证据。Human 对具体内容授权后的 Agent 代提交属于后续增强，MVP 不引入最终订单提交 MCP 工具。运行方向为本地 Docker Compose 优先，尚无 Compose 运行证据；公网部署在 MVP 后评估。当前选择及状态唯一依据为 [T-01～T-06 / C-01、C-02](../engineering/ENGINEERING_DECISIONS.md#技术决策归档--2026-10-29)，本映射不新增技术决策。
-
-### Optional / Future
-
-公网部署、Figma/完整 Design System、额外高保真页面、生产级十万商品压测及大型基础设施，均非原题强制交付；需要实际价值和单独范围判断。商业加权及免费商品规则按 D-14/D-18 后置，不将它们悄悄纳入实现。
-
-最终完成需同时满足产品可运行、真实 Agent 链路、README/设计可解释、真实 CI/测试/协作证据、完整历史及统一入口可用；未完成和技术限制明确可见。Showcase 完成不能替代任何必需产品或证据。
+最终核对真实链接、访问前提、运行版本与证据覆盖；未完成项清楚可见，不将测试替身、计划或旧版本结果包装成当前完成。既有最终交付仍需统一入口可用；现场增量开发需可用环境及实际操作能力，文档不能代替演练。
