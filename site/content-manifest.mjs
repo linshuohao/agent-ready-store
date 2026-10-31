@@ -846,4 +846,92 @@ export const documents = [
     role: '交付说明 · 当前事实见交付状态',
     group: '交付与证据',
   },
+  {
+    source: 'openspec/changes/archive/2026-10-31-catalog-discovery/proposal.md',
+    slug: 'archive-2026-10-31-catalog-discovery-proposal',
+    title: '变更提案',
+    role: '历史归档 · 2026-10-31-catalog-discovery · 不作为现行规范',
+    group: '历史记录',
+    section: '2026-10-31-catalog-discovery',
+  },
+  {
+    source: 'openspec/changes/archive/2026-10-31-catalog-discovery/design.md',
+    slug: 'archive-2026-10-31-catalog-discovery-design',
+    title: '方案设计',
+    role: '历史归档 · 2026-10-31-catalog-discovery · 不作为现行规范',
+    group: '历史记录',
+    section: '2026-10-31-catalog-discovery',
+  },
+  {
+    source: 'openspec/changes/archive/2026-10-31-catalog-discovery/tasks.md',
+    slug: 'archive-2026-10-31-catalog-discovery-tasks',
+    title: '实施与验收',
+    role: '历史归档 · 2026-10-31-catalog-discovery · 不作为现行规范',
+    group: '历史记录',
+    section: '2026-10-31-catalog-discovery',
+  },
+  {
+    source:
+      'openspec/changes/archive/2026-10-31-catalog-discovery/specs/inventory-reservation/spec.md',
+    slug: 'archive-2026-10-31-catalog-discovery-inventory-reservation',
+    title: 'inventory-reservation · 规格差异',
+    role: '历史归档 · 2026-10-31-catalog-discovery · 不作为现行规范',
+    group: '历史记录',
+    section: '2026-10-31-catalog-discovery',
+    current: 'spec-inventory-reservation',
+  },
+  {
+    source:
+      'openspec/changes/archive/2026-10-31-catalog-discovery/specs/product-discovery/spec.md',
+    slug: 'archive-2026-10-31-catalog-discovery-product-discovery',
+    title: 'product-discovery · 规格差异',
+    role: '历史归档 · 2026-10-31-catalog-discovery · 不作为现行规范',
+    group: '历史记录',
+    section: '2026-10-31-catalog-discovery',
+    current: 'spec-product-discovery',
+  },
+  {
+    source: 'openspec/specs/documentation-delivery-hub/spec.md',
+    slug: 'spec-documentation-delivery-hub',
+    title: '文档与展示站',
+    role: '现行正式 Spec · 文档站行为',
+    group: '现行规范',
+  },
+  {
+    source:
+      'openspec/changes/archive/2026-10-31-documentation-delivery-hub/proposal.md',
+    slug: 'archive-documentation-delivery-hub-proposal',
+    title: '变更提案',
+    role: '历史归档 · 2026-10-31-documentation-delivery-hub · 不作为现行规范',
+    group: '历史记录',
+    section: '2026-10-31-documentation-delivery-hub',
+  },
+  {
+    source:
+      'openspec/changes/archive/2026-10-31-documentation-delivery-hub/design.md',
+    slug: 'archive-documentation-delivery-hub-design',
+    title: '方案设计',
+    role: '历史归档 · 2026-10-31-documentation-delivery-hub · 不作为现行规范',
+    group: '历史记录',
+    section: '2026-10-31-documentation-delivery-hub',
+  },
+  {
+    source:
+      'openspec/changes/archive/2026-10-31-documentation-delivery-hub/tasks.md',
+    slug: 'archive-documentation-delivery-hub-tasks',
+    title: '实施与验收',
+    role: '历史归档 · 2026-10-31-documentation-delivery-hub · 不作为现行规范',
+    group: '历史记录',
+    section: '2026-10-31-documentation-delivery-hub',
+  },
+  {
+    source:
+      'openspec/changes/archive/2026-10-31-documentation-delivery-hub/specs/documentation-delivery-hub/spec.md',
+    slug: 'archive-documentation-delivery-hub-spec',
+    title: '文档与展示站 · 规格差异',
+    role: '历史归档 · 2026-10-31-documentation-delivery-hub · 不作为现行规范',
+    group: '历史记录',
+    section: '2026-10-31-documentation-delivery-hub',
+    current: 'spec-documentation-delivery-hub',
+  },
 ];

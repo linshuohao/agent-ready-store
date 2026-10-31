@@ -110,10 +110,24 @@ try {
       await page.waitForURL(
         (u) =>
           u.pathname === new URL(target, base).pathname &&
-          u.searchParams.get('from') === 'quick-1',
+          u.searchParams.get('from') === 'quick-1' &&
+          [...new URL(target, base).searchParams].every(
+            ([key, value]) => u.searchParams.get(key) === value,
+          ) &&
+          u.hash === new URL(target, base).hash,
       );
     }
   }
+  await page.goto(base + '/presentation.html?slide=architecture');
+  await page.locator('.presentation-controls button').last().click();
+  await page.goBack();
+  await expect(
+    page.locator('.presentation-screens [aria-current=step]'),
+  ).toHaveText(data.slides.find((s) => s.id === 'architecture').nav);
+  await page.goForward();
+  await expect(
+    page.locator('.presentation-screens [aria-current=step]'),
+  ).toHaveText(data.slides.find((s) => s.id === 'frontend').nav);
   for (const width of [1440, 1024, 820, 390]) {
     await page.setViewportSize({ width, height: 900 });
     for (const url of [
