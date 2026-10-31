@@ -6,7 +6,7 @@
 
 | 要求 | 当前结果及证据 | 剩余缺口／限制 |
 | --- | --- | --- |
-| 可运行网页与Agent结构化接口 | Web、MCP、WebMCP及MCP Apps已实现；[README](../../README.md)提供本机及Docker启动；[结算Tasks](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/tasks.md)记录交易与入口验证 | CI已覆盖生产服务冒烟与真实浏览器购物；浏览器测试不替代真实Agent对话或Host验收 |
+| 可运行网页与Agent结构化接口 | [在线商店](https://agent-ready-store.vercel.app)可直接体验；MCP 地址为 `https://agent-ready-store-api.vercel.app/mcp`（需令牌）；Web、MCP、WebMCP及MCP Apps已实现；[README](../../README.md)提供本机及Docker启动；[结算Tasks](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/tasks.md)记录交易与入口验证 | CI已覆盖生产服务冒烟与真实浏览器购物；浏览器测试不替代真实Agent对话或Host验收 |
 | 每条调整／存疑需求的决策与PM回复 | [DECISIONS](../../DECISIONS.md)当前摘要覆盖D-01～D-24，保留假设、取舍、沟通草案及历史 | 回复未向PM实际发送；Demo边界与生产能力分开 |
 | Agent context与实现前spec/plan/tasks | [AGENTS](../../AGENTS.md)、项目Skills及[OpenSpec归档](../../openspec/changes/archive/)；例如搜索规划`09e014f`先于实现`9fda258` | 不把事后整理当作事前规划，不重写归档时间线 |
 | 至少一个自写Skill、使用次数及版本 | Workflow v0.1～v0.6、Review v0.1～v0.4；可复核的限定应用次数与统计口径见[TOOLING](TOOLING.md#自写skill使用与版本口径) | 有记录的使用下限不等于全部业务调用次数；无可靠总量不编造 |
@@ -34,10 +34,10 @@ Demo的ID接续和分享页不提供生产级身份/访问隔离；Host存储、
 
 ## 文档与证据职责
 
-Requirements / Product Design表达产品与体验结果，Technical Design表达当前架构，DECISIONS / ENGINEERING_DECISIONS解释取舍，OpenSpec保存具体变更及其实施验收，AI_NOTES精选协作事件。设计原型和Workflow讲解页不是实际产品证据；Showcase HTML不是题目硬性要求，但项目既有最终展示约定仍有效；当前尚无presentation/index.html，Workflow讲解页不能替代它，本轮不新增展示页面。
+Requirements / Product Design表达产品与体验结果，Technical Design表达当前架构，DECISIONS / ENGINEERING_DECISIONS解释取舍，OpenSpec保存具体变更及其实施验收，AI_NOTES精选协作事件。设计原型和Workflow讲解页不是实际产品证据；Showcase HTML不是题目硬性要求，但项目既有最终展示约定仍有效；现已提供[展示与答辩入口](../../presentation/index.html)，含10屏主讲与4屏备查；它是摘要与证据导航，不替代产品、CI或真实Agent证据。
 
 面试阅读顺序：运行README → 业务决策 → 技术方案 → AI_NOTES → 按追问查看Spec、测试与历史。CI已有当前修复版本的通过证据；仍需补充真实购物可观看材料。
 
 ## 云端 Demo
 
-2026-10-31：Vercel 前后端与 Neon Free 已上线，运行版本 `266489a`；对应 Actions 的 Verify / Delivery image 均通过。公开入口、云端购物与 MCP 验证、请求清理限制统一见[部署说明](DEPLOYMENT.md#验证结果)。部署变更仍在 PR #3，未合并；不将分支部署等同于 main 已发布。
+2026-10-31：Vercel 前后端与 Neon Free 已上线，运行版本 `266489a`；对应 Actions 的 Verify / Delivery image 均通过。公开入口、云端购物与 MCP 验证、请求清理限制统一见[部署说明](DEPLOYMENT.md#验证结果)。部署 PR #3 已通过 Merge Commit `61b2e7d` 合入 main；上述线上运行版本与 Git 合并状态分别记录。

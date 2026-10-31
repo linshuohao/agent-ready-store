@@ -4,7 +4,15 @@
 
 网页与 Agent 共用商品查询、计价、库存和订单能力；MCP Apps 与网页进一步共享完整的购物界面和交互逻辑。
 
-[在线体验](https://agent-ready-store.vercel.app) · [部署说明](docs/engineering/DEPLOYMENT.md)（模拟支付，无真实扣款）
+首次了解项目或评审交付，可先阅读[交付与体验导览](DELIVERY.md)（[HTML 阅读版](delivery/index.html)）：项目说明、Demo 路线、关键设计解答及证据入口。
+
+## 在线体验
+
+- [打开商店](https://agent-ready-store.vercel.app)：无需安装，使用模拟支付，不会真实扣款。
+- [API 健康检查](https://agent-ready-store-api.vercel.app/api/v1/health)
+- MCP：`https://agent-ready-store-api.vercel.app/mcp`，需由项目维护者提供访问令牌，配置见下方 Agent 接入。
+
+部署配置与限制见[部署说明](docs/engineering/DEPLOYMENT.md)。
 
 ## 功能
 
@@ -70,7 +78,7 @@ pnpm db:seed
 pnpm dev
 ```
 
-启动后访问：
+本机启动后访问：
 
 | 入口 | 默认地址 |
 | --- | --- |
@@ -84,14 +92,14 @@ pnpm dev
 
 ## Agent 接入
 
-启动服务后，在支持 MCP Streamable HTTP 的客户端中配置：
+在线体验时，在支持 MCP Streamable HTTP 的客户端中配置：
 
 ```text
-URL: http://localhost:3002/mcp
+URL: https://agent-ready-store-api.vercel.app/mcp
 Authorization: Bearer <MCP_SERVICE_TOKEN>
 ```
 
-客户端需要能访问运行服务的机器。MCP 提供查询、购物车和订单工具；支持 MCP Apps 的客户端可在对话中展示商品与结算卡片，无需另建连接。不支持 Apps 时，仍可使用 MCP 工具，并通过网页完成支付。
+线上连接使用项目维护者提供的令牌。本机开发时，将 URL 改为 `http://localhost:3002/mcp` 并使用本机配置的令牌；客户端需要能访问运行服务的机器。MCP 提供查询、购物车和订单工具；支持 MCP Apps 的客户端可在对话中展示商品与结算卡片，无需另建连接。不支持 Apps 时，仍可使用 MCP 工具，并通过网页完成支付。
 
 WebMCP 为支持该能力的浏览器 Agent 提供页面工具；其他浏览器仍可使用普通网页。Agent 可按明确购买意图准备订单，最终支付由用户在网页或内嵌界面完成。
 
@@ -139,9 +147,12 @@ pnpm start:docker
 
 ## 更多文档
 
+- [展示与答辩](presentation/index.html)：主讲、备查、设计说明与证据；[打开方式](presentation/README.md)。
+
 - [产品需求](docs/product/REQUIREMENTS.md)与[产品设计](docs/product/PRODUCT_DESIGN.md)：功能、用户流程和交互约定。
 - [产品决策](DECISIONS.md)：需求理解、业务取舍与 PM 沟通。
-- [技术方案](docs/engineering/TECHNICAL_DESIGN.md)与[工程决策](docs/engineering/ENGINEERING_DECISIONS.md)：领域模型、状态流转和架构选择。
+- [总体技术设计](docs/engineering/TECHNICAL_DESIGN.md)：系统全景、全局约束及详细设计入口；[工程决策](docs/engineering/ENGINEERING_DECISIONS.md)记录选型与取舍。
+- [前端详细设计](docs/engineering/FRONTEND_DESIGN.md)与[后端详细设计](docs/engineering/BACKEND_DESIGN.md)：交互与跨端复用、服务契约与运行边界。
 - [交易核心](docs/engineering/CHECKOUT_CORE.md)：订单、库存与失败恢复。
 - [协作入口](AGENTS.md)与[AI_NOTES](AI_NOTES.md)：开发约定与 AI 协作经验。
 - [交付状态](docs/engineering/DELIVERY_STATUS.md)：实现范围、验证记录和已知限制。

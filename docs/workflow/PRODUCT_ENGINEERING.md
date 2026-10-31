@@ -7,6 +7,7 @@
 - **批准记录：** Human，2026-10-29（Asia/Shanghai）；直接依据为本聊天「PRODUCT_ENGINEERING — Governance Review Finalization」：Human + ChatGPT 已完成 Review，整体接受现有治理契约，并授权本次小幅修订和定稿。对应决策见 [ENG-012](../engineering/ENGINEERING_DECISIONS.md#eng-012--产品设计与最终交付集成)。
 - **历史与范围：** 2026-10-28 首次形成治理草案；本次在保留职责分工和取舍的基础上定稿，草案演进见 ENG-012 与 Git Diff。治理契约的批准与项目 Requirements / Product Design / Technical Design 的批准分别记录；ENG-008/009 仍待独立 Review。
 - **精益执行修订依据：** Human 于 2026-10-29「AI-Native Workflow — Lean Execution Alignment」授权调整默认执行规范及其应用方式；保留上述批准历史、权限和验收边界，不扩展为业务实施或 Workflow / Review Skill 机制批准。
+- **技术文档组织修订依据：** Human 于 2026-10-31 授权按项目实际拆分技术文档并维护分层规则；仅调整产物组织与维护方式，保留既有批准范围，不新增业务或技术选型批准。
 
 ## 工作活动与双循环
 
@@ -24,7 +25,7 @@
 | Requirements：`docs/product/REQUIREMENTS.md` | What？关键产品选择足以形成稳定行为后，按 Product、Cart、Pricing、Handoff、Checkout、Order 等领域整理结果 | 初始 Draft，Human Review 后 Approved；关联重要 Decision，不按历史重抄讨论 |
 | Product Design：`docs/product/PRODUCT_DESIGN.md` 与必要设计资产 | Experience？基于相关 Requirements 设计页面、流程、交互及视觉；可用 Draft Requirements 探索，但明确未批准依赖 | 初始 Draft；Design Review 与 Human Review 后成为 Approved Product Design Baseline，约束 Web 交互及视觉验收 |
 | Tech Decision：复用 `docs/engineering/ENGINEERING_DECISIONS.md` | Why this architecture/technology？重要技术选择有实际取舍时记录；普通实现细节直接归当前 Change/代码 | 技术专题用 T-*；Proposed / Investigating / Accepted / Superseded，Accepted 需 Human 依据。既有 ENG-* 治理记录保留，不另建 TECH_DECISIONS 副本 |
-| Technical Design：`docs/engineering/TECHNICAL_DESIGN.md` | How？系统边界、主要选型、Agent 接入、状态所有权、模块职责与关键链路已有充分决策/证据后整合 | 初始 Draft；Design Review 与 Human Review 后 Approved。只选一个前端框架不足以生成可信总体方案；缺口登记 Pending |
+| Technical Design：`docs/engineering/TECHNICAL_DESIGN.md` 及其引用的详细设计 | How？总体入口维护系统边界、主要选型、状态所有权及协作关系；按实际模块/领域承接内部设计 | 初始 Draft；Design Review 与 Human Review 后在明确范围内 Approved。拆分不扩大批准；缺口登记 Pending，维护规则见下文 |
 | OpenSpec：`openspec/specs/`、`openspec/changes/` | 当前切片具体改变什么、如何实现与验证？遵循原生 schema 生成本次 Spec、Design、Tasks | 唯一正式的变更级规格与执行任务来源；正文引用相关基线章节，不全文复制全局文档。文件齐全不代表实现授权 |
 | Project Showcase：拟用 `presentation/index.html` | 如何让面试官找到真实成果与依据？关键产物存在后逐步制作，最终交付时核对全部入口 | 导航、摘要与证据索引，不是权威设计源，也不是第二商城。当前不创建 HTML；既有 Workflow 讲解页只是其中未来可引用的材料 |
 
@@ -69,7 +70,7 @@ Review 使用 [ai-native-review](../../.agents/skills/ai-native-review/SKILL.md)
 
 技术决策的字段与 T-01～T-06 决策条目在 [ENGINEERING_DECISIONS](../engineering/ENGINEERING_DECISIONS.md#技术决策记录约定)；本文不重新选型；当前 T-01～T-06 已确认方向继续有效，后续新选择不由本契约预定。讨论依业务约束比较有意义的候选，必要时最小 Spike → Design Review → Human 确认 → Accepted。来自 Human + ChatGPT 的 Decision Handoff 核对来源、确认范围及证据后再记录，不冒称 Codex 独立探索或已执行实验；既有根目录 Handoff 模板不是批准凭证。
 
-Technical Design 整合足够的 Accepted Tech Decisions 和适用产品/体验约束，说明如何满足 Requirements 与 Product Design，覆盖：
+Technical Design 由总体入口及按需详细设计共同承接足够的 Accepted Tech Decisions 和适用产品/体验约束，说明如何满足 Requirements 与 Product Design，合计覆盖：
 
 1. Goals & Constraints、Technology Stack、Architecture Overview、Module Boundaries。
 2. Data & State Models、Public API & Agent Contracts、Critical Business Flows。
@@ -79,6 +80,28 @@ Technical Design 整合足够的 Accepted Tech Decisions 和适用产品/体验�
 关键状态与调用链按需画 Mermaid。报价与最终确认、Cart/Handoff 生命周期、幂等与失败处理若没有真正选型分歧，可以直接写入 Design，不强造 Decision。设计允许未决局部实现细节，但关键决策不足时只能记录已知内容和缺口，不能自动补齐成完整方案。
 
 小型、局部变更可由当前 OpenSpec Change 的局部设计承接，不强制修改全局 Technical Design。关键授权、交易一致性、共享契约及跨 Agent 边界的变化仍须有足够设计和验证证据，不以“轻量”为由省略关键安全和业务正确性验证。
+
+### 技术设计的分层与维护
+
+- **总体与详细设计分工**：总体设计维护系统全景、模块边界与依赖、状态所有权、跨模块关键链路、全局约束及详细设计索引；详细设计维护本模块/领域的内部结构、状态处理、异常恢复与验证策略。当前入口与实际拆分见 [Technical Design](../engineering/TECHNICAL_DESIGN.md)，不在本文复制目录清单。
+- **按维护需要拆分**：某部分需要独立审查、频繁独立变更或交给不同 Agent 时，才拆成详细设计；优先复用已有正文。前端/后端与业务领域可结合，不强制每层都建文档，不按字数机械拆分，不预建空模板。总体设计保留跨模块关系，不能退化为只有链接的目录。
+- **单一正文与契约来源**：一项设计只在一个位置维护，总体摘要与其他模块引用它；共享行为以正式 Spec 和已授权 Change 为准，类型/Schema 引用共享代码，不另建协议副本。各 Agent 读取同一契约依据，内部细化不改变共享边界。
+- **稳定设计与增量分开**：当前稳定结果归总体/详细设计，待实施差异、实施任务与增量验收归同一 OpenSpec Change。变更完成时按实际影响同步正文与索引；设计取舍仍归工程决策，不新增模块级计划或平行 Tasks。
+- **状态、批准与迁移**：详细设计记录自身适用范围并引用已有批准依据；新增或改变的重要契约沿原 Review/Human Approval 处理，不因拆成多个文件增加逐文件审批。纯迁移保留原状态、批准与替代关系，核对正文完整性并更新活动引用；历史引用保留可用锚点或明确迁移入口，不静默重写归档。实施流水与旧时点描述留历史材料，不混入当前设计。
+
+### 轻量技术设计内容规范
+
+采用可裁剪的内容检查：参考[arc42](https://arc42.org/overview/)核对覆盖面、[C4](https://c4model.com/diagrams)检查视图层次，并参考[ISO/IEC/IEEE 42010公开摘要](https://www.iso.org/standard/74393.html)的架构描述范围；不声明标准合规，不强制模板、图的数量或逐章节新建文件。
+
+| 产物 | 至少应回答的问题；允许引用现有单一正文 |
+| --- | --- |
+| 总体设计 | 为谁解决什么问题、范围/非目标和约束是什么；系统与外部环境怎样协作、模块及状态归谁；关键质量目标如何验收、重要取舍/风险与详细设计在哪里 |
+| 模块/领域详细设计 | 本模块负责与不负责什么、依赖谁和哪份契约；内部结构如何映射到实际源码；数据/状态与关键流程、异常恢复怎样实现；如何验证、哪些结论或指标仍待确认 |
+| OpenSpec Change | 本次相对有效设计改变什么、影响哪些消费者/数据/文档；实现、迁移及增量验收如何安排。详细任务仅归该Change，不复制稳定设计或另建计划 |
+
+验收文档时核对当前正式Spec及已授权差异的覆盖，抽查实现/Schema/测试入口、活动链接和迁移完整性；逻辑领域、实际模块与部署单元须区分，历史Change不能成为读者自行猜测当前设计的唯一入口。可测质量场景连接“依据 → 环境/触发 → 可观察判据 → 验证入口 → 实际证据或缺口”；运行结果继续引用当前Change/交付状态，不复制测试流水。
+
+缺少已确认指标时明确标为待确认，说明需要确定的负载、环境、测量口径或适用范围，由Human决定新增承诺；不自行填入SLA、吞吐或合规等级。已有功能通过不推定性能达标，自动化不替代适用的真实数据库/Host证据。内容充分且关键未知已显式处理即可，不要求为不适用项造正文或把全部远期指标当作当前交付阻塞。
 
 ## 执行上下文与变更传播
 

@@ -6,14 +6,16 @@
 
 ## 连接
 
-在既有本地运行配置中提供至少 24 字符的 `MCP_SERVICE_TOKEN`、`MCP_ALLOWED_HOSTS` 和 `WEB_ORIGIN`，沿项目启动方式运行 API。不要新建远程服务或为连接清理业务库。默认本地入口为 `http://localhost:3002/mcp`，使用 MCP Streamable HTTP 和 `Authorization: Bearer <MCP_SERVICE_TOKEN>`。端口应与实际启动配置一致。
+线上 Demo 已部署，连接地址为 `https://agent-ready-store-api.vercel.app/mcp`，使用项目维护者提供的访问令牌。无需自行启动 API 或初始化数据库。
 
-Host 须能访问同一台机器的 loopback。仅支持 stdio 的 Host 需使用其支持的 HTTP bridge；不要移除服务端认证或 Host/Origin 检查，也不要公开 loopback 端点。Token 仅是服务身份，不是 Human 购买授权，也不区分顾客。不要把 Token 写入对话、截图或 Git。
+仅支持 stdio 的 Host 需使用其支持的 HTTP bridge。Token 仅是服务身份，不是 Human 购买授权，也不区分顾客。不要把 Token 写入对话、截图或 Git。
+
+本机开发时，在 `.env` 配置至少24字符的 `MCP_SERVICE_TOKEN`、`MCP_ALLOWED_HOSTS` 和 `WEB_ORIGIN`，按 README 启动；将下列 URL 改为 `http://localhost:3002/mcp`，使用本机令牌。远程 Host 的 localhost 不代表你的电脑；不要移除认证或 Host/Origin 检查。
 
 基础 MCP 与 MCP Apps 使用下列同一连接配置。Host 支持 MCP Apps 时，通过工具元数据发现并读取 UI 资源；无需另添加一个 Apps Server。Host 是否能调用 MCP 工具与是否能呈现 Apps UI 须分别核实。
 
 - Transport：MCP Streamable HTTP
-- URL：`http://localhost:3002/mcp`
+- URL：`https://agent-ready-store-api.vercel.app/mcp`
 - Header：`Authorization: Bearer <MCP_SERVICE_TOKEN>`
 
 请在目标 Agent 自己的 MCP 设置中添加这组参数。不同 Agent 的安装入口和配置格式不同，应按其 Host 的 MCP 设置说明填写；不要把以下 Codex 示例原样用于其他 Agent。
@@ -24,7 +26,7 @@ Codex 支持项目级 `.codex/config.toml`，但该项目须设为 trusted。若
 
 ```toml
 [mcp_servers.agent_ready_store]
-url = "http://localhost:3002/mcp"
+url = "https://agent-ready-store-api.vercel.app/mcp"
 bearer_token_env_var = "STORE_MCP_TOKEN"
 ```
 
@@ -69,7 +71,7 @@ Host可能缓存tools/list中的旧资源URI。服务只为两个最终展示入
 
 内嵌订单使用固定摘要，Human点击后直接通过Bridge支付，不发Agent消息、不自动外跳。显式分享只允许构建时WEB_ORIGIN下的`/orders/{orderId}?view=share`；Host拒绝时保留原单，不生成新单。浏览器存储受Host隔离策略影响；同会话可恢复原请求，缺失稳定卡片身份或存储时明确降级，真实Host重挂载能力仍须验收。
 
-Web与Apps使用同一完整购物应用；共享源码、界面/交互边界和环境接口统一见[Technical Design §5.2](TECHNICAL_DESIGN.md#shared-commerce-application)。修改共享代码后两端均须构建；API元数据与静态资源版本必须一致，更新后重新发现工具，避免Host旧资源缓存。旧卡片ID映射与未知原请求会迁入共享恢复材料，不自动支付；相同页面重试和外部工具结果保护由共享应用处理。
+Web与Apps使用同一完整购物应用；共享源码、界面/交互边界和环境接口统一见[前端详细设计](FRONTEND_DESIGN.md#shared-commerce-application)。修改共享代码后两端均须构建；API元数据与静态资源版本必须一致，更新后重新发现工具，避免Host旧资源缓存。旧卡片ID映射与未知原请求会迁入共享恢复材料，不自动支付；相同页面重试和外部工具结果保护由共享应用处理。
 
 ## 验证边界
 

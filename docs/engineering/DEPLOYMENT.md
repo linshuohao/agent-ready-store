@@ -9,7 +9,7 @@
 | 前端 | Vercel 项目 `agent-ready-store`，[公开网页](https://agent-ready-store.vercel.app)，已验证购物与模拟支付 |
 | 后端 | Vercel 项目 `agent-ready-store-api`，[健康检查](https://agent-ready-store-api.vercel.app/api/v1/health)，REST / MCP 已验证 |
 | 数据库 | Neon Free 项目 `agent-ready-store-demo`（`fancy-salad-72400395`），PG18 / AWS US East；已执行7个迁移并导入30条库存，不要重复 seed |
-| Git | `codex/deploy-free-demo`，PR #3；尚未合并 |
+| Git | 部署 PR #3 已通过 Merge Commit `61b2e7d` 合入 main |
 
 之前尝试 Render Free 时被银行卡验证阻断，未创建服务；Human 已选择上述 Vercel 方案。原始附件访问及向 Vercel 后端 Production 写入本项目 Neon/MCP 凭据均已获得明确授权。原件仍不公开，密钥不进入 Git、前端变量或日志。
 
