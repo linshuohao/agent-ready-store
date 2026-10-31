@@ -92,3 +92,20 @@ search_products/query_products接受旧单目标或严格批量结构：
 resolve_product_choices只在用户需要决定型号时调用，输入queries及可选choices（组ID到商品ID）。现代form客户端收到input_required，答复后续调原工具；SDK签名requestState绑定原目标、候选及价格，10分钟过期，进程重启失效。SDK getClientCapabilities在逐请求实例读取从当前envelope回填的能力，不是跨请求能力缓存。accept重查当前事实，decline/cancel停止；无能力或旧无状态客户端返回selection_required供对话澄清。工具不写车、不生单、不付款。超时/断连后无持续等待的服务器事务；Host应保留原目标，只有用户明确继续才重试，不能把失联视为接受。
 
 实际Host的协议版本、form支持、点选/取消显示仍需人工验收；本地SDK及AppBridge浏览器夹具成功不等于实际Host通过。本轮没有替换另一工作区正在运行的服务。
+
+## 意图优先与错误恢复
+
+本服务是模拟商店，无真实扣款、采购或物流。普通 MCP 结果带 `environment.mode=simulation`、`realPayment=false` 和 `fulfillment=false`，首次购买及订单交接须向用户明确说明。
+
+| 最终目标 | 工具路径与结束位置 |
+| --- | --- |
+| 仅搜索/比较 | query_products后台探索（可省略），一次search_products展示完整结果，不写车 |
+| 明确加购/改量/移除 | 原车及版本操作，不生单 |
+| 明确购买（含“找商品并买”） | query_products/详情后台准备，完整目标一次create_order；成功后停止，不补搜索/车展示 |
+| 查单/恢复/取消 | 定位原orderId，读取或明确取消；不重建单 |
+
+用户允许Agent自选且条件充分时直接选品；关键歧义才询问。分类和品牌参数按目录原文精确匹配，未知分类先用q，不猜填。specs按目录原文键值精确断言，只传用户明确硬条件；通勤等用途可用于选品解释，不自动变为不存在的规格键。已有同SKU与本次数量冲突时说明整行限制并澄清，不自动加量、覆盖旧数量或换车。
+
+预算/规格错误保留原code、retryable，并增加constraintViolations（field、expected、actual及适用productId），规格缺失actual为null；maxTotal实际值为优惠后含运总额。MCP顶层recovery说明恢复方式：确定失败按原因修正，原样重试无效；写结果未知按原键原载荷恢复，不换键重购。不得提高预算、删除用户硬条件或缩单。环境标记和指引是公开说明，不是Host能力或Human身份的证明。
+
+每轮对话目标为至多一张最终卡片（纯咨询可以零张）。仅search_products/create_order关联UI，不在同轮同时调用两者或重复调用；购买有预算/规格时优先quote_selection无UI预检，建单仍重验。展示调用失败或结果未知时，说明当前事实并保留原请求，本轮不自动再次调用展示工具；可只读查原单，不能猜测订单或重购。Host重挂载/重投递不由服务端控制，真实可见卡片数量须单独验收，不能将工具调用次数等同于Host卡片数量。

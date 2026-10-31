@@ -26,6 +26,7 @@ import type { CartService } from '../cart/cart.service.js';
 import type { CatalogService } from '../catalog/catalog.service.js';
 import { AppError } from '../shared/app-error.js';
 import { result } from '../shared/result.js';
+import { mcpResult } from './result-guidance.js';
 import {
   createChoiceCodec,
   productChoicesInput,
@@ -185,7 +186,7 @@ export function attachMcp(
         {
           name: 'resolve_product_choices',
           description:
-            '仅用户明确选型/加购/购买且存在必须由用户决定的型号歧义时调用。只读；优先客户端表单，无支持返回按组候选供对话澄清；选择不等于购买或支付授权。普通搜索不调用，明确SKU不重复问。',
+            '仅用户明确选型/加购/购买且存在必须由用户决定的型号歧义时调用。只读；优先客户端表单，无支持返回按组候选供对话澄清；选择不等于购买或支付授权。普通搜索不调用，明确SKU不重复问；用户已授权Agent自选且约束充分时自行选择，不因候选多就调用表单。',
           inputSchema: toolSchema(productChoicesInput),
           annotations,
         },
@@ -193,20 +194,21 @@ export function attachMcp(
           name: 'search_products',
           _meta: uiMeta('search_products'),
           description:
-            '用户明确搜索/浏览商品时调用。多个目标以queries一次提交（最多5组，各自预算/筛选，默认每组4项），返回一张按目标分组的卡片，不逐目标调用展示。购买准备中请用query_products，避免生成中间卡片。有界分页，推荐排序，库存为当次快照。',
+            '本服务为模拟商店，无真实扣款或物流。每轮对话最多调用一次有UI关联的工具；后台查询不计卡片，展示失败本轮说明而不自动重开。仅用户最终目标为搜索/浏览时调用；找商品并购买整体属于购买，使用query_products后台准备并以create_order结束，不补搜索展示。多个目标以queries一次提交（最多5组，各自预算/筛选，默认每组4项），返回一张按目标分组的卡片，不逐目标调用展示。购买准备中请用query_products，避免生成中间卡片。有界分页，推荐排序，库存为当次快照。',
           inputSchema: toolSchema(discoveryInput),
           annotations,
         },
         {
           name: 'query_products',
           description:
-            '购买准备或后台比较时只读查询商品，不生成UI；多个目标使用queries保留完整集合及独立约束，输入和结果与search_products一致。探索后统一调用一次search_products汇总展示，不传入自造商品结果。明确搜索/浏览意图必须在结束前调用search_products展示一次结果，不能将本工具当最终展示；购买多个商品时在后台准备完整集合，最后仅生一笔包含全部目标的订单，不逐商品生单；不建车、不生单。',
+            '本服务为模拟商店，无真实扣款或物流。购买准备或后台比较只读查询，不生成UI。按用户最终目标执行：仅搜索/浏览时后台探索后一次search_products展示完整结果；明确购买时用本工具准备完整集合，仅create_order展示最终订单，成功后停止本轮购物工具调用，不补搜索/购物车展示。多个目标使用queries保留集合及各自约束，不传自造商品结果。用户授权自选且约束充分时直接选品，不因有多款商品就追问；关键歧义才澄清。无匹配可调整检索措辞，不放宽硬条件；不建车、不生单。',
           inputSchema: toolSchema(discoveryInput),
           annotations,
         },
         {
           name: 'get_product',
-          description: '按 ID 取得商品規格與可購狀態，不含完整評論。',
+          description:
+            '按ID读取商品规格与可购状态，不含完整评论；模拟商品，无真实物流。约束specs为目录原文键值的精确断言，只传用户明确硬条件，不翻译键值或把推荐特性额外写成硬约束。',
           inputSchema: toolSchema(productInput),
           annotations,
         },
@@ -223,7 +225,7 @@ export function attachMcp(
             schema: agentCartInput,
             readOnly: false,
             description:
-              '仅首次明确加购/购买且无cartId时以新UUID requestId及完整非空initialItems原子建车；咨询零写。已有车仅传cartId恢复。未知结果沿原键原载荷重试，不另建车，不覆盖后续编辑。',
+              '仅首次明确加购/购买且无cartId时以新UUID requestId及完整非空initialItems原子建车；咨询零写。已有车仅传cartId恢复。购买准备属内部步骤，不展示购物车；购买准备遇到已有同SKU时先核对本次目标数量与整行数量，不自动累加或覆盖旧数量、不换车绕过限制，冲突先澄清。未知结果沿原键原载荷重试，不另建车，不覆盖后续编辑。',
           },
           {
             name: 'get_cart',
@@ -237,7 +239,7 @@ export function attachMcp(
             schema: addItemInput,
             readOnly: false,
             description:
-              '明确加购时增加指定数量，不生单；传cartId、操作UUID及已读版本，同键原载荷恢复不重复加量。购买A+B时B准备失败须停止生单并说明A已在车，不能缩成A。',
+              '明确加购时增加指定数量，不生单；传cartId、操作UUID及已读版本，同键原载荷恢复不重复加量。购买准备先核对已有同SKU整行数量与本次目标，冲突先澄清，不擅自扩大数量。购买A+B时B准备失败须停止生单并说明A已在车，不能缩成A。',
           },
           {
             name: 'update_cart_item',
@@ -258,14 +260,14 @@ export function attachMcp(
             schema: selectionQuote,
             readOnly: true,
             description:
-              '按完整selectedItems及预算/币种/规格只读预估，不占库、不生单，非强制前置步骤。',
+              '按完整selectedItems及预算/币种/规格只读预估，无UI、不占库、不生单。购买有预算/规格时优先预检以减少失败卡片；通过不保证稍后仍有库存，create_order仍重验。非强制前置步骤。',
           },
           {
             name: 'create_order',
             schema: orderCreation,
             readOnly: false,
             description:
-              '仅Human明确购买意图并遵守Host审批后，为本次完整目标创建待支付订单、固定摘要并预留库存；selectedItems断言整行数量，显式传TWD及所有预算/规格约束。准备任一目标失败不可缩单；默认仅本次目标行。未知沿原requestId和原载荷恢复。同一次购买多个商品须一次包含完整目标，仅生成一笔订单及一张最终结算卡片，不能逐商品生单；用户明确拆单除外。支持Apps时仅本工具展示最终结算卡片并在同卡片由Human点击支付；无Apps返回网页orderUrl/shareUrl供Human亲自打开核对并点击支付；不得代开UI点击、代付或宣称已支付。',
+              '模拟商店，无真实扣款或物流；订单结果应明确告知用户。仅Human明确购买意图并遵守Host审批后，为本次完整目标创建待支付订单、固定摘要并预留库存；selectedItems断言整行数量，显式传TWD及所有预算/规格约束，maxTotal为优惠后含运总额上限；specs须原样引用目录，仅传用户硬条件。准备任一目标失败不可缩单；默认仅本次目标行。未知沿原requestId和原载荷恢复。同一次购买多个商品须一次包含完整目标，仅生成一笔订单及一张最终结算卡片，不能逐商品生单；用户明确拆单除外。每轮对话最多调用一次有UI关联的工具（search_products或create_order），购买只展示最终订单。预算/规格明确时优先quote_selection无UI预检；本工具失败或结果未知时也不在同轮重新调用展示工具，说明状态并保留原请求以便后续恢复。成功后本轮购物工具调用结束，不再补搜索或购物车展示；后续仅用户新意图或未知结果恢复才能继续。支持Apps时仅本工具展示最终结算卡片并在同卡片由Human点击支付；无Apps返回网页orderUrl/shareUrl供Human亲自打开核对并点击支付；不得代开UI点击、代付或宣称已支付。',
           },
           {
             name: 'get_order',
@@ -438,10 +440,11 @@ export function attachMcp(
         }
       });
       if (r.ok && isInputRequiredResult(r.data)) return r.data;
+      const output = mcpResult(r);
       return {
         isError: !r.ok,
-        structuredContent: r,
-        content: [{ type: 'text' as const, text: JSON.stringify(r) }],
+        structuredContent: output,
+        content: [{ type: 'text' as const, text: JSON.stringify(output) }],
       };
     });
     return server;
