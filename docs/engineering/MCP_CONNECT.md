@@ -69,7 +69,7 @@ Host可能缓存tools/list中的旧资源URI。服务只为两个最终展示入
 
 内嵌订单使用固定摘要，Human点击后直接通过Bridge支付，不发Agent消息、不自动外跳。显式分享只允许构建时WEB_ORIGIN下的`/orders/{orderId}?view=share`；Host拒绝时保留原单，不生成新单。浏览器存储受Host隔离策略影响；同会话可恢复原请求，缺失稳定卡片身份或存储时明确降级，真实Host重挂载能力仍须验收。
 
-Web与Apps使用同一完整购物应用；共享源码、界面/交互边界和环境接口统一见[Technical Design §5.2](TECHNICAL_DESIGN.md#shared-commerce-application)。修改共享代码后两端均须构建；API元数据与静态资源版本必须一致，更新后重新发现工具，避免Host旧资源缓存。旧卡片ID映射与未知原请求会迁入共享恢复材料，不自动支付；相同页面重试和外部工具结果保护由共享应用处理。
+Web与Apps使用同一完整购物应用；共享源码、界面/交互边界和环境接口统一见[前端详细设计](FRONTEND_DESIGN.md#shared-commerce-application)。修改共享代码后两端均须构建；API元数据与静态资源版本必须一致，更新后重新发现工具，避免Host旧资源缓存。旧卡片ID映射与未知原请求会迁入共享恢复材料，不自动支付；相同页面重试和外部工具结果保护由共享应用处理。
 
 ## 验证边界
 

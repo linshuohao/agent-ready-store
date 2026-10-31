@@ -2,7 +2,7 @@
 name: ai-native-workflow
 description: Use when starting or resuming work in agent-ready-store, including product requirements, UI/UX design, technical decisions, architecture design, feasibility experiments, incremental delivery, Project Showcase, maintenance, fixes, and review. 不用于无关项目或一般问答。
 metadata:
-  version: "0.7"
+  version: "0.7.1"
 ---
 
 # AI-Native Workflow
@@ -53,6 +53,8 @@ metadata:
 ### 里程碑与 OpenSpec 衔接
 
 需要协调多个切片时，按可独立验收的用户/业务成果划分里程碑，结合依赖与风险排序。每个里程碑只说明成果、范围、关键依赖、退出条件及承接的 Change；不以“代码写完”代替可观察验收。简单单切片任务无需 Roadmap，按原路由使用当前 Change 或 Direct/Fix。
+
+划分时先明确最终用户成果及验收方式，再寻找可演示或可验证的最小闭环；优先解决阻塞后续的共享契约、关键不变量和高风险未知，再按依赖安排后续成果。前端、后端、协议适配通常是里程碑内的工作包，不机械分别设为交付里程碑；在契约明确、范围可隔离且宿主允许时并行，并尽早连接真实实现。每个里程碑的退出条件包含集成结果与所需验收证据，各工作包完成不自动等于里程碑完成。仅影响一个可审查单元的文档整理或局部修复不强拆多阶段。
 
 里程碑摘要复用已有交付状态文档中的相关位置；尚处探索且无需持久交接时留在当前对话，不新建平行计划。一个里程碑可由一个或多个可审查 Change 承接；Change 的 Proposal 引用所属里程碑和贡献范围，详细 Spec/Design/Tasks 与验证要求只维护在 OpenSpec。未启动的后续切片只保留目标、边界和依赖，不预建空 Change 或全量 Tasks。
 
