@@ -2,7 +2,7 @@
 name: ai-native-workflow
 description: Use when starting or resuming work in agent-ready-store, including product requirements, UI/UX design, technical decisions, architecture design, feasibility experiments, incremental delivery, Project Showcase, maintenance, fixes, and review. 不用于无关项目或一般问答。
 metadata:
-  version: "0.6"
+  version: "0.7"
 ---
 
 # AI-Native Workflow
@@ -41,6 +41,22 @@ metadata:
 | Review | 请求独立审查或风险需要独立判断 | 按下方 Review Integration 加载 ai-native-review，路由一次适用审查及必要的人类可视化审阅；默认只读，独立性不成立时明确标自查 |
 
 两种循环不是强制阶段。不为简单问题机械走完四步；需求分析、可行性实验与架构讨论可以往返。大型需求先理解目标/能力、关键旅程、依赖、风险与未决项，解决影响全系统的阻塞，再选可独立验证的最小纵向切片。不提前铺开全部技术设计/Tasks，Roadmap 只在协调多个切片确有需要时维护。
+
+### 需求接入与澄清
+
+一句目标、业务问题或不完整草稿即可进入 Explore，无需 Human 先写完整需求。复用下文 Task Contract，只补当前缺口：问题与可观察目标、需求来源及相关角色、范围/非目标、关键约束、成功标准和未知项；已有结论直接引用，不另建需求接入表。需要对接时明确谁提供事实、谁确认关键取舍；外部意见未获 Human 确认前不成为批准依据。
+
+优先核实已有资料和可低成本验证的事实，集中询问影响范围、方案或验收的关键问题。未知项区分阻塞与非阻塞：前者说明影响、所需证据或待决人，暂停依赖部分；后者带着假设及重访条件继续。关键产品取舍归 DECISIONS，稳定行为归 Requirements；已有 Change 的局部澄清回写原产物，不重复记录正文。
+
+当当前切片的目标、范围与验收已可描述，影响下一步的关键未知已有结论或明确的探索办法，即可进入相应设计/实验，不要求全部远期需求完备。进入实施仍须满足下文 Planning Review 与 Human Approval；探索办法或暂定假设不能代替关键契约批准。本节是现有 Explore 的细化，不增加独立审批阶段。
+
+### 里程碑与 OpenSpec 衔接
+
+需要协调多个切片时，按可独立验收的用户/业务成果划分里程碑，结合依赖与风险排序。每个里程碑只说明成果、范围、关键依赖、退出条件及承接的 Change；不以“代码写完”代替可观察验收。简单单切片任务无需 Roadmap，按原路由使用当前 Change 或 Direct/Fix。
+
+里程碑摘要复用已有交付状态文档中的相关位置；尚处探索且无需持久交接时留在当前对话，不新建平行计划。一个里程碑可由一个或多个可审查 Change 承接；Change 的 Proposal 引用所属里程碑和贡献范围，详细 Spec/Design/Tasks 与验证要求只维护在 OpenSpec。未启动的后续切片只保留目标、边界和依赖，不预建空 Change 或全量 Tasks。
+
+临近实施时细化当前切片，并沿下文标准生命周期执行。里程碑是否完成按退出条件及承接 Change 的实际验证、验收证据判断，不由任务勾选推定。范围、顺序或依赖变化时同步受影响的里程碑摘要与当前 Change；关键契约或授权变化按 Decision & Autonomy 升级，普通排序调整无需新增审批。已归档 Change 保留历史，后续差异由新 Change 承接。
 
 ## Product / Technical Design / Delivery Routing
 
