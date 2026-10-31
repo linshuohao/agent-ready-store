@@ -105,7 +105,7 @@ export function bridgeTransport(bridge: Bridge): Transport {
     if (parts[0] === 'products') {
       if (body !== undefined) throw Error('INVALID_METHOD');
       if (parts.length === 1) {
-        name = 'search_products';
+        name = 'query_products';
         input = searchInput.parse(query(url.searchParams));
         output = catalog;
       } else if (parts.length === 2) {

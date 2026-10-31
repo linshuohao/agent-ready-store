@@ -91,23 +91,11 @@ export function attachMcp(
       { name: 'agent-ready-store', version: '0.1.0' },
       { capabilities: { tools: {}, resources: {} } },
     );
-    const uiTools = [
-      'search_products',
-      'get_product',
-      'get_or_create_cart',
-      'get_cart',
-      'add_cart_item',
-      'update_cart_item',
-      'remove_cart_item',
-      'create_order',
-      'get_order',
-      'list_orders',
-      'cancel_order',
-    ];
+    const uiTools = ['search_products', 'create_order'];
     const resources = uiTools.map((tool) => ({
       tool,
-      uri: `ui://store/${tool.replaceAll('_', '-')}-v5.html`,
-      filename: `${tool.replaceAll('_', '-')}-v5.html`,
+      uri: `ui://store/${tool.replaceAll('_', '-')}-v6.html`,
+      filename: `${tool.replaceAll('_', '-')}-v6.html`,
     }));
     const uiMeta = (tool: string) => {
       const resource = resources.find((entry) => entry.tool === tool)!;
@@ -165,13 +153,20 @@ export function attachMcp(
         {
           name: 'search_products',
           _meta: uiMeta('search_products'),
-          description: '搜尋商品摘要，推薦分數排序；有界分頁，庫存為當次快照。',
+          description:
+            '用户明确搜索/浏览商品时调用，返回搜索结果并展示一张结果卡片。购买准备中请用query_products，避免生成中间卡片。有界分页，推荐排序，库存为当次快照。',
+          inputSchema: z.toJSONSchema(searchInput, { io: 'input' }),
+          annotations,
+        },
+        {
+          name: 'query_products',
+          description:
+            '购买准备或后台比较时只读查询商品，不生成UI；输入和结果与search_products一致。明确搜索/浏览意图才调用search_products展示结果；不建车、不生单。',
           inputSchema: z.toJSONSchema(searchInput, { io: 'input' }),
           annotations,
         },
         {
           name: 'get_product',
-          _meta: uiMeta('get_product'),
           description: '按 ID 取得商品規格與可購狀態，不含完整評論。',
           inputSchema: z.toJSONSchema(productInput),
           annotations,
@@ -231,7 +226,7 @@ export function attachMcp(
             schema: orderCreation,
             readOnly: false,
             description:
-              '仅Human明确购买意图并遵守Host审批后，为本次完整目标创建待支付订单、固定摘要并预留库存；selectedItems断言整行数量，显式传TWD及所有预算/规格约束。准备任一目标失败不可缩单；默认仅本次目标行。未知沿原requestId和原载荷恢复。返回网页orderUrl/shareUrl供Human亲自打开核对并点击支付；不得代开UI点击、代付或宣称已支付。',
+              '仅Human明确购买意图并遵守Host审批后，为本次完整目标创建待支付订单、固定摘要并预留库存；selectedItems断言整行数量，显式传TWD及所有预算/规格约束。准备任一目标失败不可缩单；默认仅本次目标行。未知沿原requestId和原载荷恢复。支持Apps时仅本工具展示最终结算卡片并在同卡片由Human点击支付；无Apps返回网页orderUrl/shareUrl供Human亲自打开核对并点击支付；不得代开UI点击、代付或宣称已支付。',
           },
           {
             name: 'get_order',
@@ -381,6 +376,7 @@ export function attachMcp(
             const { orderId, cartId } = parse(orderTargetInput, input);
             return carts.cancelOrder(orderId, cartId);
           }
+          case 'query_products':
           case 'search_products':
             return catalog.search(input);
           case 'get_product': {

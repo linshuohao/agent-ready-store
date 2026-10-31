@@ -290,3 +290,17 @@ Human明确：“授权之后往下推进，如果没有什么需要我审批的
 - [x] 11.2 Apps SDK替身浏览器桌面/移动16/16通过，包含无搜索表单、商品结果可见与三类网格实际单栏断言；共享包/Apps typecheck、lint及Apps生产构建通过。首轮Chrome因沙箱权限无法启动，放宽执行沙箱后测试通过，不记首轮为功能失败或Human验收。资源同步升级v5避免Host复用旧UI。
 - v5收尾：API生产构建、OpenSpec strict validate及diff检查通过；API构建会清除dist，按API→Apps顺序重建后，本地真实MCP只读资源/认证2/2通过，v5桌面/移动布局定向6/6通过。Web3000/API3002已用原环境配置重启；Host需刷新连接重新调用工具。无迁移、seed或真实购买写入。
 - 本次为局部可逆UI调整，聚焦验证与自查，不触发交易Checkpoint Guard。真实Host视觉验收仍待Human；Human随后明确回复「提交」，授权提交本轮UI、资源版本、测试与Change记录。实际提交由Git历史核对；未Push、Merge或归档。
+
+## 12. MCP意图与最终卡片（2026-10-31 Human明确授权实施）
+
+- [x] 12.1 搜索展示与后台查询分离，仅搜索结果/生单关联UI，移除中间工具UI；同步v6资源、工具说明与相关契约。
+- [x] 12.2 验证工具发现/两类查询结果一致、中间工具无UI、直接结算同卡片支付/重挂载；完成相关构建、检查和审查，保留真实Host/Human验收边界。
+
+### §12验证与交付边界
+
+- 入口：仅search_products/create_order关联三种UI元数据，v6两份资源；新增query_products共用同一搜索schema和Catalog服务，Bridge内部目录读取也使用此无UI工具。模型仍无支付工具，WebMCP与交易服务/schema未改。
+- 支付回归：新增直达结算用例最初桌面/移动均失败，工具记录只有get_order而无支付。确认首次iframe聚焦触发读取并短暂loading，支付点击被处理器拒绝；共享OrderCommands对已有订单的焦点刷新改后台读取，首次/手动读取仍阻塞。原action读序列失效与终态保护保持；新增单元验证旧后台结果不能覆盖PAID、首次与手动读取仍拒绝支付。此修复由已失败浏览器用例重验通过，不把替身点击记作Human支付。
+- 最终验证：Apps官方SDK替身浏览器桌面/移动18/18通过（直接搜索、直接最终结算、同iframe/同orderId支付及重挂载、未知恢复）；Commands/Bridge单元23/23通过；本地真实MCP只读协议4/4通过（工具与资源发现、数据/展示查询一致、所有中间工具无UI元数据及认证拒绝）。API/Apps/共享包typecheck、lint，API/Apps构建、Web webpack生产构建含TypeScript、OpenSpec strict validate、Prettier及diff检查通过；未重跑无变化的数据库交易套件。
+- 独立只读审查：/root/intent_cards_review核对本轮完整Diff，未发现阻塞缺陷；对Bridge内部目录改用query_products的补充定向复核通过，审阅者独立重跑23/23单元。未把自查记作独立审查。
+- 本地Web3000/API3002沿原root环境配置重启加载v6；无迁移、seed、清理或真实购买写入。需刷新Host连接重新发现query_products与v6资源。真实Agent按意图选择工具、真实Host只生成最终卡片及Human点击仍须验收，9.1/9.3不勾选，不同步正式Spec或归档。
+- Git：codex/mcp-intent-cards，基于已合并main@526f1b9复用干净实施工作树；Human随后明确回复「提交」，授权提交本轮代码、测试和文档；实际提交由Git历史核对，未Push/Merge。此前合并授权仅覆盖已提交的上一轮增量。Checkpoint Guard按本轮精确路径执行，验证/审查/实施批准均pass，返回BLOCKED仅因本轮尚无覆盖变更的checkpoint commit；取得本轮提交授权后，提交并重验Guard；不推进合并/归档。

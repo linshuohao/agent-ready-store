@@ -29,6 +29,7 @@ const token = process.env.MCP_SERVICE_TOKEN;
           'get_product',
           'list_orders',
           'list_product_reviews',
+          'query_products',
           'quote_selection',
           'remove_cart_item',
           'search_products',
@@ -91,6 +92,7 @@ const token = process.env.MCP_SERVICE_TOKEN;
         ).toBe(true);
         for (const [tool, args, path] of [
           ['search_products', { limit: 2 }, '/api/v1/products?limit=2'],
+          ['query_products', { limit: 2 }, '/api/v1/products?limit=2'],
           ['get_product', { productId: 'P005' }, '/api/v1/products/P005'],
           [
             'get_product',

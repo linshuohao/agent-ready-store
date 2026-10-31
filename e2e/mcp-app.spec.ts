@@ -8,7 +8,10 @@ test.beforeAll(async () => {
   const require = createRequire(root + 'package.json');
   const { build } = await import(pathToFileURL(require.resolve('vite')).href);
   const appHtml = await readFile(
-    new URL('../apps/api/dist/mcp-app/get-cart-v5.html', import.meta.url),
+    new URL(
+      '../apps/api/dist/mcp-app/search-products-v6.html',
+      import.meta.url,
+    ),
     'utf8',
   );
   const result = await build({
@@ -258,9 +261,7 @@ test('external cart delivery preserves the current unsaved draft', async ({
 test('embedded catalog shows search results without a search form', async ({
   page,
 }) => {
-  const f = await openFixture(page, '?product');
-  await expect(f.locator('.detail')).toBeVisible();
-  await f.getByRole('link', { name: 'AGENT / STORE', exact: true }).click();
+  const f = await openFixture(page, '?search');
   await expect(
     f.getByRole('heading', { name: '搜尋結果', exact: true }),
   ).toBeVisible();
@@ -272,4 +273,50 @@ test('embedded catalog shows search results without a search form', async ({
       .locator('.product-grid')
       .evaluate((el) => getComputedStyle(el).gridTemplateColumns),
   ).toMatch(/^\d+(?:\.\d+)?px$/);
+});
+
+test('purchase opens only the final checkout and updates payment in the same card', async ({
+  page,
+}) => {
+  const f = await openFixture(page, '?checkout');
+  await expect(
+    f.getByRole('heading', { name: '待支付訂單', exact: true }),
+  ).toBeVisible();
+  await expect(f.locator('.cart-page')).toHaveCount(0);
+  await expect(f.locator('.product-grid')).toHaveCount(0);
+  await expect(f.getByTestId('order-id')).toHaveText(
+    '20000000-0000-4000-8000-000000000001',
+  );
+  const card = await page.locator('iframe').elementHandle();
+  await f.getByRole('button', { name: '確認支付', exact: true }).click();
+  await expect(
+    f.getByRole('heading', { name: '支付成功', exact: true }),
+  ).toBeVisible();
+  await expect(page.locator('iframe')).toHaveCount(1);
+  expect(
+    await card!.evaluate((el) => el === document.querySelector('iframe')),
+  ).toBe(true);
+  await expect(f.getByTestId('order-id')).toHaveText(
+    '20000000-0000-4000-8000-000000000001',
+  );
+  expect(
+    await page.evaluate(
+      () =>
+        (window as any).fixture.calls.filter((name: string) =>
+          name.includes('create_order'),
+        ).length,
+    ),
+  ).toBe(0);
+  await page.evaluate(() => (window as any).fixture.remount());
+  await expect(
+    f.getByRole('heading', { name: '支付成功', exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () =>
+        (window as any).fixture.calls.filter(
+          (name: string) => name === 'apps_pay_order',
+        ).length,
+    ),
+  ).toBe(1);
 });
