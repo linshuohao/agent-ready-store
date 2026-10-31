@@ -1,5 +1,7 @@
 # 产品、设计与交付契约
 
+**接入术语说明：** MCP 与 WebMCP 是两类 Agent 接入；MCP Apps 是 MCP 的 UI 增强，不兼容时降级为无 Apps UI 的 MCP。协议、连接和构建关系见 [Technical Design §1.1](../engineering/TECHNICAL_DESIGN.md#11-系统全景与请求路径)。本次统一术语不改变历史批准、业务行为与尚未完成的验证事实。
+
 本文件是工作流的按需参考，规定产物职责、基线维护和最终交付映射，不是另一套 Spec、Plan 或 Tasks。当前为 **Approved — 产物职责与交付契约 v1.0**；本次批准不授予业务实施权限，也不批准引用的项目 Baseline 或 Workflow / Review Skill。任务入口仍是 [Workflow Skill](../../.agents/skills/ai-native-workflow/SKILL.md)，权限及冲突处理见 [AGENTS](../../AGENTS.md)。
 
 - **批准记录：** Human，2026-10-29（Asia/Shanghai）；直接依据为本聊天「PRODUCT_ENGINEERING — Governance Review Finalization」：Human + ChatGPT 已完成 Review，整体接受现有治理契约，并授权本次小幅修订和定稿。对应决策见 [ENG-012](../engineering/ENGINEERING_DECISIONS.md#eng-012--产品设计与最终交付集成)。
@@ -150,7 +152,7 @@ Technical Design 整合足够的 Accepted Tech Decisions 和适用产品/体验�
 
 ### 本次完整交付与运行边界
 
-MVP 为基础 MCP 七工具 + Hosted Checkout 的真实购物闭环；C-02 为 Resolved / Accepted，具体契约仍待设计。Human 已明确基础 MCP、WebMCP、MCP Apps 均为本次完整交付范围；先基础闭环、再完成页面工具与 Apps 是实施顺序，不代表未来可选项。三种接入分别验收，不能以基础闭环或降级替代完整交付；当前均无业务实现或真实 Host 验证证据。Human 对具体内容授权后的 Agent 代提交属于后续增强，MVP 不引入最终订单提交 MCP 工具。运行方向为本地 Docker Compose 优先，尚无 Compose 运行证据；公网部署在 MVP 后评估。当前选择及状态唯一依据为 [T-01～T-06 / C-01、C-02](../engineering/ENGINEERING_DECISIONS.md#技术决策归档--2026-10-29)，本映射不新增技术决策。
+MVP 为基础 MCP 七工具 + Hosted Checkout 的真实购物闭环；C-02 为 Resolved / Accepted，具体契约仍待设计。Human 已明确基础 MCP、WebMCP、MCP Apps 均为本次完整交付范围；先基础闭环、再完成页面工具与 Apps 是实施顺序，不代表未来可选项。MCP增强/兼容模式与WebMCP分别验收，不能以基础闭环或降级替代完整交付；当前均无业务实现或真实 Host 验证证据。Human 对具体内容授权后的 Agent 代提交属于后续增强，MVP 不引入最终订单提交 MCP 工具。运行方向为本地 Docker Compose 优先，尚无 Compose 运行证据；公网部署在 MVP 后评估。当前选择及状态唯一依据为 [T-01～T-06 / C-01、C-02](../engineering/ENGINEERING_DECISIONS.md#技术决策归档--2026-10-29)，本映射不新增技术决策。
 
 ### Optional / Future
 

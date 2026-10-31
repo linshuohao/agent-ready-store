@@ -1,5 +1,7 @@
 # agent-purchase-authorization Specification
 
+术语说明：Agent接入分为 MCP 与 WebMCP。MCP Apps 是 MCP 的交互式 UI 增强，复用现有 MCP Server、连接和业务用例，不构成额外入口或路径。支持 Apps 的 Host 展示内嵌 UI；不兼容时降级为 MCP 文本与结构化结果。降级保留可用工具能力；购买仍遵循适用契约与Human确认要求，不能把文本返回视为完整购买验收通过。当前订单生命周期目标由网页订单入口承接无 Apps 时的Human支付，实际可用性须验证。验收覆盖 MCP 的 UI 增强与无 Apps 兼容模式，以及 WebMCP 页面工具。
+
 ## Purpose
 
 规范基础MCP、WebMCP和MCP Apps的便利准备与具体Human购买确认：Apps/WebMCP点击支付后由UI直接请求下单，基础MCP经Host原生确认后由Agent提交；分离车访问权、准备、具体确认与订单事实，保持原车权限、交易一致性及未知恢复。
@@ -10,7 +12,7 @@
 
 系统 SHALL 为有效原车准备完整服务端摘要及独立准备标识；准备、读取、导航、消息、Agent自述或普通访问能力 MUST 不产生批准、订单或库存预留。准备绑定入口、发起范围、原车及具体内容，空/受阻/到期车不得获得可购买准备，不自动创建替代车。
 
-#### Scenario: 三入口准备与幂等
+#### Scenario: Agent接入准备与幂等
 - **WHEN** Human要求准备结账，或同一发起范围使用相同请求键重试
 - **THEN** 返回同车商品ID/名称/关键描述、数量、单价、行小计、来源、全部报价分项、准备标识及对应确认方式；同键返回原准备与当前状态、不续期不复活，换车/材料冲突拒绝；首次准备不批准或成单，重试不新增批准或订单，已完成返回受保护原结果
 
@@ -90,7 +92,7 @@ Apps及WebMCP SHALL 在Human一次支付点击后，通过各自受保护UI通�
 - **WHEN** 点击/批准前后内容变化，另一入口新审阅，或等待锁期间超过截止
 - **THEN** 旧支付/批准/提交不能成单，需有效权限下新摘要及Human确认；仅足量库存变化不单独要求再确认，仍校验库存
 
-### Requirement: 三入口交互载体与外链边界
+### Requirement: Agent接入交互载体与外链边界
 
 基础MCP SHALL 在会话内展示数据/原生确认/结果；WebMCP SHALL 提供发现、详情/评论、编辑、准备、Human确认等待/承接和结果状态的当前上下文工具，最终支付由网页Human点击处理；Apps SHALL 提供可直接导航的内嵌业务页及原地支付结果。工具覆盖 MUST 不解释为Agent可批准或执行UI支付；基础MCP/Apps不跳外部Checkout。
 
@@ -104,7 +106,7 @@ Apps及WebMCP SHALL 在Human一次支付点击后，通过各自受保护UI通�
 
 ### Requirement: Agent便利准备与Apps灵活导航
 
-三入口 SHALL 允许Agent在Human明确目标及约束内跨步骤完成查询、比较、建车/编辑和结算准备，不强制逐页/工具确认。Apps允许直接导航/Bridge读取与可选Agent准备消息并存，不强制每次切页经过模型；MUST 保留必要澄清、Host审批、草稿/刷新校准及最终Human支付，不代点、不从购物意图推导批准。
+Agent接入 SHALL 允许Agent在Human明确目标及约束内跨步骤完成查询、比较、建车/编辑和结算准备，不强制逐页/工具确认。Apps允许直接导航/Bridge读取与可选Agent准备消息并存，不强制每次切页经过模型；MUST 保留必要澄清、Host审批、草稿/刷新校准及最终Human支付，不代点、不从购物意图推导批准。
 
 #### Scenario: 一次意图与直接导航
 - **WHEN** Human提供充分明确的商品/数量/预算要求，或在App直接浏览详情/购物车/结算
@@ -126,7 +128,7 @@ Apps及WebMCP SHALL 在Human一次支付点击后，通过各自受保护UI通�
 - **WHEN** Cookie丢失/替换或换浏览器，或同会话其他标签读原准备
 - **THEN** 新scope不能凭reviewId/Cart能力接管旧准备，只能在有效车权限下显式新准备重新确认并栅栏旧请求；丢会话不等于旧写入失败；同scope有效权限只读不撤销确认，旧页句柄仍不得操作新车
 
-### Requirement: 三入口独立验收与兼容
+### Requirement: Agent接入独立验收与兼容
 
 系统 MUST 分别验证基础MCP的原生确认→Agent提交、WebMCP/App的准备→Human支付→UI直接下单及原订单/库存，记录Host/浏览器/SDK版本与实际Human确认。Apps/WebMCP须验证Agent结束/消息不可用仍可支付及原地恢复。保留旧七工具、普通Web及独立Handoff；未通过项不能以其他入口、脚本、消息投递或能力声明替代，不宣称百分之百兼容。
 

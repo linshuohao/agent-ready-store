@@ -1,5 +1,7 @@
 # Agent-Ready Store MCP 接入
 
+**接入术语说明：** MCP 与 WebMCP 是两类 Agent 接入；MCP Apps 是 MCP 的 UI 增强，不兼容时降级为无 Apps UI 的 MCP。协议、连接和构建关系见 [Technical Design §1.1](TECHNICAL_DESIGN.md#11-系统全景与请求路径)。本次统一术语不改变历史批准、业务行为与尚未完成的验证事实。
+
 本文件说明如何把本机商店 MCP 手动接入支持 Streamable HTTP 的 Agent Host。服务提供七个工具，商品查询唯读，原车编辑与交接仍不包含订单提交；运行契约见 [README](../../README.md#s6-mcp-apps)。
 
 ## 启动服务
@@ -7,6 +9,8 @@
 在仓库根目录准备 `.env`，设置仅供本机使用的 `POSTGRES_PASSWORD` 和至少 24 字元的 `MCP_SERVICE_TOKEN`。按当前运行方式启动服务；仅全新测试环境完成首次数据库初始化，具体命令见 [README 的 S1 本地开发](../../README.md#s1-本地开发)。API 应可由同一台机器访问：`http://localhost:3002/mcp`。数据库不需暴露宿主端口。
 
 ## 通用连接参数
+
+基础 MCP 与 MCP Apps 使用下列同一连接配置。Host 支持 MCP Apps 时，通过工具元数据发现并读取 UI 资源；无需另添加一个 Apps Server。Host 是否能调用 MCP 工具与是否能呈现 Apps UI 须分别核实。
 
 - Transport：MCP Streamable HTTP
 - URL：`http://localhost:3002/mcp`

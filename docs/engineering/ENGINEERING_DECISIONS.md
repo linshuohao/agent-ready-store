@@ -1,15 +1,17 @@
 # 工程与技术决策
 
+**接入术语说明：** MCP 与 WebMCP 是两类 Agent 接入；MCP Apps 是 MCP 的 UI 增强，不兼容时降级为无 Apps UI 的 MCP。协议、连接和构建关系见 [Technical Design §1.1](TECHNICAL_DESIGN.md#11-系统全景与请求路径)。本次统一术语不改变历史批准、业务行为与尚未完成的验证事实。
+
 **下一里程碑阅读入口：** [T-08～T-11：订单生命周期、demo接续、事务与跨端分层](#order-lifecycle-decisions)。仅记录已采用设计选择，不授权实施；限定替代关系见该节。
 
 **最新实施授权（2026-10-30）：** Human已明确接受当前购买Change §4.3可信Host/浏览器UI隔离与§6短期可转交订单只读权限，并授权提交、验证与实施。以下“仅修订/尚未批准”保留历史语境；真实Host证据与验收条件不变，见[权限补充](../../DECISIONS.md)及[当前Design](../../openspec/changes/archive/2026-10-30-agent-confirmed-purchase/design.md)。
 
-**2026-10-30最新Human确认：** [D-01直接支付决定](../../DECISIONS.md#d01-direct-payment-20261030)将MCP Apps/WebMCP改为Human支付点击后经受保护UI直接下单并原地显示结果，不依赖Agent接续；基础MCP保留Host原生确认后Agent提交及当前兼容限制。下方较早的三入口统一Agent提交描述保留当时范围；最新机制见当前Change，本轮只修订Spec、不实施代码。
+**2026-10-30最新Human确认：** [D-01直接支付决定](../../DECISIONS.md#d01-direct-payment-20261030)将MCP Apps/WebMCP改为Human支付点击后经受保护UI直接下单并原地显示结果，不依赖Agent接续；基础MCP保留Host原生确认后Agent提交及当前兼容限制。下方较早的Agent接入统一Agent提交描述保留当时范围；最新机制见当前Change，本轮只修订Spec、不实施代码。
 
 
 **当前补充 — 2026-10-30：** Human已批准[T-07基础MCP原生确认方向](#t-07--基础mcp原生确认与协议会话)，并有条件授权验证通过且无关键待决后实施。下方较早的“尚未获技术方案或实施批准”保留当时范围；不得据此重复请求本方向批准，也不将其解释为全部确认机制或真实Host验收已通过。
 
-**2026-10-30 Human三入口与便利购物澄清：** [D-01当前边界](../../DECISIONS.md#d01-agent-convenience-20261030)保持MCP会话内、WebMCP全步骤工具及Apps内完成购买；Apps允许直接跳页和Agent跨步准备，不强制每页提示/点击，三入口均以减少操作为目标。最终须Human在结算界面亲自点击“支付/确认购买”，Agent不得代点；沿现有模拟结账，成功后才可提供外部订单详情链接。此补充替代增量规划中每步提示唤起/禁止直接跳页的限制；历史基线批准/验收保留，具体确认/权限及Host接续见[当前Change](../../openspec/changes/archive/2026-10-30-agent-confirmed-purchase/design.md)，尚未获技术方案或实施批准。
+**2026-10-30 Human 对 Agent接入与便利购物澄清：** [D-01当前边界](../../DECISIONS.md#d01-agent-convenience-20261030)保持MCP会话内、WebMCP全步骤工具及Apps内完成购买；Apps允许直接跳页和Agent跨步准备，不强制每页提示/点击，Agent接入均以减少操作为目标。最终须Human在结算界面亲自点击“支付/确认购买”，Agent不得代点；沿现有模拟结账，成功后才可提供外部订单详情链接。此补充替代增量规划中每步提示唤起/禁止直接跳页的限制；历史基线批准/验收保留，具体确认/权限及Host接续见[当前Change](../../openspec/changes/archive/2026-10-30-agent-confirmed-purchase/design.md)，尚未获技术方案或实施批准。
 
 **2026-10-30 Human 需求变更（当前方向）:** [D-01 两步 Agent 购买确认](../../DECISIONS.md#d01-agent-two-step-20261030) 已将基础MCP/WebMCP/MCP Apps两步确认后的Agent代提交纳入当前需求，替代旧的C-01 Planned Enhancement范围判断。人先请求准备，审阅最终摘要后再明确确认，Agent才可执行已授权提交；普通Web人工路径与交易不变量保持。本文既有“七工具无提交/仅浏览器人工提交/代提交后置”描述保留为已批准旧设计及现有实现的范围，不作为新需求排除依据；新确认入口、可验证授权、提交通道和异常恢复须另行完成统一设计与OpenSpec规划，尚未获技术设计或实施批准。历史批准与验收不追溯改写。
 
@@ -194,7 +196,9 @@ T-01～T-06 原为未选择方案的讨论索引；2026-10-29 按 Human 明确�
 
 - Human 本聊天明确“改为 Base ui”，替代本项目首次 shadcn 接入时的 Radix 实施选择；后续本项目基础组件采用 Base UI。最初并无既有 Radix 消费者需要兼容，保留原取舍记录，不把此前 shadcn 优先确认解释为 Human 指定了 Radix。迁移与定向验证归当前 S1 Change，不改变服务、业务或权限边界及 Git 授权。
 
-### T-02 — 三种 Agent 接入与 Hosted Checkout
+<a id="t-02--三种-agent-接入与-hosted-checkout"></a>
+
+### T-02 — MCP与WebMCP接入与 Hosted Checkout
 
 - **Status：Accepted**（基础 MCP、WebMCP、MCP Apps 与 Hosted Checkout 本次交付范围）；各入口实现/兼容性未验证，演进依据见本节末尾。
 - **Decision：** NestJS 内置 Streamable HTTP MCP，与 HTTP API 共用业务能力。基础 MCP 七个工具为 `search_products`、`get_product`、`list_product_reviews`、`create_cart`、`update_cart`、`get_cart`、`create_handoff`。必须返回有用的商品/购物车结构化信息与报价摘要，不能只返回 URL；通过 Hosted Checkout 完成人工购买确认。基础工具不包含最终订单提交。
@@ -210,7 +214,7 @@ T-01～T-06 原为未选择方案的讨论索引；2026-10-29 按 Human 明确�
 
 - **来源：** Human 在本聊天明确要求 MCP 部分不写“未来”，目标是本次一次性完整交付。基础 MCP、WebMCP、MCP Apps 与 Hosted Checkout 均纳入；不把分阶段实施解释为未来可选范围。
 - **演进 / Superseded：** 原 T-02 将 WebMCP/MCP Apps 标为 Planned Enhancement，是先保证基础闭环、分别处理 Host 风险的安排；当前替代其“后置交付”分类，保留独立运行环境、渐进实施、分别验证和降级边界。T-06 的先后顺序仍适用，但 S1～S6 都在本次完整交付内。历史批准记录保留当时范围，不反推其当时已包括本次澄清。
-- **代价与验收：** 本次需承担浏览器/Host 适配、Bridge/UI 复用及三种模式的真实验证成本；不能以基础 MCP 成功或降级说明替代其余模式验收。环境不支持时应明确证据与受影响范围，必要时交 Human 决定，不自行删减本次交付。
+- **代价与验收：** 本次需承担浏览器/Host 适配、Bridge/UI 复用及 MCP增强/兼容模式、WebMCP 的真实验证成本；不能以基础 MCP 成功或降级说明替代其余模式验收。环境不支持时应明确证据与受影响范围，必要时交 Human 决定，不自行删减本次交付。
 - **保持：** 七工具、唯一业务用例/Pricing、NestJS MCP、Human Hosted Checkout 确认与安全边界不变。Agent 经具体授权代提交仍 Planned Enhancement，不进入本次交付。此决定明确目标范围，不批准 Technical Design、不代表已实现/兼容，不授权本轮代码、Change、提交或部署。
 
 ### T-03 — 只读商品目录与最小交易持久化
@@ -247,7 +251,7 @@ T-01～T-06 原为未选择方案的讨论索引；2026-10-29 按 Human 明确�
 ### T-06 — 本地可复现、先闭环后增强
 
 - **Status：Accepted**（运行方向与顺序）；验证与公网部署细节为 **Pending Detail**。
-- **Decision：** 优先本地可复现，Docker Compose 组织必要的 Web、API、PostgreSQL 服务。MVP 先完成基础 MCP + Hosted Checkout 的真实购物闭环，随后在本次完整交付内完成 WebMCP、MCP Apps 和相关 UI 复用；三种接入分别验收，无强制升级依赖。公网部署在 MVP 完成后再评估，不预先绑定付费云资源。
+- **Decision：** 优先本地可复现，Docker Compose 组织必要的 Web、API、PostgreSQL 服务。MVP 先完成基础 MCP + Hosted Checkout 的真实购物闭环，随后在本次完整交付内完成 WebMCP、MCP Apps 和相关 UI 复用；MCP增强/兼容模式与WebMCP分别验收，无强制升级依赖。公网部署在 MVP 完成后再评估，不预先绑定付费云资源。
 - **Alternatives / Trade-offs：** 同时展开所有接入或云端基础设施会把未验证 Host 和托管依赖放进 MVP 关键路径；只描述手工环境会增加本地复现成本。选择本地服务编排与先闭环，接受容器构建、配置与启动依赖的维护成本，不宣称 Compose 已存在或端口已可用。
 - **Consequences：** WebMCP 不单建服务器，MCP Apps 不提前增加独立常驻服务。先后顺序不删除 D-16 评论分页、D-22 指标口径、真实 Agent 购物记录、GitHub Actions 与 UI/UX 验收等已有交付约束；MVP 不等同最终全部交付完成。真实外部 Host 若需可访问端点，后续以验证需求评估连接方式，不由本条自动授权公网暴露或购买资源。
 - **Evidence / Pending Detail：** 尚无 Compose、容器运行、CI 或真实 Agent 闭环证据。Node/pnpm/依赖版本、服务启动/健康检查、数据卷/初始化、环境变量、开发与演示命令、测试工具及 Host 联调入口待细化；本轮不新增配置或验证脚本。
@@ -334,7 +338,7 @@ Human 已通过整体架构，授权收敛 [Technical Design v0.2（历史记录
 
 #### T-04 / T-05 设计候选收敛 — 2026-10-29（Proposed，待 Human Review）
 
-本次 Focused Architecture Refinement 保留 Next.js、单 Cart Token、24h Handoff、独立确认、七工具与三种 Agent 接入的完整交付范围；未重开 Accepted 决策。Technical Design §5.2 明确 Commands 为不依赖 React/Query 的普通 TypeScript 操作，Hooks/Adapter 协调 UI 和缓存；§4.3 明确 Unknown 不能从一次无 Order 查询推导提交失败，S3 验证原提交与恢复的协调。
+本次 Focused Architecture Refinement 保留 Next.js、单 Cart Token、24h Handoff、独立确认、七工具与MCP与WebMCP接入的完整交付范围；未重开 Accepted 决策。Technical Design §5.2 明确 Commands 为不依赖 React/Query 的普通 TypeScript 操作，Hooks/Adapter 协调 UI 和缓存；§4.3 明确 Unknown 不能从一次无 Order 查询推导提交失败，S3 验证原提交与恢复的协调。
 
 替代的仅是此前 v0.5 中尚未批准的实现候选：去除普通 Web 建车前的创建身份 Cookie/引导与跨标签初始化协调，推荐使用浏览器此次生成的同一 Cart Token 证明建车重试；每车 Cookie 保留，确认会话绑定不预设第二个每页身份。服务器单密文恢复方案不变。该候选需 S2 安全/恢复验证；首次响应前浏览器丢失 Token 且 Cookie 未到达时不能自动恢复或重复建车，其体验限制需在 S2 Review 接受或调整。旧候选保留为演进历史，不作为当前实施默认。L-01、P-04 与浏览器会话绑定细化继续 Pending，不新增业务表/身份服务/全局 Store。本轮仅文档自查，无实现或运行证据，Technical Design 仍 Draft。
 

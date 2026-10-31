@@ -240,7 +240,11 @@ Human已授权按审查建议统一整理设计：关闭不回车、订单行固
 
 结果含orderId、cartId、status、effectiveStatus、summary、reservationExpiresAt、allowedActions、导航目标。effectiveStatus区分待支付/已支付/已取消/已超时；各入口使用同一服务端结果，不自行拼出另一套业务状态。
 
-#### 8.3 三入口及普通Web
+<a id="83-agent交互路径及普通web"></a>
+
+#### 8.3 Agent接入与MCP兼容模式及普通Web
+
+Agent接入分为 MCP 与 WebMCP。MCP Apps 是 MCP 的交互式 UI 增强，复用现有 MCP Server、连接和业务用例，不构成额外入口或路径。支持 Apps 的 Host 展示内嵌 UI；不兼容时降级为 MCP 文本与结构化结果。降级保留可用工具能力；购买仍遵循适用契约与Human确认要求，不能把文本返回视为完整购买验收通过。当前订单生命周期目标由网页订单入口承接无 Apps 时的Human支付，实际可用性须验证。验收覆盖 MCP 的 UI 增强与无 Apps 兼容模式，以及 WebMCP 页面工具。
 
 各端目标路径与展示职责统一见[Technical Design §3](../../../docs/engineering/TECHNICAL_DESIGN.md#shopping-journeys)，适配边界见[§5](../../../docs/engineering/TECHNICAL_DESIGN.md#frontend-architecture)。基础MCP用网页订单入口、WebMCP直接导航、Apps内嵌；服务端用例相同，Agent无支付工具，UI点击直接支付不等待模型。基础MCP的真实链接接手、Apps重挂载与WebMCP导航仍须分别按§12实测，不能互相代替。
 

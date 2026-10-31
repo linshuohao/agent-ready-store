@@ -1,5 +1,7 @@
 # agent-shopping Specification
 
+术语说明：Agent接入分为 MCP 与 WebMCP。MCP Apps 是 MCP 的交互式 UI 增强，复用现有 MCP Server、连接和业务用例，不构成额外入口或路径。支持 Apps 的 Host 展示内嵌 UI；不兼容时降级为 MCP 文本与结构化结果。降级保留可用工具能力；购买仍遵循适用契约与Human确认要求，不能把文本返回视为完整购买验收通过。当前订单生命周期目标由网页订单入口承接无 Apps 时的Human支付，实际可用性须验证。验收覆盖 MCP 的 UI 增强与无 Apps 兼容模式，以及 WebMCP 页面工具。
+
 ## Purpose
 
 使外部 Agent 通过经过服务身份认证的 MCP 入口完成商品查询、可信建车、读取、编辑及分享，取得与 Web 一致的报价和受保护结果；将访问能力与最终购买确认分开，并在重试或服务重启后保留同一购物意图。
