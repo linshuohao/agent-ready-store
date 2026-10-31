@@ -166,3 +166,42 @@ it('conflicting committed terminals preserve known result, block actions and tri
   expect(cmd.snapshot(id).conflict).toBe(true);
   expect(calls).toBe(2);
 });
+
+it('background refresh preserves payment access and its late checkout cannot overwrite payment', async () => {
+  const cmd = new OrderCommands(memory());
+  vi.stubGlobal('fetch', async () => ok(order()));
+  await cmd.read(id);
+  const stale = deferred();
+  const fetcher = vi.fn((url: string) =>
+    url.endsWith('/pay') ? Promise.resolve(ok(order('PAID'))) : stale.promise,
+  );
+  vi.stubGlobal('fetch', fetcher);
+  const refresh = cmd.read(id, { background: true });
+  expect(cmd.snapshot(id).loading).toBe(false);
+  await cmd.act(id, 'pay');
+  expect(fetcher.mock.calls.some(([url]) => url.endsWith('/pay'))).toBe(true);
+  stale.resolve(ok(order()));
+  await refresh;
+  expect(cmd.snapshot(id).order?.status).toBe('PAID');
+});
+
+it('initial and explicit reloads still block payment until the read completes', async () => {
+  const cmd = new OrderCommands(memory()),
+    first = deferred();
+  const fetcher = vi.fn(() => first.promise);
+  vi.stubGlobal('fetch', fetcher);
+  const initial = cmd.read(id, { background: true });
+  expect(cmd.snapshot(id).loading).toBe(true);
+  await cmd.act(id, 'pay');
+  expect(fetcher).toHaveBeenCalledTimes(1);
+  first.resolve(ok(order()));
+  await initial;
+  const reloaded = deferred();
+  fetcher.mockImplementation(() => reloaded.promise);
+  const reload = cmd.read(id);
+  expect(cmd.snapshot(id).loading).toBe(true);
+  await cmd.act(id, 'pay');
+  expect(fetcher).toHaveBeenCalledTimes(2);
+  reloaded.resolve(ok(order()));
+  await reload;
+});

@@ -381,3 +381,21 @@ it('old card mappings and new persisted routes restore the original order', () =
       .route,
   ).toBe('/orders?cartId=' + id);
 });
+
+it('card catalog reads use the data-only query tool without a new search UI entry', async () => {
+  const data = {
+    items: [],
+    total: 0,
+    nextOffset: null,
+    catalogRevision: 'fixture',
+  };
+  const call = vi.fn(async () => ({ structuredContent: { ok: true, data } }));
+  const transport = bridgeTransport({ call, open: async () => ({}) });
+  expect(
+    await (await transport('/api/v1/products?q=earbuds&limit=2')).json(),
+  ).toMatchObject({ ok: true, data });
+  expect(call).toHaveBeenCalledWith(
+    'query_products',
+    expect.objectContaining({ q: 'earbuds', limit: 2 }),
+  );
+});

@@ -21,7 +21,8 @@ export function useOrderPage(id: string) {
       }
     });
     const returned = () => {
-      if (document.visibilityState !== 'hidden') void load();
+      if (document.visibilityState !== 'hidden')
+        void commands.read(id, { background: true });
     };
     const timer = setInterval(() => setNow(Date.now()), 1000);
     window.addEventListener('focus', returned);
@@ -32,7 +33,7 @@ export function useOrderPage(id: string) {
       window.removeEventListener('focus', returned);
       document.removeEventListener('visibilitychange', returned);
     };
-  }, [load]);
+  }, [load, commands, id]);
   const expired = Boolean(
     state.order && now >= Date.parse(state.order.reservationExpiresAt),
   );

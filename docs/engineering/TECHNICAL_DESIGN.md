@@ -564,7 +564,7 @@ sequenceDiagram
 | Web适配 | 消费完整共享应用；WebMCP复用同一实例 | Next路由/公开首屏、同源HTTP、localStorage及页面工具生命周期 |
 | Apps适配 | 消费完整共享应用；不保留独立购物Controller | Bridge协议、Host工具结果/稳定调用ID、内嵌导航、sessionStorage及可信分享 |
 
-Server MCP通过Streamable HTTP调用共享用例，返回结构化公开数据及可读摘要，不在服务内部绕回HTTP。WebMCP按当前页面注册/清理工具，不复制Server工具全集；旧页面回调不能更新新页。Apps静态资源不嵌交易上下文或秘密，运行时由Bridge交付数据，不依赖网站Cookie、Next Router或RSC。
+Server MCP通过Streamable HTTP调用共享用例，返回结构化公开数据及可读摘要，不在服务内部绕回HTTP。WebMCP按当前页面注册/清理工具，不复制Server工具全集；旧页面回调不能更新新页。Apps只将search_products与create_order关联UI资源；购买准备使用同搜索契约的query_products及其他无UI数据工具，支付/状态恢复在原订单卡片内完成。Apps静态资源不嵌交易上下文或秘密，运行时由Bridge交付数据，不依赖网站Cookie、Next Router或RSC。
 
 查询工具继续复用；新用例及工具映射由[Change §8](../../openspec/changes/checkout-lifecycle-redesign/design.md)维护，旧prepare/review、原生批准与独立取链接工具不作为新购买链兼容要求。Agent工具不暴露支付；Human通过网页或Apps UI直接支付。工具可用、页面已显示与实际支付成功分别验收，不用一个入口的成功代替另一个。
 

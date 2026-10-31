@@ -2,7 +2,7 @@
 
 **接入术语说明：** MCP 与 WebMCP 是两类 Agent 接入；MCP Apps 是 MCP 的 UI 增强，不兼容时降级为无 Apps UI 的 MCP。协议、连接和构建关系见 [Technical Design §1.1](docs/engineering/TECHNICAL_DESIGN.md#11-系统全景与请求路径)。本次统一术语不改变历史批准、业务行为与尚未完成的验证事实。
 
-本机`store`已于2026-10-31按Human明确授权完成清理和新流程迁移，新实施版本运行于`http://localhost:3000`。当前分支尚未合并，请勿用main旧服务写入新库。清理脚本默认测试库限制以外的本机显式准入及执行记录见[TOOLING](docs/engineering/TOOLING.md)和当前Tasks。
+本机`store`已于2026-10-31按Human明确授权完成清理和新流程迁移，新实施版本运行于`http://localhost:3000`。订单生命周期与共享应用已合并main；本轮MCP意图卡片增量状态见当前Tasks。清理脚本默认测试库限制以外的本机显式准入及执行记录见[TOOLING](docs/engineering/TOOLING.md)和当前Tasks。
 
 面向人类与 AI Agent 的商店：普通 Web、基础 MCP、WebMCP 和 MCP Apps 共用商品、持久购物车与独立订单能力。
 
@@ -15,9 +15,9 @@
 - 普通 Web：商品页加购，购物车选行、生单，`/orders/{orderId}`核对和支付。跨车继续购物需明确确认；分享入口只展示该订单。
 - 基础 MCP：明确完整购买目标后生单，返回网页订单入口；没有面向模型的支付工具。连接、工具与意图约束见 [MCP_CONNECT](docs/engineering/MCP_CONNECT.md)。
 - WebMCP：页面工具复用 Web Commands；加购通常展示车，购买直接导航原单。无支持能力的浏览器仍可普通购物。
-- MCP Apps：静态资源及 Host Bridge 提供内嵌购物、原单摘要和 Human 点击支付；不直接获取网站 Cookie 或服务 Token。替身 Host 自动化与真实 Host/Human 验收分开记录。
+- MCP Apps：搜索只展示结果卡片，购买准备只返回数据，生单展示最终结算卡片；支付及状态恢复在原卡片内更新。静态资源及 Host Bridge 提供内嵌购物、原单摘要和 Human 点击支付；不直接获取网站 Cookie 或服务 Token。替身 Host 自动化与真实 Host/Human 验收分开记录。
 
-Web与Apps完整共用`commerce-ui`的页面、交互流程、控件、样式和商品资源；架构及环境边界见[Technical Design §5](docs/engineering/TECHNICAL_DESIGN.md#frontend-architecture)。当前Apps资源为`v4`，更新后刷新Host连接并重新调用工具加载。
+Web与Apps完整共用`commerce-ui`的页面、交互流程、控件、样式和商品资源；架构及环境边界见[Technical Design §5](docs/engineering/TECHNICAL_DESIGN.md#frontend-architecture)。当前Apps资源为`v6`，更新后刷新Host连接并重新调用工具加载。
 
 实现和恢复键说明见 [CHECKOUT_CORE](docs/engineering/CHECKOUT_CORE.md)。本项目是 Demo：ID 接续、分享视图和 app-only 可见性不是顾客身份或访问控制；不能宣称防御恶意 Host 或证明点击者为自然人。
 

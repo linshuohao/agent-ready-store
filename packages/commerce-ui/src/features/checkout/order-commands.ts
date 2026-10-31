@@ -121,7 +121,7 @@ export class OrderCommands {
       }
     }
   }
-  async read(id: string) {
+  async read(id: string, { background = false } = {}) {
     const sequence = (this.reads.get(id) ?? 0) + 1;
     this.reads.set(id, sequence);
     try {
@@ -132,7 +132,8 @@ export class OrderCommands {
         message: '無法讀取本機恢復資料，請檢查瀏覽器儲存設定。',
       });
     }
-    this.update(id, { loading: true });
+    if (!background || !this.snapshot(id).order)
+      this.update(id, { loading: true });
     const result = await readLifecycleOrder(id, this.transport);
     if (this.reads.get(id) !== sequence) return;
     this.update(id, { loading: false });

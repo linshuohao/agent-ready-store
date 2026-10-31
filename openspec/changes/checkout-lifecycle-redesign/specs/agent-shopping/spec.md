@@ -17,7 +17,7 @@
 ## ADDED Requirements
 
 ### Requirement: 订单工具与共享服务语义
-系统 SHALL 保留商品搜索、详情、独立评论查询能力，提供get_or_create_cart、get_cart、add/update/remove_cart_item、create_order、get_order、list_orders、cancel_order；quote_selection仅无占用预估，不强制为前置步骤。工具使用共享业务语义，返回结构化及可读结果，可区分校验、冲突、受阻、配额和技术故障，不包含支付工具。
+系统 SHALL 保留商品搜索、详情、独立评论查询能力；search_products用于明确搜索展示，query_products提供同输入/结果的无UI查询供购买准备使用，提供get_or_create_cart、get_cart、add/update/remove_cart_item、create_order、get_order、list_orders、cancel_order；quote_selection仅无占用预估，不强制为前置步骤。工具使用共享业务语义，返回结构化及可读结果，可区分校验、冲突、受阻、配额和技术故障，不包含支付工具。
 
 #### Scenario: 工具切换与发现
 - **WHEN** 新流程Host发现工具并调用，或旧客户端调用旧prepare/review/submit/create_handoff/get_order_link写流程

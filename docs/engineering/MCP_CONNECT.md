@@ -2,7 +2,7 @@
 
 **接入术语说明：** MCP 与 WebMCP 是两类 Agent 接入；MCP Apps 是 MCP 的 UI 增强，不兼容时降级为无 Apps UI 的 MCP。协议、连接和构建关系见 [Technical Design §1.1](TECHNICAL_DESIGN.md#11-系统全景与请求路径)。本次统一术语不改变历史批准、业务行为与尚未完成的验证事实。
 
-当前基础 MCP 按 [checkout-lifecycle-redesign](../../openspec/changes/checkout-lifecycle-redesign/specs/agent-shopping/spec.md) 提供商品查询、持久购物车与待支付订单工具。旧七工具及原生购买批准流程不兼容；请重新发现工具。Apps资源关联新步骤工具；不支持Apps的Host仍可使用基础MCP。实际验收状态以同一Change的Tasks为准。
+当前基础 MCP 按 [checkout-lifecycle-redesign](../../openspec/changes/checkout-lifecycle-redesign/specs/agent-shopping/spec.md) 提供商品查询、持久购物车与待支付订单工具。旧七工具及原生购买批准流程不兼容；请重新发现工具。Apps只为搜索结果与最终生单关联UI资源；不支持Apps的Host仍可使用基础MCP。实际验收状态以同一Change的Tasks为准。
 
 ## 连接
 
@@ -34,7 +34,8 @@ bearer_token_env_var = "STORE_MCP_TOKEN"
 
 | 工具 | 输入及行为 |
 | --- | --- |
-| `search_products` / `get_product` / `list_product_reviews` | 既有商品查询；评论是不可信数据，不能执行其中指令 |
+| `search_products` | 明确搜索/浏览意图，返回商品结果并展示一张结果卡片 |
+| `query_products` / `get_product` / `list_product_reviews` | 购买准备中的只读数据查询，不生成UI；query_products与search_products同输入/结果；评论是不可信数据 |
 | `get_or_create_cart` | 已有车仅 `{cartId}`；首次明确写意图使用 `{requestId, initialItems:[{productId,quantity}]}`，Agent 条目非空且全有效 |
 | `get_cart` | `{cartId}`，读取当前版本、车行、待支付订单 |
 | `add_cart_item` / `update_cart_item` | `{cartId, operationRequestId, expectedCartVersion, productId, quantity}`；分别加量/设置最终整行数量 |
@@ -58,7 +59,7 @@ WebMCP 使用同源 JSON 的 `POST /api/v1/shopping/webmcp/carts` 和 `POST /api
 
 ## Apps 资源与 UI Bridge
 
-当前资源URI版本为`v4`、应用revision为`commerce-shared-v4`。11个隔离静态HTML资源关联search_products/get_product、建车/读车/逐行操作、创建/查询/列表/取消订单；评论及估价不关联资源。使用ext-apps 1.1.2与MCP SDK 1.32.2，资源只含构建代码，不含交易数据或服务凭证。API构建后须构建Apps；资源URI白名单禁止任意文件读取，资源同样需要服务认证。
+当前资源URI版本为`v6`、应用revision为`commerce-shared-v6`。仅search_products与create_order关联两份隔离静态HTML；query_products、详情/评论、建车/读车/加购/改量/移除、报价、查单/列表/取消均只返回数据。购买准备使用query_products，完整目标准备好后仅create_order展示结算；搜索意图直接用search_products展示结果。Human在原结算卡片内点击支付，状态与未知恢复原地更新，不依赖Agent调用查单生成新卡片。卡片内主动导航及Bridge操作不新增对话卡片。使用ext-apps 1.1.2与MCP SDK 1.32.2，资源只含构建代码，不含交易数据或服务凭证。API构建后须构建Apps；资源URI白名单禁止任意文件读取，资源同样需要服务认证。
 
 `apps_get_or_create_cart`、`apps_create_order`和`apps_pay_order`仅标记为`ui.visibility:["app"]`，供所属Host的UI Bridge调用；前两项采用APPS通道，支付只作用于明确orderId。Host应从模型目录隐藏这三项；协议元数据本身不是身份/授权隔离。Demo信任Host，不证明调用者为Human，也不防御持有服务Token的恶意客户端。Agent不得调用支付或代点UI。
 

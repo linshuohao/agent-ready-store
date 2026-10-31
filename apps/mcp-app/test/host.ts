@@ -29,6 +29,7 @@ const controls = {
   conflictOnce: false,
   failProductOnce: new URL(location.href).searchParams.has('failDiscovery'),
 };
+const searchMode = new URL(location.href).searchParams.has('search');
 const productMode = new URL(location.href).searchParams.has('product');
 const productDetail = {
   id: 'P001',
@@ -43,12 +44,31 @@ const productDetail = {
   specs: { 連線: '藍牙' },
   reviewOverview: { count: 0 },
 };
-const resourceHtml = productMode
-  ? __APP_HTML__.replace(
-      'data-entry-tool="get_cart"',
-      'data-entry-tool="get_product"',
-    )
-  : __APP_HTML__;
+const {
+  description: _description,
+  specs: _specs,
+  reviewOverview: _reviews,
+  ...productSummary
+} = productDetail;
+const catalogData = {
+  items: [productSummary],
+  total: 1,
+  nextOffset: null,
+  catalogRevision: 'fixture',
+};
+const checkoutMode = new URL(location.href).searchParams.has('checkout');
+const entry = checkoutMode
+  ? 'create_order'
+  : searchMode
+    ? 'search_products'
+    : productMode
+      ? 'get_product'
+      : 'get_cart';
+// Legacy deliveries exercise shared navigation; only search/create_order are public UI entries.
+const resourceHtml = __APP_HTML__.replace(
+  'data-entry-tool="search_products"',
+  `data-entry-tool="${entry}"`,
+);
 const ok = (data: unknown) => ({
   content: [{ type: 'text' as const, text: 'fixture' }],
   structuredContent: { ok: true, data },
@@ -71,6 +91,35 @@ const summary = (items: ShoppingCartView['items']) => ({
   shipping: '100.00',
   total: '119.00',
 });
+function createFixtureOrder(selected: ShoppingCartView['items']) {
+  order ??= {
+    orderId: oid,
+    cartId: id,
+    sourceCartVersion: cart.cartVersion,
+    status: 'CHECKOUT',
+    effectiveStatus: 'CHECKOUT',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    reservationExpiresAt: '2099-01-01T00:00:00.000Z',
+    paidAt: null,
+    closedAt: null,
+    closeReason: null,
+    createdByChannel: 'APPS',
+    aiEligible: true,
+    summary: summary(selected),
+    allowedActions: { canPay: true, canCancel: true },
+    navigation: {
+      orderUrl: `http://localhost:3000/orders/${oid}`,
+      shareUrl: `http://localhost:3000/orders/${oid}?view=share`,
+    },
+  };
+  cart = {
+    ...cart,
+    cartVersion: cart.cartVersion + 1,
+    items: cart.items.filter((i) => !selected.includes(i)),
+    pendingOrders: [order],
+  };
+  return ok({ order, cart });
+}
 const bridge = new AppBridge(
   null,
   { name: 'Lifecycle test Host', version: '1' },
@@ -80,7 +129,7 @@ const bridge = new AppBridge(
       toolInfo: {
         id: 'fixture-cart-call',
         tool: {
-          name: productMode ? 'get_product' : 'get_cart',
+          name: entry,
           inputSchema: { type: 'object' },
         },
       },
@@ -104,20 +153,7 @@ bridge.oncalltool = async ({ name, arguments: args }) => {
     }
     return ok(productDetail);
   }
-  if (name === 'search_products') {
-    const {
-      description: _,
-      specs: __,
-      reviewOverview: ___,
-      ...product
-    } = productDetail;
-    return ok({
-      items: [product],
-      total: 1,
-      nextOffset: null,
-      catalogRevision: 'fixture',
-    });
-  }
+  if (name === 'query_products') return ok(catalogData);
   if (name === 'list_product_reviews')
     return ok({
       productId: 'P001',
@@ -173,33 +209,7 @@ bridge.oncalltool = async ({ name, arguments: args }) => {
         (s) => s.productId === i.productId,
       ),
     );
-    order ??= {
-      orderId: oid,
-      cartId: id,
-      sourceCartVersion: cart.cartVersion,
-      status: 'CHECKOUT',
-      effectiveStatus: 'CHECKOUT',
-      createdAt: '2026-01-01T00:00:00.000Z',
-      reservationExpiresAt: '2099-01-01T00:00:00.000Z',
-      paidAt: null,
-      closedAt: null,
-      closeReason: null,
-      createdByChannel: 'APPS',
-      aiEligible: true,
-      summary: summary(selected),
-      allowedActions: { canPay: true, canCancel: true },
-      navigation: {
-        orderUrl: `http://localhost:3000/orders/${oid}`,
-        shareUrl: `http://localhost:3000/orders/${oid}?view=share`,
-      },
-    };
-    cart = {
-      ...cart,
-      cartVersion: cart.cartVersion + 1,
-      items: cart.items.filter((i) => !selected.includes(i)),
-      pendingOrders: [order],
-    };
-    return ok({ order, cart });
+    return createFixtureOrder(selected);
   }
   if (name === 'get_order') return ok(order);
   if (name === 'list_orders')
@@ -236,10 +246,19 @@ bridge.onopenlink = async ({ url }) => {
   return { isError: false };
 };
 bridge.oninitialized = async () => {
-  await bridge.sendToolInput({
-    arguments: productMode ? { productId: 'P001' } : { cartId: id },
-  });
-  await bridge.sendToolResult(ok(productMode ? productDetail : cart));
+  if (checkoutMode) {
+    if (!order) createFixtureOrder(cart.items);
+    await bridge.sendToolInput({ arguments: { cartId: id } });
+    await bridge.sendToolResult(ok({ order, cart }));
+  } else if (searchMode) {
+    await bridge.sendToolInput({ arguments: { q: '耳機' } });
+    await bridge.sendToolResult(ok(catalogData));
+  } else {
+    await bridge.sendToolInput({
+      arguments: productMode ? { productId: 'P001' } : { cartId: id },
+    });
+    await bridge.sendToolResult(ok(productMode ? productDetail : cart));
+  }
 };
 const iframe = document.querySelector('iframe')!;
 await bridge.connect(

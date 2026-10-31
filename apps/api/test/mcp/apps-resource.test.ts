@@ -21,22 +21,48 @@ const token = process.env.MCP_SERVICE_TOKEN;
         (tool) => tool.name === 'search_products',
       );
       expect(tool?._meta?.ui).toMatchObject({
-        resourceUri: 'ui://store/search-products-v5.html',
+        resourceUri: 'ui://store/search-products-v6.html',
       });
       expect(tool?._meta?.['ui/resourceUri']).toBe(
-        'ui://store/search-products-v5.html',
+        'ui://store/search-products-v6.html',
       );
       const resource = await client.readResource({
-        uri: 'ui://store/search-products-v5.html',
+        uri: 'ui://store/search-products-v6.html',
       });
       const html = resource.contents[0];
       expect(html.mimeType).toBe('text/html;profile=mcp-app');
       if (!('text' in html)) throw new Error('Expected a text UI resource');
       expect(html.text).toContain('Agent-Ready Store');
       const resources = (await client.listResources()).resources;
-      expect(resources).toHaveLength(11);
+      expect(resources).toHaveLength(2);
       const tools = (await client.listTools()).tools;
-      expect(tools).toHaveLength(16);
+      expect(
+        tools
+          .filter((t) => (t._meta?.ui as { resourceUri?: string })?.resourceUri)
+          .map((t) => t.name)
+          .sort(),
+      ).toEqual(['create_order', 'search_products']);
+      for (const tool of tools.filter(
+        (t) => !['search_products', 'create_order'].includes(t.name),
+      )) {
+        expect(tool._meta?.['ui/resourceUri']).toBeUndefined();
+        expect(tool._meta?.['openai/outputTemplate']).toBeUndefined();
+      }
+      const args = { q: '耳機', limit: 2 };
+      const silent = await client.callTool({
+        name: 'query_products',
+        arguments: args,
+      });
+      const visible = await client.callTool({
+        name: 'search_products',
+        arguments: args,
+      });
+      expect(silent.structuredContent).toMatchObject({
+        ok: true,
+        data: (visible.structuredContent as any).data,
+      });
+
+      expect(tools).toHaveLength(17);
       for (const resource of resources) {
         const entry = tools.find(
           (tool) =>
@@ -83,7 +109,7 @@ const token = process.env.MCP_SERVICE_TOKEN;
       jsonrpc: '2.0',
       id: 1,
       method: 'resources/read',
-      params: { uri: 'ui://store/get-cart-v5.html' },
+      params: { uri: 'ui://store/create-order-v6.html' },
     };
     const headers = {
       'Content-Type': 'application/json',
