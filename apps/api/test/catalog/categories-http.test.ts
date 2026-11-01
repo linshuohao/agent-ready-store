@@ -38,6 +38,7 @@ it('HTTP and MCP category discovery bypass maintenance but retain validation and
   const maintenance = vi.fn(async () => {
     throw new Error('db offline');
   });
+  vi.stubEnv('MCP_AUTH_MODE', 'token');
   vi.stubEnv('MCP_SERVICE_TOKEN', 'isolated-category-test-token-12345');
   vi.stubEnv('WEB_ORIGIN', 'http://localhost:3000');
   const server = app.getHttpServer();

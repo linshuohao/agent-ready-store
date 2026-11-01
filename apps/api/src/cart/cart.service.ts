@@ -1,3 +1,4 @@
+import { orderView } from './order-view.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { Decimal } from 'decimal.js';
 import { z } from 'zod';
@@ -10,12 +11,10 @@ import {
   quoteSelectionInput,
   listOrdersInput,
   shoppingChannel,
-  orderViewOutput,
   type ShoppingChannel,
   type ShoppingCartView,
   type CartItem,
   type CartIssue,
-  type OrderView,
 } from '@store/contracts';
 import type { Catalog } from '../catalog/catalog.js';
 import type { database } from '../infrastructure/database/database.js';
@@ -28,7 +27,6 @@ import { priceSelection } from './pricing.js';
 
 type DB = ReturnType<typeof database>;
 type Tx = Prisma.TransactionClient;
-type SavedOrder = Prisma.OrderGetPayload<{ include: { lines: true } }>;
 const include = { lines: { orderBy: { productId: 'asc' as const } } };
 function parse<T>(schema: z.ZodType<T>, input: unknown): T {
   const result = schema.safeParse(input);
@@ -161,7 +159,7 @@ export class CartService {
       agentCreated: row.agentCreated,
       items: contents.items,
       issues: contents.issues,
-      pendingOrders: orders.map((o) => this.orderView(o, now)),
+      pendingOrders: orders.map((o) => orderView(o, now)),
     };
   }
   private checkVersion(row: Cart, expected: number) {
@@ -411,7 +409,7 @@ export class CartService {
         if (prior.requestHash !== fingerprint)
           throw new AppError('REQUEST_CONFLICT', 409);
         return {
-          order: this.orderView(prior, await this.now(tx)),
+          order: orderView(prior, await this.now(tx)),
           cart: await this.view(tx, row),
         };
       }
@@ -491,57 +489,9 @@ export class CartService {
         data: { items: remaining, version: { increment: 1 } },
       });
       return {
-        order: this.orderView(order, createdAt),
+        order: orderView(order, createdAt),
         cart: await this.view(tx, updated),
       };
-    });
-  }
-  private orderView(row: SavedOrder, now: Date): OrderView {
-    const effectiveStatus =
-      row.status === 'PAID'
-        ? 'PAID'
-        : (row.closeReason ??
-          (row.reservationExpiresAt <= now ? 'EXPIRED' : 'CHECKOUT'));
-    const orderUrl = new URL(
-      `/orders/${row.id}`,
-      process.env.WEB_ORIGIN ?? 'http://localhost:3000',
-    ).href;
-    return orderViewOutput.parse({
-      orderId: row.id,
-      cartId: row.cartId,
-      sourceCartVersion: row.sourceCartVersion,
-      status: row.status,
-      effectiveStatus,
-      createdAt: row.createdAt.toISOString(),
-      reservationExpiresAt: row.reservationExpiresAt.toISOString(),
-      paidAt: row.paidAt?.toISOString() ?? null,
-      closedAt: row.closedAt?.toISOString() ?? null,
-      closeReason: row.closeReason,
-      createdByChannel: row.createdByChannel,
-      aiEligible: row.aiEligible,
-      summary: {
-        currency: row.currency,
-        pricingRuleVersion: row.pricingRuleVersion,
-        items: row.lines.map((l) => ({
-          productId: l.productId,
-          name: l.name,
-          brand: l.brand,
-          specs: l.specs,
-          quantity: l.quantity,
-          unitPrice: l.unitPrice.toFixed(2),
-          lineSubtotal: l.lineSubtotal.toFixed(2),
-        })),
-        subtotal: row.subtotal.toFixed(2),
-        thresholdDiscount: row.thresholdDiscount.toFixed(2),
-        aiDiscount: row.aiDiscount.toFixed(2),
-        shipping: row.shipping.toFixed(2),
-        total: row.total.toFixed(2),
-      },
-      allowedActions: {
-        canPay: effectiveStatus === 'CHECKOUT',
-        canCancel: effectiveStatus === 'CHECKOUT',
-      },
-      navigation: { orderUrl, shareUrl: orderUrl + '?view=share' },
     });
   }
   private async savedOrder(tx: Tx, id: string, cartId?: string) {
@@ -556,7 +506,7 @@ export class CartService {
   async getOrder(id: string, cartId?: string) {
     return this.transaction(async (tx) => {
       const row = await this.savedOrder(tx, id, cartId);
-      return this.orderView(row, await this.now(tx));
+      return orderView(row, await this.now(tx));
     });
   }
   async listOrders(id: string, input: unknown) {
@@ -582,7 +532,7 @@ export class CartService {
         take: body.limit + 1,
       });
       return {
-        items: rows.slice(0, body.limit).map((o) => this.orderView(o, now)),
+        items: rows.slice(0, body.limit).map((o) => orderView(o, now)),
         nextOffset: rows.length > body.limit ? body.offset + body.limit : null,
       };
     });
@@ -597,7 +547,7 @@ export class CartService {
       await tx.$queryRaw`SELECT id FROM "Order" WHERE id=${id}::uuid FOR UPDATE`;
       const row = await this.savedOrder(tx, id, cartId);
       if (row.status === 'PAID' || row.closedAt)
-        return this.orderView(row, await this.now(tx));
+        return orderView(row, await this.now(tx));
       const stock = await this.inventory(
           tx,
           row.lines.map((l) => l.productId),
@@ -605,7 +555,7 @@ export class CartService {
         ),
         now = await this.now(tx),
         expired = now >= row.reservationExpiresAt;
-      if (action === 'expire' && !expired) return this.orderView(row, now);
+      if (action === 'expire' && !expired) return orderView(row, now);
       for (const line of row.lines) {
         const item = stock.find((i) => i.productId === line.productId);
         if (
@@ -631,7 +581,7 @@ export class CartService {
           : { closedAt: now, closeReason: expired ? 'EXPIRED' : 'CANCELLED' },
         include,
       });
-      return this.orderView(updated, now);
+      return orderView(updated, now);
     });
   }
   async payOrder(id: string, cartId?: string) {

@@ -91,10 +91,12 @@ function View() {
 }
 let input: unknown;
 let ready = false;
+let closed = false;
 app.ontoolinput = (params) => {
-  input = params.arguments;
+  if (!closed) input = params.arguments;
 };
 app.ontoolresult = async (result) => {
+  if (closed) return;
   const args = input;
   input = undefined;
   try {
@@ -130,6 +132,7 @@ app.ontoolresult = async (result) => {
   }
 };
 app.onteardown = async () => {
+  closed = true;
   input = undefined;
   queued = null;
   listeners.clear();
@@ -137,21 +140,10 @@ app.onteardown = async () => {
   root.unmount();
   return {};
 };
-try {
-  await app.connect();
-} catch {
-  root.render(
-    <main>
-      <h1>商店視圖暫不可用</h1>
-      <p role="status">
-        Host Bridge 未連線，請重新連線。此視圖不會直接存取網站 API。
-      </p>
-    </main>,
-  );
-}
 window.addEventListener(
   'pagehide',
   () => {
+    closed = true;
     input = undefined;
     queued = null;
     listeners.clear();
@@ -160,3 +152,17 @@ window.addEventListener(
   },
   { once: true },
 );
+
+try {
+  await app.connect();
+} catch {
+  if (!closed)
+    root.render(
+      <main>
+        <h1>商店視圖暫不可用</h1>
+        <p role="status">
+          Host Bridge 未連線，請重新連線。此視圖不會直接存取網站 API。
+        </p>
+      </main>,
+    );
+}

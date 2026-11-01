@@ -1,3 +1,6 @@
+import { ToolError } from '../tool-error.js';
+import type { ToolDefinition } from '../register-tools.js';
+import type { McpServer } from '@modelcontextprotocol/server';
 import { createHash, randomBytes } from 'node:crypto';
 import {
   createRequestStateCodec,
@@ -8,8 +11,8 @@ import {
 } from '@modelcontextprotocol/server';
 import { groupedSearchInput, type ProductDetail } from '@store/contracts';
 import { z } from 'zod';
-import type { CatalogService } from '../catalog/catalog.service.js';
-import { AppError } from '../shared/app-error.js';
+import type { CatalogService } from '../../catalog/catalog.service.js';
+import { AppError } from '../../shared/app-error.js';
 export const productChoicesInput = z
   .object({
     queries: groupedSearchInput.shape.queries,
@@ -147,4 +150,51 @@ export async function resolveProductChoices(
     },
     requestState: await codec.mint({ fingerprint, fields }, ctx),
   });
+}
+
+export function createResolveProductChoices({
+  server,
+  catalog,
+  choiceCodec,
+  modern,
+}: {
+  server: McpServer;
+  catalog: CatalogService;
+  choiceCodec: ReturnType<typeof createChoiceCodec>;
+  modern: boolean;
+}): ToolDefinition {
+  return {
+    name: 'resolve_product_choices',
+    description:
+      '仅用户明确选型/加购/购买且存在必须由用户决定的型号歧义时调用。只读；优先客户端表单，无支持返回按组候选供对话澄清；选择不等于购买或支付授权。普通搜索不调用，明确SKU不重复问；用户已授权Agent自选且约束充分时自行选择，不因候选多就调用表单。',
+    inputSchema: productChoicesInput,
+    annotations: {
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    },
+    handler: async (input, ctx) => {
+      try {
+        return await resolveProductChoices(
+          input,
+          catalog,
+          ctx,
+          modern && !!server.server.getClientCapabilities()?.elicitation?.form,
+          choiceCodec,
+        );
+      } catch (error) {
+        if (
+          !(error instanceof AppError) ||
+          error.code === 'VALIDATION_ERROR' ||
+          error.code === 'TEMPORARY_UNAVAILABLE'
+        )
+          throw error;
+        throw new ToolError(
+          error,
+          '操作未完成；按错误码核对原目标，不能盲目重试、缩单或创建替代订单。',
+        );
+      }
+    },
+  };
 }

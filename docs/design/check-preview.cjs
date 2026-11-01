@@ -45,7 +45,7 @@ for(const [page,state] of [['checkout','expired'],['result','normal']]){
 // Exact immutable attachments; no Downloads dependency in the retained check.
 const hashes={'UX_DECISIONS.md':'41b451a1f598fb9444cb9664ff340f2fb722ec4f4143dd9850b40d4dd590591d','UX_DECISIONS.html':'8186dc2e7c204294a4f48a4998e2ba25b4e276c2577a33dbbacff4bdeb19045e'};
 for(const [name,hash] of Object.entries(hashes))assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(root,'references',name))).digest('hex'),hash);
-const original=JSON.parse(fs.readFileSync(path.join(root,'../references/products.json'),'utf8')).products;
+const original=JSON.parse(fs.readFileSync(path.join(root,'../../references/products.json'),'utf8')).products;
 const fixtureScope=vm.createContext({});vm.runInContext(fixtureCode+'\nthis.items=PRODUCTS;',fixtureScope);
 assert.equal(fixtureScope.items.length,30);
 for(const item of fixtureScope.items){const source=original.find(p=>p.id===item.id);for(const key of Object.keys(item))assert.equal(JSON.stringify(item[key]),JSON.stringify(source[key]),`${item.id}.${key}`);assert.equal(item.margin_rate,undefined);}

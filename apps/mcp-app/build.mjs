@@ -1,7 +1,7 @@
 import { build } from 'vite';
 import tailwind from '@tailwindcss/postcss';
 import { fileURLToPath } from 'node:url';
-import { appTools } from './resources.mjs';
+import { appTools, appVersion } from './resources.mjs';
 const root = fileURLToPath(new URL('.', import.meta.url));
 const output = fileURLToPath(new URL('../api/dist/mcp-app/', import.meta.url));
 const watch = process.argv.includes('--watch');
@@ -35,7 +35,7 @@ await build({
         for (const tool of appTools) {
           this.emitFile({
             type: 'asset',
-            fileName: tool.replaceAll('_', '-') + '-v8.html',
+            fileName: `${tool.replaceAll('_', '-')}-${appVersion}.html`,
             source: `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Agent-Ready Store</title><style>${css}</style></head><body data-entry-tool="${tool}"><div id="root"></div><script type="module">${code}</script></body></html>`,
           });
         }

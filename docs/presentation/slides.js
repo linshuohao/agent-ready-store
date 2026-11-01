@@ -14,11 +14,11 @@ const slides = [
     evidence: [
       {
         label: '运行与功能入口',
-        path: '../README.md',
+        path: '../../README.md',
       },
       {
         label: '购买授权 · 正式 Spec',
-        path: '../openspec/specs/agent-purchase-authorization/spec.md',
+        path: '../../openspec/specs/agent-purchase-authorization/spec.md',
       },
     ],
     sections: [
@@ -52,11 +52,11 @@ const slides = [
     evidence: [
       {
         label: 'MCP 接入与 Host 前提',
-        path: '../docs/engineering/MCP_CONNECT.md',
+        path: '../../docs/engineering/MCP_CONNECT.md',
       },
       {
         label: '结算实施与验收记录',
-        path: '../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/tasks.md',
+        path: '../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/tasks.md',
       },
     ],
     sections: [
@@ -88,11 +88,11 @@ const slides = [
     evidence: [
       {
         label: '产品取舍 · DECISIONS',
-        path: '../DECISIONS.md',
+        path: '../../DECISIONS.md',
       },
       {
         label: '购买授权 · 正式 Spec',
-        path: '../openspec/specs/agent-purchase-authorization/spec.md',
+        path: '../../openspec/specs/agent-purchase-authorization/spec.md',
       },
     ],
     sections: [
@@ -124,11 +124,11 @@ const slides = [
     evidence: [
       {
         label: '产品取舍 · DECISIONS',
-        path: '../DECISIONS.md',
+        path: '../../DECISIONS.md',
       },
       {
         label: '交易核心 · 状态与恢复',
-        path: '../docs/engineering/CHECKOUT_CORE.md',
+        path: '../../docs/engineering/CHECKOUT_CORE.md',
       },
     ],
     sections: [
@@ -159,15 +159,15 @@ const slides = [
     evidence: [
       {
         label: '总体技术设计',
-        path: '../docs/engineering/TECHNICAL_DESIGN.md',
+        path: '../../docs/engineering/TECHNICAL_DESIGN.md',
       },
       {
         label: '后端详细设计',
-        path: '../docs/engineering/BACKEND_DESIGN.md',
+        path: '../../docs/engineering/BACKEND_DESIGN.md',
       },
       {
         label: '统一计价实现',
-        path: '../apps/api/src/cart/pricing.ts',
+        path: '../../apps/api/src/cart/pricing.ts',
       },
     ],
     sections: [
@@ -199,15 +199,15 @@ const slides = [
     evidence: [
       {
         label: '前端详细设计',
-        path: '../docs/engineering/FRONTEND_DESIGN.md',
+        path: '../../docs/engineering/FRONTEND_DESIGN.md',
       },
       {
         label: '共享应用入口',
-        path: '../packages/commerce-ui/src/application.tsx',
+        path: '../../packages/commerce-ui/src/application.tsx',
       },
       {
         label: '运行环境接口',
-        path: '../packages/commerce-ui/src/runtime.tsx',
+        path: '../../packages/commerce-ui/src/runtime.tsx',
       },
     ],
     sections: [
@@ -239,15 +239,15 @@ const slides = [
     evidence: [
       {
         label: '前端详细设计',
-        path: '../docs/engineering/FRONTEND_DESIGN.md',
+        path: '../../docs/engineering/FRONTEND_DESIGN.md',
       },
       {
         label: '购物车页面协调',
-        path: '../packages/commerce-ui/src/features/cart/use-cart-page.ts',
+        path: '../../packages/commerce-ui/src/features/cart/use-cart-page.ts',
       },
       {
         label: '购物车 Provider',
-        path: '../packages/commerce-ui/src/features/cart/provider.tsx',
+        path: '../../packages/commerce-ui/src/features/cart/provider.tsx',
       },
     ],
     sections: [
@@ -278,15 +278,15 @@ const slides = [
     evidence: [
       {
         label: '交易核心 · 状态与恢复',
-        path: '../docs/engineering/CHECKOUT_CORE.md',
+        path: '../../docs/engineering/CHECKOUT_CORE.md',
       },
       {
         label: '订单页面协调',
-        path: '../packages/commerce-ui/src/features/checkout/use-order-page.ts',
+        path: '../../packages/commerce-ui/src/features/checkout/use-order-page.ts',
       },
       {
         label: '真实数据库生命周期测试',
-        path: '../apps/api/test/cart/lifecycle-db.test.ts',
+        path: '../../apps/api/test/cart/lifecycle-db.test.ts',
       },
     ],
     sections: [
@@ -317,19 +317,19 @@ const slides = [
     evidence: [
       {
         label: 'AI_NOTES · 四个真实关键时刻',
-        path: '../AI_NOTES.md',
+        path: '../../AI_NOTES.md',
       },
       {
         label: '项目 Workflow Skill',
-        path: '../.agents/skills/ai-native-workflow/SKILL.md',
+        path: '../../.agents/skills/ai-native-workflow/SKILL.md',
       },
       {
         label: '自写 Skill 使用与版本口径',
-        path: '../docs/engineering/TOOLING.md',
+        path: '../../docs/engineering/TOOLING.md',
       },
       {
         label: '已有 Workflow 讲解页',
-        path: '../docs/presentation/ai-native-workflow.html',
+        path: '../../docs/presentation/ai-native-workflow.html',
       },
     ],
     sections: [
@@ -361,19 +361,19 @@ const slides = [
     evidence: [
       {
         label: 'AI_NOTES · 四个真实关键时刻',
-        path: '../AI_NOTES.md',
+        path: '../../AI_NOTES.md',
       },
       {
         label: '数据库切换并发测试',
-        path: '../scripts/checkout-cutover-db.test.mjs',
+        path: '../../scripts/checkout-cutover-db.test.mjs',
       },
       {
         label: '切换实现',
-        path: '../scripts/checkout-cutover.mjs',
+        path: '../../scripts/checkout-cutover.mjs',
       },
       {
         label: '结算实施与验收记录',
-        path: '../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/tasks.md',
+        path: '../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/tasks.md',
       },
     ],
     sections: [
@@ -403,15 +403,15 @@ const slides = [
     evidence: [
       {
         label: '产品取舍 · DECISIONS',
-        path: '../DECISIONS.md',
+        path: '../../DECISIONS.md',
       },
       {
         label: '商品发现 Spec',
-        path: '../openspec/specs/product-discovery/spec.md',
+        path: '../../openspec/specs/product-discovery/spec.md',
       },
       {
         label: '搜索与数据设计',
-        path: '../docs/engineering/BACKEND_DESIGN.md',
+        path: '../../docs/engineering/BACKEND_DESIGN.md',
       },
     ],
     sections: [
@@ -445,11 +445,11 @@ const slides = [
     evidence: [
       {
         label: '交付状态与证据口径',
-        path: '../docs/engineering/DELIVERY_STATUS.md',
+        path: '../../docs/engineering/DELIVERY_STATUS.md',
       },
       {
         label: 'CI 配置',
-        path: '../.github/workflows/ci.yml',
+        path: '../../.github/workflows/ci.yml',
       },
       {
         label: '历史 CI run ↗（需网络与仓库权限）',
@@ -487,15 +487,15 @@ const slides = [
     evidence: [
       {
         label: 'Agent 接入与兼容说明',
-        path: '../docs/engineering/MCP_CONNECT.md',
+        path: '../../docs/engineering/MCP_CONNECT.md',
       },
       {
         label: '技术选择与演进',
-        path: '../docs/engineering/ENGINEERING_DECISIONS.md',
+        path: '../../docs/engineering/ENGINEERING_DECISIONS.md',
       },
       {
         label: '前端详细设计',
-        path: '../docs/engineering/FRONTEND_DESIGN.md',
+        path: '../../docs/engineering/FRONTEND_DESIGN.md',
       },
     ],
     sections: [
@@ -527,15 +527,15 @@ const slides = [
     evidence: [
       {
         label: '本地开发与测试入口',
-        path: '../README.md',
+        path: '../../README.md',
       },
       {
         label: '协作与 Git 约定',
-        path: '../AGENTS.md',
+        path: '../../AGENTS.md',
       },
       {
         label: 'Workflow Skill',
-        path: '../.agents/skills/ai-native-workflow/SKILL.md',
+        path: '../../.agents/skills/ai-native-workflow/SKILL.md',
       },
     ],
     sections: [

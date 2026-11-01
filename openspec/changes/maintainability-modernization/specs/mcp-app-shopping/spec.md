@@ -3,7 +3,7 @@
 ## MODIFIED Requirements
 
 ### Requirement: Apps资源与公开展示
-系统 SHALL 提供可发现的隔离静态UI资源并关联实际步骤工具结果；静态资源无交易数据、运行时凭证或私有商品字段。动态视图展示服务端公开商品、车版本/条目/预估及订单固定快照，不执行商品评论脚本或指令，不客户端计算优惠。不支持Apps的Host可使用新基础MCP，不承诺旧七工具schema兼容。 本地MCP Demo仅按agent-shopping的「本地Demo入口模式」免除Token认证，其他边界不变。
+系统 SHALL 提供可发现的隔离静态UI资源并关联实际步骤工具结果；静态资源无交易数据、运行时凭证或私有商品字段。动态视图展示服务端公开商品、车版本/条目/预估及订单固定快照，不执行商品评论脚本或指令，不客户端计算优惠。不支持Apps的Host可使用新基础MCP，不承诺旧七工具schema兼容。 MCP Demo仅按agent-shopping的「Demo入口模式」免除Token认证，其他边界不变。
 
 #### Scenario: 资源加载和公开数据
 - **WHEN** Host读取合法资源、未知资源或显式token认证模式下无有效服务认证请求资源
