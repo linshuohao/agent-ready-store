@@ -38,6 +38,14 @@
 
 [分支保护设置](https://github.com/linshuohao/agent-ready-store/settings/branches)与[仓库通用设置](https://github.com/linshuohao/agent-ready-store/settings)可供管理员复核。以上是核查日期的实际配置；后续变更须同步本节，GitHub 门禁不替代 Commit、Push、Merge 或发布的 Human 授权。
 
+### 主工作区依赖审计（2026-11-01）
+
+移除仅为导入样式而安装的 shadcn CLI 包，保留已有 shadcn/Base UI 组件源码；复选框实际使用的 `data-checked` 变体由共享样式直接定义。其带入的 deepmerge 4.3.1 及 registry/CLI 依赖已从工作区安装树移除，不依赖尚未发布的 deepmerge 补丁。现代 minimatch 10.2.6 路径限定覆盖至 11.0.1，修复 glob 预处理放大问题。
+
+主工作区 `pnpm audit` 仍报告旧版 minimatch 3.1.5 的 [GHSA-g3hv-75wg-m249](https://github.com/advisories/GHSA-g3hv-75wg-m249)。ESLint/import 插件等仍有调用者使用旧版可调用模块接口，不能直接替换成 11 的模块对象；本轮未引入兼容包装或修改第三方 lint 插件。3.x 源码没有公告对应的 `optimizationLevel` / `firstPhasePreProcess` 优化阶段；上游 30 段 `**/../a/b` 反例在 3.1.5 中仅生成 1 个模式，未出现该放大现象。这是对具体机制与反例的核查，不据此忽略告警或宣称该版本全面安全。
+
+实际使用边界：这些旧依赖用于开发阶段的 lint、文件匹配和构建工具；业务源码不调用 minimatch/deepmerge，也不将商品、评论或 HTTP/MCP 请求参数传入 glob。当前未发现该告警通向线上交易请求的执行路径；若将外部仓库、配置或任意 glob 交给开发工具，仍需按不可信输入处理。残余告警继续保留，后续随上游消费者兼容升级复核；没有设置审计忽略项。GitHub Dependabot 清单与 npm 审计的收录及同步可能不同，不能由前者为零推定全仓库无已知问题。
+
 ## 当前产品结果
 
 - 持续Cart、按明确购买量生单并清理所购SKU整行、固定金额、15分钟预留、同单支付/取消/到期、多单额度与统计已实现。真实PostgreSQL事务、并发、幂等、回滚和释放记录见结算Tasks。
