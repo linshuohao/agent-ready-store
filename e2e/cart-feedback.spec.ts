@@ -4,15 +4,39 @@ test.beforeEach(async ({ page }) => {
   const errors: string[] = [];
   pageErrors.set(page, errors);
   page.on('pageerror', (error) => errors.push(error.message));
+  // UI transport fixture: these tests never write to the developer's cart database.
+  await page.route('**/api/v1/shopping/**', async (route) => {
+    await route.fulfill({
+      json: {
+        ok: true,
+        data: {
+          cartId: '11111111-1111-4111-8111-111111111111',
+          cartVersion: 1,
+          agentCreated: false,
+          items: [
+            {
+              productId: 'P001',
+              name: '耳機',
+              quantity: 1,
+              unitPrice: '1290.00',
+              availability: {
+                canPurchase: true,
+                currentQuantity: 10,
+                reasons: [],
+              },
+            },
+          ],
+          issues: [],
+          pendingOrders: [],
+        },
+      },
+    });
+  });
 });
 test.afterEach(async ({ page }) => {
   expect(pageErrors.get(page)).toEqual([]);
 });
-test.skip(
-  process.env.CHECKOUT_INTEGRATION !== '1',
-  'isolated lifecycle API/Web required',
-);
-test('A in flight does not disable or queue B; clicked buttons stay visually quiet @ci', async ({
+test('A in flight does not disable or queue B; only clicked buttons show progress @ci', async ({
   page,
 }) => {
   let release!: () => void;
@@ -25,13 +49,16 @@ test('A in flight does not disable or queue B; clicked buttons stay visually qui
       creates++;
       if (creates === 1) await barrier;
     }
-    await route.continue();
+    await route.fallback();
   });
   await page.goto('/');
   await page.locator('button[data-add-cart]:enabled:visible').first().click();
   await expect.poll(() => creates).toBe(1);
   try {
     const other = page.locator('button[data-add-cart]:enabled:visible').first();
+    await expect(
+      page.locator('button[data-add-cart][aria-busy="true"]'),
+    ).toHaveText('處理中…');
     await expect(other).toBeEnabled();
     await other.click();
     await expect.poll(() => creates).toBe(2);
@@ -48,11 +75,11 @@ test('A in flight does not disable or queue B; clicked buttons stay visually qui
     page.locator('button[data-add-cart][aria-busy="true"]'),
   ).toHaveCount(0);
   await expect(
-    page.getByRole('status').filter({ hasText: '已儲存購物車' }),
-  ).toHaveCount(0);
+    page.getByRole('status').filter({ hasText: '已加入購物車' }),
+  ).toBeVisible();
   await expect(
     page.getByRole('complementary', { name: '購物車操作狀態' }),
-  ).toHaveCount(0);
+  ).toBeInViewport();
   expect(creates).toBe(2);
 });
 
@@ -76,4 +103,46 @@ test('empty cart browsing creates nothing and header remains keyboard reachable'
   await page.keyboard.press('Enter');
   await expect(page).toHaveURL(/\/cart$/);
   expect(writes).toEqual([]);
+});
+
+test('add feedback floats without shifting cards, dismisses and clears on navigation', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const add = page.locator('button[data-add-cart]:enabled:visible').last();
+  await add.scrollIntoViewIfNeeded();
+  const before = await add.boundingBox();
+  await add.click();
+  const feedback = page.getByRole('complementary', { name: '購物車操作狀態' });
+  await expect(feedback).toBeInViewport();
+  await expect(add).toHaveText('加入購物車');
+  expect(await add.boundingBox()).toEqual(before);
+  await page.mouse.move(0, 0);
+  await expect(feedback).toHaveCount(0, { timeout: 7000 });
+  await add.click();
+  await expect(feedback).toBeVisible();
+  await page.getByRole('link', { name: '前往購物車' }).click();
+  await expect(page).toHaveURL(/\/cart\//);
+  await expect(feedback).toHaveCount(0);
+  await page.goBack();
+  await expect(feedback).toHaveCount(0);
+});
+
+test('feedback respects reduced motion and pauses dismissal for keyboard use', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('/');
+  await page.locator('button[data-add-cart]:enabled:visible').first().click();
+  const feedback = page.getByRole('complementary', { name: '購物車操作狀態' });
+  await expect(feedback).toBeVisible();
+  expect(
+    await feedback.evaluate((el) => getComputedStyle(el).animationName),
+  ).toBe('none');
+  await page.getByRole('link', { name: '前往購物車' }).focus();
+  await page.clock.install();
+  await page.clock.fastForward(6000);
+  await expect(feedback).toBeVisible();
+  await page.getByRole('button', { name: '關閉加入購物車提示' }).click();
+  await expect(feedback).toHaveCount(0);
 });
