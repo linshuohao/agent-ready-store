@@ -2,7 +2,9 @@
 
 VitePress 1.6.4；独立包与锁文件，不影响商城构建。[线上入口](https://agent-ready-store-docs.vercel.app)，本地预览仍可使用。
 
-在本目录执行 `pnpm --ignore-workspace install --frozen-lockfile --allow-build esbuild` 安装依赖。仓库根执行 `pnpm docs:build`、`pnpm docs:preview --port 4178`，访问 http://localhost:4178 。`pnpm docs:check` 检查静态产物链接与锚点；`node site/scripts/check.mjs --negative` 验证检查器可拒绝损坏链接。
+在本目录执行 `pnpm install --frozen-lockfile` 安装依赖。仓库根执行 `pnpm docs:build`、`pnpm docs:preview --port 4178`，访问 http://localhost:4178 。`pnpm docs:check` 检查静态产物链接与锚点；`node site/scripts/check.mjs --negative` 验证检查器可拒绝损坏链接。
+
+安全依赖固定在本目录的 `pnpm-workspace.yaml`：VitePress 1.6.4 的 Vite 覆盖为 6.4.5（同时带入已修复的 esbuild），Mermaid 11.16.1 的 KaTeX 覆盖为 0.18.2。两条覆盖仅作用于文档站，待上游稳定版纳入修复后可移除；安装时须读取本站配置，不使用 `--ignore-workspace`。
 
 链路：首页 → 产品 Demo（可切网页/按约束直接生单，选择步骤）→ 阅读库存取舍 → 交易核心 → 验证证据 → 返回原演示步骤。返回位置写入 URL，刷新保留；文档直接进入时不显示虚构的返回位置。
 
