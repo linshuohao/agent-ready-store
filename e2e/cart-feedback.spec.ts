@@ -12,52 +12,7 @@ test.skip(
   process.env.CHECKOUT_INTEGRATION !== '1',
   'isolated lifecycle API/Web required',
 );
-test('add feedback follows the viewport, dismisses and clears on navigation', async ({
-  page,
-}) => {
-  await page.goto('/');
-  const add = page.locator('button[data-add-cart]:enabled:visible').last();
-  await expect(add).toBeVisible();
-  await add.scrollIntoViewIfNeeded();
-  await add.click();
-  const feedback = page.getByRole('complementary', { name: '購物車操作狀態' });
-  await expect(feedback).toBeInViewport();
-  await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
-  await expect(feedback).toBeInViewport();
-  // Leaving the notification allows its five-second reading window to expire.
-  await page.mouse.move(0, 0);
-  await expect(feedback).toHaveCount(0, { timeout: 7000 });
-  await add.click();
-  await expect(feedback).toBeVisible();
-  await page.getByRole('link', { name: '前往購物車' }).click();
-  await expect(
-    page.getByRole('heading', { name: '購物車', exact: true }),
-  ).toBeVisible();
-  await expect(feedback).toHaveCount(0);
-  await page.goBack();
-  await expect(feedback).toHaveCount(0);
-});
-
-test('feedback respects reduced motion and pauses dismissal for keyboard use', async ({
-  page,
-}) => {
-  await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto('/');
-  await page.locator('button[data-add-cart]:enabled:visible').first().click();
-  const feedback = page.getByRole('complementary', { name: '購物車操作狀態' });
-  await expect(feedback).toBeVisible();
-  expect(
-    await feedback.evaluate((el) => getComputedStyle(el).animationName),
-  ).toBe('none');
-  await page.getByRole('link', { name: '前往購物車' }).focus();
-  await page.clock.install();
-  await page.clock.fastForward(6000);
-  await expect(feedback).toBeVisible();
-  await page.getByRole('button', { name: '關閉加入購物車提示' }).click();
-  await expect(feedback).toHaveCount(0);
-});
-
-test('A in flight does not disable or queue B; only each clicked button shows progress @ci', async ({
+test('A in flight does not disable or queue B; clicked buttons stay visually quiet @ci', async ({
   page,
 }) => {
   let release!: () => void;
@@ -81,7 +36,7 @@ test('A in flight does not disable or queue B; only each clicked button shows pr
     await other.click();
     await expect.poll(() => creates).toBe(2);
     await expect(
-      page.locator('button[data-add-cart]').filter({ hasText: '處理中…' }),
+      page.locator('button[data-add-cart][aria-busy="true"]'),
     ).toHaveCount(1);
     const sibling = page.locator('button[data-add-cart]').nth(1);
     await expect(sibling).toHaveText('加入購物車');
@@ -90,8 +45,14 @@ test('A in flight does not disable or queue B; only each clicked button shows pr
     release();
   }
   await expect(
+    page.locator('button[data-add-cart][aria-busy="true"]'),
+  ).toHaveCount(0);
+  await expect(
     page.getByRole('status').filter({ hasText: '已儲存購物車' }),
-  ).toBeVisible();
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole('complementary', { name: '購物車操作狀態' }),
+  ).toHaveCount(0);
   expect(creates).toBe(2);
 });
 

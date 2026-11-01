@@ -62,7 +62,7 @@ test('cart cards show artwork and support bounded quantity controls and draft re
   await minus.click();
   await expect(input).toHaveValue('2');
   await input.fill('0');
-  await expect(page.locator('.cart-line-subtotal')).toContainText('更新後顯示');
+  await expect(page.locator('.cart-line-subtotal')).toContainText('待確認');
   await input.press('Enter');
   await expect(
     page.getByText('請輸入正整數數量。', { exact: true }),
@@ -115,8 +115,14 @@ test('cart fee panel lists each selected line before totals without repeating un
     issues: [],
     pendingOrders: [],
   };
+  let releaseQuote: (() => void) | undefined;
+  let holdQuote = false;
   await page.route('**/api/v1/shopping/**', async (route) => {
     if (route.request().url().endsWith('/quote')) {
+      if (holdQuote)
+        await new Promise<void>((resolve) => {
+          releaseQuote = resolve;
+        });
       const selected = route
         .request()
         .postDataJSON()
@@ -215,9 +221,31 @@ test('cart fee panel lists each selected line before totals without repeating un
   expect(positions.list).toBeLessThanOrEqual(positions.totals);
   await expect(panel).toHaveCSS('overflow-y', 'visible');
   await dialog.getByRole('button', { name: '關閉明細' }).click();
+  const originalCard = await panel.locator('.cart-totals').elementHandle();
+  holdQuote = true;
   await page
     .getByRole('checkbox', { name: '選取 P001', exact: true })
     .uncheck();
+  try {
+    await expect.poll(() => Boolean(releaseQuote)).toBe(true);
+    await expect(panel.locator('.cart-totals > dl')).toHaveAttribute(
+      'aria-busy',
+      'true',
+    );
+    expect(await originalCard!.evaluate((el) => el.isConnected)).toBe(true);
+    await expect(
+      panel.locator('.cart-totals > dl .amount-row-final'),
+    ).toContainText('NT$ 3,260.00');
+  } finally {
+    releaseQuote?.();
+    holdQuote = false;
+  }
+  await expect(panel.locator('.cart-totals > dl')).toHaveAttribute(
+    'aria-busy',
+    'false',
+  );
+  expect(await originalCard!.evaluate((el) => el.isConnected)).toBe(true);
+
   await panel.getByRole('button', { name: '查看商品費用明細' }).click();
   await expect(rows).toHaveCount(1);
   await expect(rows).toContainText('保溫瓶');

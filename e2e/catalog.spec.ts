@@ -185,3 +185,39 @@ test('purchasable checkbox preserves keyboard, form submission and URL state', a
   await expect(page).not.toHaveURL(/purchasableOnly=/);
   await expect(checkbox).not.toBeChecked();
 });
+
+test('review pagination keeps the current content mounted while waiting', async ({
+  page,
+}) => {
+  let release!: () => void;
+  const barrier = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let waiting = false;
+  await page.route('**/api/v1/products/P005/reviews?**', async (route) => {
+    if (new URL(route.request().url()).searchParams.get('offset') === '2') {
+      waiting = true;
+      await barrier;
+    }
+    await route.continue();
+  });
+  await page.goto('/products/P005');
+  const next = page.getByRole('button', { name: '下一頁評論' });
+  await expect(page.locator('.review-content')).toHaveCount(2);
+  const original = await page
+    .locator('.review-content')
+    .first()
+    .elementHandle();
+  await next.click();
+  try {
+    await expect.poll(() => waiting).toBe(true);
+    await expect(next).toBeVisible();
+    await expect(next).toBeDisabled();
+    expect(await original!.evaluate((el) => el.isConnected)).toBe(true);
+    await expect(page.locator('.review-content')).toHaveCount(2);
+  } finally {
+    release();
+  }
+  await expect(page.locator('.review-content')).toHaveCount(1);
+  await expect(page.getByRole('button', { name: '上一頁評論' })).toBeEnabled();
+});

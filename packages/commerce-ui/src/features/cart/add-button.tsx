@@ -22,7 +22,7 @@ export function AddButton({
         data-product-id={productId}
         disabled={adding || !canPurchase}
         aria-busy={adding}
-        className={canPurchase && !adding ? 'disabled:opacity-100' : undefined}
+        className={canPurchase ? 'disabled:opacity-100' : undefined}
         onClick={async () => {
           if (active.current) return;
           active.current = true;
@@ -42,7 +42,7 @@ export function AddButton({
           }
         }}
       >
-        {adding ? '處理中…' : '加入購物車'}
+        加入購物車
       </Button>
       {error && <p role="status">{error}</p>}
     </>

@@ -16,7 +16,11 @@ test('browse, select, pay and resume the same cart @ci', async ({ page }) => {
   await page.getByRole('link', { name: /查看 .*，P001$/ }).click();
   await expect(page.getByRole('heading', { name: '商品規格' })).toBeVisible();
   await page.getByRole('button', { name: '加入購物車', exact: true }).click();
-  await page.getByRole('link', { name: '前往購物車', exact: true }).click();
+  const cartLink = page
+    .getByRole('banner')
+    .getByRole('link', { name: '購物車', exact: true });
+  await expect(cartLink).toHaveAttribute('href', /\/cart\/.+/);
+  await cartLink.click();
   await expect(page).toHaveURL(/\/cart\//);
   const cartId = new URL(page.url()).pathname.split('/').at(-1)!;
   await expect(page.getByLabel('數量 P001', { exact: true })).toHaveValue('1');
