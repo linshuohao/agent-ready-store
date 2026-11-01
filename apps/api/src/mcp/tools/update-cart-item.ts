@@ -6,7 +6,7 @@ import { persistentCartOperationInput } from '@store/contracts';
 import { z } from 'zod';
 import { parseToolInput as parse } from '../tool-input.js';
 
-const operationBase = persistentCartOperationInput
+const operationBase = persistentCartOperationInput.options[1]
   .omit({ operation: true })
   .extend({ cartId: z.uuid() });
 const updateItemInput = operationBase

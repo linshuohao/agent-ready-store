@@ -13,7 +13,8 @@ import {
   readCart,
   quoteCart,
   readOrders,
-  pendingOrderKey,
+  requestKey,
+  pendingRequests,
 } from '@store/commerce-ui/features/cart/lifecycle-commands';
 import { OrderCommands } from '@store/commerce-ui/features/checkout/order-commands';
 import type { Storage } from '@store/commerce-ui/transport';
@@ -79,6 +80,8 @@ const ok = (data: unknown) => ({ structuredContent: { ok: true, data } });
 function memory(): Storage {
   const m = new Map<string, string>();
   return {
+    keys: () => [...m.keys()],
+    withLock: async (_name, work) => work(),
     getItem: (k) => m.get(k) ?? null,
     setItem: (k, v) => {
       m.set(k, v);
@@ -112,11 +115,7 @@ describe('Apps protocol adapter with the shared shopping application', () => {
   it('reads carts, quotes and lists through Bridge with complete parameters', async () => {
     const { call, transport } = setup();
     expect((await readCart(id, transport)).kind).toBe('success');
-    await quoteCart(
-      id,
-      [{ productId: 'P001', expectedQuantity: 1 }],
-      transport,
-    );
+    await quoteCart(id, [{ productId: 'P001', quantity: 1 }], transport);
     await readOrders(id, 20, 10, true, transport);
     expect(call.mock.calls).toEqual([
       ['get_cart', { cartId: id }],
@@ -124,7 +123,7 @@ describe('Apps protocol adapter with the shared shopping application', () => {
         'quote_selection',
         {
           cartId: id,
-          selectedItems: [{ productId: 'P001', expectedQuantity: 1 }],
+          selectedItems: [{ productId: 'P001', quantity: 1 }],
           constraints: { currency: 'TWD' },
         },
       ],
@@ -151,24 +150,25 @@ describe('Apps protocol adapter with the shared shopping application', () => {
   it('shared initialization uses the APPS entry and never a Web endpoint', async () => {
     const { call, transport, storage } = setup();
     const input = {
-      requestId: crypto.randomUUID(),
-      initialItems: [{ productId: 'P001', quantity: 1 }],
+      initializationId: crypto.randomUUID(),
+      operationRequestId: crypto.randomUUID(),
+      productId: 'P001',
+      quantity: 1,
     };
-    expect(
-      (await new CartCommands(storage, transport).initialize(input)).kind,
-    ).toBe('success');
-    expect(call).toHaveBeenCalledWith('apps_get_or_create_cart', input);
+    expect((await new CartCommands(storage, transport).add(input)).kind).toBe(
+      'success',
+    );
+    expect(call).toHaveBeenCalledWith('apps_add_cart_item', input);
   });
   it('unknown creation persists the original request before Bridge and restores it after remount', async () => {
     const { call, transport, storage } = setup();
     const input = {
       requestId: crypto.randomUUID(),
-      expectedCartVersion: 1,
-      selectedItems: [{ productId: 'P001', expectedQuantity: 1 }],
+      selectedItems: [{ productId: 'P001', quantity: 1 }],
       constraints: { currency: 'TWD' as const },
     };
     call.mockImplementationOnce(async () => {
-      expect(storage.getItem(pendingOrderKey(id))).not.toBeNull();
+      expect(storage.getItem(requestKey(input.requestId))).not.toBeNull();
       throw Error('lost');
     });
     expect(
@@ -180,7 +180,7 @@ describe('Apps protocol adapter with the shared shopping application', () => {
         .kind,
     ).toBe('success');
     expect(call.mock.calls[1]).toEqual(['apps_create_order', payload]);
-    expect(storage.getItem(pendingOrderKey(id))).toBeNull();
+    expect(pendingRequests(storage)).toEqual([]);
   });
   it('UI pay uses apps_pay_order; a remount reads the original order without paying again', async () => {
     const { call, transport, storage } = setup();
@@ -306,8 +306,7 @@ it('temporary tool errors preserve the original creation key', async () => {
   const { call, transport, storage } = setup();
   const input = {
     requestId: crypto.randomUUID(),
-    expectedCartVersion: 1,
-    selectedItems: [{ productId: 'P001', expectedQuantity: 1 }],
+    selectedItems: [{ productId: 'P001', quantity: 1 }],
     constraints: { currency: 'TWD' as const },
   };
   call.mockResolvedValueOnce({
@@ -317,7 +316,7 @@ it('temporary tool errors preserve the original creation key', async () => {
   expect(
     (await createCartOrder(storage, id, input, undefined, transport)).kind,
   ).toBe('unknown');
-  expect(storage.getItem(pendingOrderKey(id))).not.toBeNull();
+  expect(storage.getItem(requestKey(input.requestId))).not.toBeNull();
   await createCartOrder(storage, id, undefined, undefined, transport);
   expect(call.mock.calls[1]).toEqual(call.mock.calls[0]);
 });
@@ -535,4 +534,48 @@ it('isolates identical grouped searches by Host tool call ID', () => {
   expect(
     toolDeliveryContext('search_products', input, raw, storage, 'call-a').route,
   ).toBe(a.route);
+});
+
+it('readonly result query maps only to get_request_result and never resumes an order', async () => {
+  const { call, transport, storage } = setup();
+  const requestId = crypto.randomUUID();
+  call.mockResolvedValueOnce(ok({ status: 'found', kind: 'order', order }));
+  const { queryRequest } =
+    await import('@store/commerce-ui/features/cart/lifecycle-commands');
+  const result = await queryRequest(
+    storage,
+    { kind: 'order', cartId: id, requestId },
+    transport,
+  );
+  expect(result.kind).toBe('success');
+  expect(call.mock.calls).toEqual([
+    ['get_request_result', { kind: 'order', cartId: id, requestId }],
+  ]);
+});
+
+it('known order success survives local association failure while durable recovery evidence remains', async () => {
+  const { transport, storage } = setup();
+  const originalSet = storage.setItem;
+  storage.setItem = (key, value) => {
+    if (key.startsWith('store.order.created.')) throw Error('quota');
+    originalSet(key, value);
+  };
+  const requestId = crypto.randomUUID();
+  const response = await createCartOrder(
+    storage,
+    id,
+    {
+      requestId,
+      selectedItems: [{ productId: 'P001', quantity: 2 }],
+      constraints: { currency: 'TWD' },
+    },
+    undefined,
+    transport,
+  );
+  expect(response).toMatchObject({
+    kind: 'success',
+    recoveryWarning: true,
+    data: { order: { orderId: oid } },
+  });
+  expect(pendingRequests(storage).map((r) => r.requestId)).toEqual([requestId]);
 });

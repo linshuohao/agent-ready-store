@@ -2,7 +2,8 @@ import { httpTransport, type Transport } from '../../transport';
 import { z } from 'zod';
 import {
   shoppingCartViewOutput,
-  getOrCreateCartInput,
+  addCartItemInput,
+  requestResultOutput,
   persistentCartOperationInput,
   selectionQuoteOutput,
   orderViewOutput,
@@ -10,16 +11,19 @@ import {
   type ShoppingCartView,
 } from '@store/contracts';
 export type Call<T> =
-  | { kind: 'success'; data: T }
+  | { kind: 'success'; data: T; recoveryWarning?: boolean }
   | {
       kind: 'failure';
-      error: { code: string; issues?: { productId: string; code: string }[] };
+      error: {
+        code: string;
+        details?: { cartId?: string; initializationId?: string };
+        issues?: { productId: string; code: string }[];
+      };
     }
   | { kind: 'unknown' };
-export type Storage = Pick<
-  globalThis.Storage,
-  'getItem' | 'setItem' | 'removeItem'
->;
+export type { Storage } from '../../transport';
+import type { Storage } from '../../transport';
+import type { PurchaseSelection } from './purchase-selection';
 export const currentCartKey = 'store.currentCartId';
 export const pendingCartKey = (id?: string) =>
   id ? `store.cart.pending.${id}` : 'store.cart.initialize';
@@ -67,7 +71,7 @@ export const readCart = (id: string, transport: Transport = httpTransport) =>
   );
 export const quoteCart = (
   id: string,
-  selectedItems: { productId: string; expectedQuantity: number }[],
+  selectedItems: { productId: string; quantity: number }[],
   transport: Transport = httpTransport,
 ) =>
   shoppingRequest(
@@ -104,178 +108,353 @@ export function acceptCart(
     return current;
   return incoming;
 }
-const initialization = getOrCreateCartInput.options[1];
-const pending = z.discriminatedUnion('kind', [
-  z
-    .object({
-      kind: z.literal('initialize'),
-      input: initialization,
-      entrance: z.literal('webmcp').optional(),
-    })
-    .strict(),
-  z
-    .object({
-      kind: z.literal('operate'),
-      cartId: z.uuid(),
-      input: persistentCartOperationInput,
-    })
-    .strict(),
-]);
-// Cart-only request persistence. Provider owns navigation, drafts and UI lifecycle.
+export const initializationKey = 'store.cart.initializationId';
+const requestPrefix = 'store.request.v2.';
+export const requestKey = (id: string) => requestPrefix + id;
+export const lastCreatedOrderKey = (id: string) => `store.order.created.${id}`;
+// Legacy keys are read only. Never replay these payloads after the cutover.
+export const pendingOrderKey = (id: string) => `store.order.create.${id}`;
+export type RecoveryRequest = {
+  requestId: string;
+  kind: 'cart' | 'order' | 'initialize';
+  cartId?: string;
+  initializationId?: string;
+  path?: string;
+  body?: unknown;
+  legacy?: boolean;
+  completed?: boolean;
+  selectionOwnership?: PurchaseSelection;
+  draftOwnership?: Record<string, string>;
+};
+export function pendingRequests(storage: Storage): RecoveryRequest[] {
+  if (!storage.keys) throw Error('LOCAL_STORAGE_UNAVAILABLE');
+  const result: RecoveryRequest[] = [];
+  for (const key of storage.keys()) {
+    const raw = storage.getItem(key);
+    if (!raw) continue;
+    if (key.startsWith(requestPrefix)) {
+      const r = JSON.parse(raw) as RecoveryRequest;
+      if (!r.completed) result.push(r);
+    } else if (key === pendingCartKey()) {
+      const r = JSON.parse(raw);
+      result.push({
+        kind: 'initialize',
+        requestId: r.input.requestId,
+        legacy: true,
+      });
+    } else if (key.startsWith('store.cart.pending.')) {
+      const r = JSON.parse(raw);
+      result.push({
+        kind: 'cart',
+        cartId: r.cartId,
+        requestId: r.input.operationRequestId,
+        legacy: true,
+      });
+    } else if (key.startsWith('store.order.create.')) {
+      const r = JSON.parse(raw);
+      result.push({
+        kind: 'order',
+        cartId: key.slice('store.order.create.'.length),
+        requestId: (r.input ?? r).requestId,
+        legacy: true,
+      });
+    }
+  }
+  return result;
+}
+export async function addIdentity(
+  storage: Storage,
+  requested?: { cartId: string } | { initializationId: string },
+): Promise<{ cartId: string } | { initializationId: string }> {
+  if (!storage.withLock) throw Error('INITIALIZATION_LOCK_UNAVAILABLE');
+  return storage.withLock('store.cart.identity', () => {
+    const cartId = storage.getItem(currentCartKey);
+    const initializationId = storage.getItem(initializationKey);
+    if (requested) {
+      if ('cartId' in requested) {
+        if (cartId !== requested.cartId) throw Error('STALE_CONTEXT');
+        return requested;
+      }
+      if (cartId) throw Error('STALE_CONTEXT');
+      if (initializationId === requested.initializationId) return requested;
+      if (cartId || initializationId) throw Error('STALE_CONTEXT');
+    }
+    if (cartId) return { cartId };
+    if (storage.getItem(pendingCartKey()))
+      throw Error('LEGACY_RECOVERY_REQUIRED');
+    if (initializationId) return { initializationId };
+    const created =
+      requested && 'initializationId' in requested
+        ? requested.initializationId
+        : crypto.randomUUID();
+    storage.setItem(initializationKey, created);
+    return { initializationId: created };
+  });
+}
+const knownResults = new WeakMap<
+  Storage,
+  Map<string, z.infer<typeof requestResultOutput>>
+>();
+function rememberResult(
+  storage: Storage,
+  requestId: string,
+  result: z.infer<typeof requestResultOutput>,
+) {
+  let results = knownResults.get(storage);
+  if (!results) {
+    results = new Map();
+    knownResults.set(storage, results);
+  }
+  results.set(requestId, result);
+}
+export async function queryRequest(
+  storage: Storage,
+  request: RecoveryRequest,
+  transport: Transport = httpTransport,
+) {
+  const params = new URLSearchParams({
+    kind: request.kind,
+    requestId: request.requestId,
+  });
+  if (request.cartId) params.set('cartId', request.cartId);
+  if (request.initializationId)
+    params.set('initializationId', request.initializationId);
+  let recoveryWarning = false;
+  const result = await shoppingRequest(
+    `/request-result?${params}`,
+    requestResultOutput.refine(
+      (r) =>
+        r.kind === request.kind &&
+        (r.status !== 'found' ||
+          !request.cartId ||
+          ('order' in r ? r.order.cartId : r.cart.cartId) === request.cartId),
+    ),
+    undefined,
+    transport,
+  );
+  // A late not_found must never erase a success already observed by another query/write.
+  if (result.kind === 'success' && result.data.status === 'found') {
+    rememberResult(storage, request.requestId, result.data);
+    try {
+      if ('order' in result.data)
+        storage.setItem(
+          lastCreatedOrderKey(result.data.order.cartId),
+          result.data.order.orderId,
+        );
+      else await adoptInitialization(storage, request, result.data.cart);
+      completeRequest(storage, request);
+    } catch {
+      recoveryWarning = true;
+    }
+  }
+  const known = knownResults.get(storage)?.get(request.requestId);
+  return known
+    ? { kind: 'success' as const, data: known, recoveryWarning }
+    : result;
+}
+function completeRequest(storage: Storage, request: RecoveryRequest) {
+  storage.setItem(
+    requestKey(request.requestId),
+    JSON.stringify({ ...request, completed: true }),
+  );
+  if (request.legacy)
+    storage.removeItem(
+      request.kind === 'initialize'
+        ? pendingCartKey()
+        : request.kind === 'order'
+          ? pendingOrderKey(request.cartId!)
+          : pendingCartKey(request.cartId),
+    );
+}
+async function adoptInitialization(
+  storage: Storage,
+  request: RecoveryRequest,
+  cart: ShoppingCartView,
+) {
+  if (request.cartId || !storage.withLock) return;
+  await storage.withLock('store.cart.identity', () => {
+    // Compare the original identity before adopting; a late response cannot switch carts.
+    if (
+      !storage.getItem(currentCartKey) &&
+      (request.legacy ||
+        storage.getItem(initializationKey) === request.initializationId)
+    )
+      storage.setItem(currentCartKey, cart.cartId);
+  });
+}
+function persistRequest(storage: Storage, request: RecoveryRequest) {
+  if (!storage.keys) throw Error('LOCAL_STORAGE_UNAVAILABLE');
+  const old = storage.getItem(requestKey(request.requestId));
+  if (
+    old &&
+    JSON.stringify({ ...JSON.parse(old), completed: undefined }) !==
+      JSON.stringify(request)
+  )
+    throw Error('LOCAL_RECOVERY_INVALID');
+  storage.setItem(requestKey(request.requestId), JSON.stringify(request));
+}
+// Each request owns its own durable slot. No cart-wide busy flag or recovery queue.
 export class CartCommands {
   private active = new Set<string>();
   constructor(
     private storage: Storage,
     private transport: Transport = httpTransport,
   ) {}
-  hasPending(id?: string) {
-    return this.storage.getItem(pendingCartKey(id)) !== null;
+  list() {
+    return pendingRequests(this.storage).filter((r) => r.kind !== 'order');
   }
-  async initialize(input: z.infer<typeof initialization>, entrance?: 'webmcp') {
+  hasPending(id?: string) {
+    return this.list().some((r) => !id || r.cartId === id);
+  }
+  async add(input: z.infer<typeof addCartItemInput>, entrance?: 'webmcp') {
+    const parsed = addCartItemInput.safeParse(input);
+    if (!parsed.success) return fail('VALIDATION_ERROR');
     return this.start({
-      kind: 'initialize',
-      input,
-      ...(entrance ? { entrance } : {}),
+      kind: 'cart',
+      requestId: input.operationRequestId,
+      ...('cartId' in input
+        ? { cartId: input.cartId }
+        : { initializationId: input.initializationId }),
+      path: `${entrance ? '/webmcp' : ''}/carts/add`,
+      body: parsed.data,
     });
   }
   async operate(
     cartId: string,
     input: z.infer<typeof persistentCartOperationInput>,
   ) {
-    return this.start({ kind: 'operate', cartId, input });
+    const parsed = persistentCartOperationInput.safeParse(input);
+    if (!parsed.success) return fail('VALIDATION_ERROR');
+    return this.start({
+      kind: 'cart',
+      cartId,
+      requestId: input.operationRequestId,
+      path: `/carts/${encodeURIComponent(cartId)}/operations`,
+      body: parsed.data,
+    });
   }
   private async start(
-    request: z.infer<typeof pending>,
+    request: RecoveryRequest,
   ): Promise<Call<ShoppingCartView>> {
-    const id = request.kind === 'operate' ? request.cartId : undefined;
     try {
-      const existing = this.storage.getItem(pendingCartKey(id));
-      if (existing)
-        return existing === JSON.stringify(request)
-          ? this.retry(id)
-          : fail('CART_RECOVERY_REQUIRED');
-      this.storage.setItem(pendingCartKey(id), JSON.stringify(request));
+      persistRequest(this.storage, request);
     } catch {
       return fail('LOCAL_STORAGE_UNAVAILABLE');
     }
-    return this.retry(id);
+    return this.retry(request.requestId);
   }
-  async retry(id?: string): Promise<Call<ShoppingCartView>> {
-    const key = pendingCartKey(id);
-    if (this.active.has(key)) return fail('CART_BUSY');
-    let request: z.infer<typeof pending>;
+  async query(requestId: string) {
+    const request = this.list().find((r) => r.requestId === requestId);
+    if (!request) return fail('NO_PENDING_REQUEST');
+    return queryRequest(this.storage, request, this.transport);
+  }
+  async retry(requestId: string): Promise<Call<ShoppingCartView>> {
+    if (this.active.has(requestId)) return fail('REQUEST_BUSY');
+    let request: RecoveryRequest;
     try {
-      const raw = this.storage.getItem(key);
-      if (!raw) return fail('NO_PENDING_REQUEST');
-      const parsed = pending.safeParse(JSON.parse(raw));
-      if (
-        !parsed.success ||
-        (id
-          ? parsed.data.kind !== 'operate' || parsed.data.cartId !== id
-          : parsed.data.kind !== 'initialize')
-      )
-        return fail('LOCAL_RECOVERY_INVALID');
-      request = parsed.data;
+      const found = this.list().find((r) => r.requestId === requestId);
+      if (!found) return fail('NO_PENDING_REQUEST');
+      if (found.legacy || !found.path) return fail('LEGACY_RECOVERY_REQUIRED');
+      request = found;
     } catch {
       return fail('LOCAL_STORAGE_UNAVAILABLE');
     }
-    this.active.add(key);
+    this.active.add(requestId);
     try {
-      const response = await shoppingRequest(
-        request.kind === 'initialize'
-          ? request.entrance === 'webmcp'
-            ? '/webmcp/carts'
-            : '/carts'
-          : `/carts/${encodeURIComponent(request.cartId)}/operations`,
+      const result = await shoppingRequest(
+        request.path!,
         shoppingCartViewOutput.refine(
-          (c) => request.kind === 'initialize' || c.cartId === request.cartId,
+          (c) => !request.cartId || c.cartId === request.cartId,
         ),
-        request.input,
+        request.body,
         this.transport,
       );
-      if (response.kind !== 'unknown') {
-        // Persist the recovered ID before clearing initialization; storage failure preserves the original key.
+      if (result.kind !== 'unknown') {
         try {
-          if (
-            request.kind === 'initialize' &&
-            response.kind === 'success' &&
-            !this.storage.getItem(currentCartKey)
-          )
-            this.storage.setItem(currentCartKey, response.data.cartId);
-          this.storage.removeItem(key);
+          if (result.kind === 'success') {
+            rememberResult(this.storage, request.requestId, {
+              status: 'found',
+              kind: 'cart',
+              cart: result.data,
+            });
+            await adoptInitialization(this.storage, request, result.data);
+          }
+          completeRequest(this.storage, request);
         } catch {
-          return fail('LOCAL_STORAGE_UNAVAILABLE');
+          if (result.kind === 'success')
+            return { ...result, recoveryWarning: true };
         }
       }
-      return response;
+      return result;
     } finally {
-      this.active.delete(key);
+      this.active.delete(requestId);
     }
   }
 }
-export const lastCreatedOrderKey = (id: string) => `store.order.created.${id}`;
-export const pendingOrderKey = (id: string) => `store.order.create.${id}`;
 export async function createCartOrder(
   storage: Storage,
   id: string,
   input?: z.infer<typeof createOrderInput>,
   entrance?: 'webmcp',
   transport: Transport = httpTransport,
+  requestId?: string,
+  selectionOwnership?: PurchaseSelection,
+  draftOwnership?: Record<string, string>,
 ) {
-  const key = pendingOrderKey(id);
-  let body: z.infer<typeof createOrderInput>;
+  let request: RecoveryRequest;
   try {
-    const stored = storage.getItem(key);
-    const saved = stored ? JSON.parse(stored) : null;
-    if (
-      saved?.input &&
-      !z
-        .object({
-          input: createOrderInput,
-          entrance: z.literal('webmcp').optional(),
-        })
-        .strict()
-        .safeParse(saved).success
-    )
-      return fail('LOCAL_RECOVERY_INVALID');
-    const original = saved?.input ?? saved;
-    const originalEntrance = saved?.input ? saved.entrance : undefined;
-    if (
-      input &&
-      stored &&
-      (JSON.stringify(input) !== JSON.stringify(original) ||
-        entrance !== originalEntrance)
-    )
-      return fail('ORDER_RECOVERY_REQUIRED');
-    const parsed = createOrderInput.safeParse(input ?? original);
-    if (stored) entrance = originalEntrance;
-    if (!parsed.success) return fail('LOCAL_RECOVERY_INVALID');
-    body = parsed.data;
-    if (input && !stored)
-      storage.setItem(
-        key,
-        JSON.stringify({ input: body, ...(entrance ? { entrance } : {}) }),
+    if (input) {
+      const parsed = createOrderInput.safeParse(input);
+      if (!parsed.success) return fail('VALIDATION_ERROR');
+      request = {
+        kind: 'order',
+        cartId: id,
+        requestId: input.requestId,
+        ...(selectionOwnership ? { selectionOwnership } : {}),
+        ...(draftOwnership ? { draftOwnership } : {}),
+        body: parsed.data,
+        path: `${entrance === 'webmcp' ? '/webmcp' : ''}/carts/${encodeURIComponent(id)}/orders`,
+      };
+      persistRequest(storage, request);
+    } else {
+      const found = pendingRequests(storage).find(
+        (r) =>
+          r.kind === 'order' &&
+          r.cartId === id &&
+          (!requestId || r.requestId === requestId),
       );
+      if (!found) return fail('NO_PENDING_REQUEST');
+      if (found.legacy || !found.path) return fail('LEGACY_RECOVERY_REQUIRED');
+      request = found;
+    }
   } catch {
     return fail('LOCAL_STORAGE_UNAVAILABLE');
   }
   const response = await shoppingRequest(
-    `${entrance === 'webmcp' ? '/webmcp' : ''}/carts/${encodeURIComponent(id)}/orders`,
+    request.path!,
     z.object({
       order: orderViewOutput.refine((o) => o.cartId === id),
       cart: shoppingCartViewOutput.refine((c) => c.cartId === id),
     }),
-    body,
+    request.body,
     transport,
   );
-  if (response.kind !== 'unknown')
+  if (response.kind === 'success')
+    rememberResult(storage, request.requestId, {
+      status: 'found',
+      kind: 'order',
+      order: response.data.order,
+    });
+  if (response.kind !== 'unknown') {
     try {
       if (response.kind === 'success')
         storage.setItem(lastCreatedOrderKey(id), response.data.order.orderId);
-      storage.removeItem(key);
+      completeRequest(storage, request);
     } catch {
-      return fail('LOCAL_STORAGE_UNAVAILABLE');
+      if (response.kind === 'success')
+        return { ...response, recoveryWarning: true };
     }
+  }
   return response;
 }
 export function cartFailure(code: string) {
@@ -284,7 +463,10 @@ export function cartFailure(code: string) {
     CART_NOT_FOUND: '找不到原購物車；請核對保存的連結，不會自動另建車。',
     CART_ITEMS_INVALID: '商品或數量目前無法購買，請調整問題商品。',
     VALIDATION_ERROR: '請輸入有效的商品與正整數數量。',
-    CART_RECOVERY_REQUIRED: '上次保存結果未確認，請重試原請求。',
+    CART_RECOVERY_REQUIRED: '上次保存結果未確認，請先查詢結果。',
+    LEGACY_RECOVERY_REQUIRED: '舊請求僅支援查詢結果，不會重新執行。',
+    INITIALIZATION_LOCK_UNAVAILABLE:
+      '此環境不支援安全建立購物車，請使用支援 Web Locks 的瀏覽器。',
     ORDER_RECOVERY_REQUIRED: '上次建立訂單結果未確認，請恢復原請求。',
     LOCAL_STORAGE_UNAVAILABLE: '無法保存恢復資料，請檢查瀏覽器儲存設定後重試。',
     LOCAL_RECOVERY_INVALID:

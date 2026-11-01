@@ -19,10 +19,10 @@
 
 ## 当前产品结果
 
-- 持续Cart、整行转单、固定金额、15分钟预留、同单支付/取消/到期、多单额度与统计已实现。真实PostgreSQL事务、并发、幂等、回滚和释放记录见结算Tasks。
+- 持续Cart、按明确购买量生单并清理所购SKU整行、固定金额、15分钟预留、同单支付/取消/到期、多单额度与统计已实现。真实PostgreSQL事务、并发、幂等、回滚和释放记录见结算Tasks。
 - Web与Apps共用commerce-ui完整购物应用；MCP无Apps时由网页承接Human支付，WebMCP导航原单，Apps内嵌支付。型号选择不是购买或支付批准。
 - 多目标搜索最多5组、默认每组4项；简繁规范化及受控中英文别名，保留预算、品牌与规格约束。支持能力不足时对话兜底，不承诺任意翻译。
-- SDK v2与新协议增量已实现；当前搜索/结算两份v8资源精确保留v4～v7最终资源别名。协议、Host与浏览器验证分别举证。
+- SDK v2与新协议增量已实现；本分支搜索/结算两份v9资源精确保留v4～v8最终资源别名（线上版本另核实）。协议、Host与浏览器验证分别举证。
 
 ## 验收与版本边界
 
@@ -51,3 +51,13 @@ Requirements / Product Design表达产品与体验结果，Technical Design表�
 `feat/catalog-discovery`已实现共享分类API/MCP及Web分类下拉框，尚未Push、Merge或部署。Human已批准分类入口限定豁免到期扫描；其他入口维持现有行为。实际命令、审查和Host验收进度集中在[Change Tasks](../../openspec/changes/archive/2026-10-31-catalog-discovery/tasks.md)。真实Codex CLI已执行四类只读场景，但CLI不提供Apps卡片渲染证据；支持Apps的真实Host视觉验收及最终Human验收仍待完成，不据此宣称线上已更新。向量／混合搜索仅保留为[后续评估方向](../../openspec/changes/archive/2026-10-31-catalog-discovery/design.md#future-evolution)。
 
 2026-10-31后续：真实Codex Apps Host已通过同卡分组、空结果、预算保留、售罄按钮禁用、隐藏表单及卡片内重查验收，补齐上段CLI的视觉限制；详情见上述Change Tasks最新验收节。Human已授权验收通过后归档、合并与推送，线上部署状态需另核对，不能仅由本地验收推定。
+
+## 购物车命令隔离（本地已验收，2026-11-01）
+
+`feat/cart-command-state-isolation`的规划提交`5fa7c6e`、实施提交`6efb4d6`保留完整历史，实施Checkpoint Guard已通过；Human确认本地新服务验证通过并授权提交。当前3000/3002已切换至此分支配套前后端，原本地数据保留；修复前3000仍运行旧工作树，因此不能用旧地址行为判断本分支是否生效。
+
+独立加购、共享初始化身份、显式数量生单、SKU整行清理及只读结果查询已实现；正式Spec在本分支同步。真实PostgreSQL/HTTP/MCP、桌面与移动端生产构建及独立Review证据集中在[Change Tasks](../../openspec/changes/archive/2026-11-01-cart-command-state-isolation/tasks.md)，不把本地通过写成远程CI通过。
+
+仍未Push/Merge/远程部署。Human明确真实Apps Host应在部署后验收，因此部署前验证已通过，本Change可归档；这不等于真实Host已通过。SDK Host替身和后端工具集成证据保持原有范围。
+
+**部署后验收：** 部署匹配的API/Web/Apps资源后刷新Host连接与工具发现，验证新quantity/无版本add契约、Apps呈现与重挂载恢复、首次加购身份以及只读结果查询；记录实际版本与结果。当前会话连接器发现仍展示旧购物契约，不能以旧工具调用证明新版本通过。该验收不再阻塞本轮开发归档，远程部署仍需对应授权。

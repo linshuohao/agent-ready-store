@@ -11,7 +11,8 @@ const orderCreation = createOrderInput.safeExtend({ cartId: z.uuid() });
 export function createAppsCreateOrder(carts: CartService): ToolDefinition {
   return {
     name: 'apps_create_order',
-    description: 'UI Bridge整行生单，完整选择及限制，不支付。',
+    description:
+      'UI Bridge按显式商品和quantity生单，完整选择及限制，不依赖车数量或版本；成功按SKU移除当前车整行，不支付。未知先get_request_result只读核实；明确继续原购买才提交原键和冻结载荷。',
     inputSchema: orderCreation,
     annotations: {
       readOnlyHint: false,
@@ -41,12 +42,6 @@ export function createAppsCreateOrder(carts: CartService): ToolDefinition {
             throw new ToolError(
               error,
               '确定失败；核对constraintViolations中的金额（总额含运费）。不提高预算；仅在原授权范围内重新选品，否则停止说明。',
-            );
-          case 'CART_VERSION_CONFLICT':
-          case 'SELECTION_CHANGED':
-            throw new ToolError(
-              error,
-              '确定失败；重读原购物车并核对完整目标及数量，不用新版本自动重放旧编辑。',
             );
           case 'REQUEST_CONFLICT':
             throw new ToolError(

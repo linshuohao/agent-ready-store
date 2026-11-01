@@ -43,15 +43,36 @@ const catalog = new Catalog(readFileSync('references/products.json', 'utf8'));
       requestId: randomUUID(),
       initialItems: items,
     });
+    async function initialize(
+      target: CartService,
+      input: ReturnType<typeof init>,
+      channel: 'WEB' | 'MCP' | 'WEBMCP' | 'APPS',
+    ) {
+      if (!input.initialItems.length) return target.getOrCreate(input, channel);
+      let cart;
+      for (const [index, item] of input.initialItems.entries())
+        cart = await target.add(
+          {
+            initializationId: input.requestId,
+            operationRequestId:
+              index === 0
+                ? input.requestId
+                : input.requestId.slice(0, -4) +
+                  index.toString(16).padStart(4, '0'),
+            ...item,
+          },
+          channel,
+        );
+      return cart!;
+    }
     const create = (
       cart: any,
       selectedItems = cart.items.map((i: any) => ({
         productId: i.productId,
-        expectedQuantity: i.quantity,
+        quantity: i.quantity,
       })),
     ) => ({
       requestId: randomUUID(),
-      expectedCartVersion: cart.cartVersion,
       selectedItems,
       constraints: { currency: 'TWD' },
     });
@@ -60,7 +81,7 @@ const catalog = new Catalog(readFileSync('references/products.json', 'utf8'));
       const a = new OrderExpiryWorker(service);
       const b = new OrderExpiryWorker(new CartService(catalog, db));
       try {
-        const cart = await service.getOrCreate(init(), 'WEB');
+        const cart = await initialize(service, init(), 'WEB');
         const { order } = await service.createOrder(
           cart.cartId,
           create(cart),
@@ -112,15 +133,14 @@ const catalog = new Catalog(readFileSync('references/products.json', 'utf8'));
     it('initializes once across instances and resumes current contents before validation', async () => {
       const input = init();
       const results = await Promise.all([
-        service.getOrCreate(input, 'MCP'),
-        new CartService(catalog, db).getOrCreate(input, 'MCP'),
+        initialize(service, input, 'MCP'),
+        initialize(new CartService(catalog, db), input, 'MCP'),
       ]);
       expect(results[0].cartId).toBe(results[1].cartId);
       expect(await db.cart.count({ where: { agentCreated: true } })).toBe(1);
       const cart = results[0];
       const op = {
         operationRequestId: randomUUID(),
-        expectedCartVersion: 1,
         operation: { type: 'add_item', productId: 'P001', quantity: 1 },
       };
       await Promise.all([
@@ -128,7 +148,7 @@ const catalog = new Catalog(readFileSync('references/products.json', 'utf8'));
         service.operate(cart.cartId, op),
       ]);
       expect(
-        (await new CartService(catalog, db).getOrCreate(input, 'MCP')).items[0]
+        (await initialize(new CartService(catalog, db), input, 'MCP')).items[0]
           .quantity,
       ).toBe(2);
       await expect(
@@ -137,12 +157,13 @@ const catalog = new Catalog(readFileSync('references/products.json', 'utf8'));
           operation: { ...op.operation, quantity: 2 },
         }),
       ).rejects.toMatchObject({ code: 'REQUEST_CONFLICT' });
-      await expect(service.getOrCreate(init([]), 'MCP')).rejects.toMatchObject({
+      await expect(initialize(service, init([]), 'MCP')).rejects.toMatchObject({
         code: 'VALIDATION_ERROR',
       });
     });
     it('quotes stock shortages without allowing creation or changing reservations', async () => {
-      const cart = await service.getOrCreate(
+      const cart = await initialize(
+        service,
         init([{ productId: 'P001', quantity: 2 }]),
         'WEB',
       );
@@ -150,7 +171,7 @@ const catalog = new Catalog(readFileSync('references/products.json', 'utf8'));
         where: { productId: 'P001' },
         data: { quantity: 2 },
       });
-      const rival = await service.getOrCreate(init(), 'WEB');
+      const rival = await initialize(service, init(), 'WEB');
       await service.createOrder(rival.cartId, create(rival), 'WEB');
       const body = create(cart);
       const quote = await service.quoteSelection(
@@ -172,14 +193,15 @@ const catalog = new Catalog(readFileSync('references/products.json', 'utf8'));
       expect((await service.get(cart.cartId)).items[0].quantity).toBe(2);
     });
     it('moves complete selected rows, freezes amounts and keeps cart independently editable', async () => {
-      const cart = await service.getOrCreate(
+      const cart = await initialize(
+        service,
         init([
           { productId: 'P001', quantity: 1 },
           { productId: 'P003', quantity: 1 },
         ]),
         'WEB',
       );
-      const body = create(cart, [{ productId: 'P001', expectedQuantity: 1 }]);
+      const body = create(cart, [{ productId: 'P001', quantity: 1 }]);
       const made = await service.createOrder(cart.cartId, body, 'MCP');
       expect(made.order).toMatchObject({
         status: 'CHECKOUT',
@@ -187,7 +209,7 @@ const catalog = new Catalog(readFileSync('references/products.json', 'utf8'));
         effectiveStatus: 'CHECKOUT',
       });
       expect(made.cart.items.map((i: any) => i.productId)).toEqual(['P003']);
-      expect(made.cart.cartVersion).toBe(2);
+      expect(made.cart.cartVersion).toBe(cart.cartVersion + 1);
       expect(
         Date.parse(made.order.reservationExpiresAt) -
           Date.parse(made.order.createdAt),
@@ -206,7 +228,8 @@ const catalog = new Catalog(readFileSync('references/products.json', 'utf8'));
       expect((await service.listOrders(cart.cartId, {})).items).toHaveLength(1);
     });
     it('rejects invalid selection and budget atomically, ignores unselected problem rows', async () => {
-      const cart = await service.getOrCreate(
+      const cart = await initialize(
+        service,
         init([
           { productId: 'P001', quantity: 1 },
           { productId: 'P003', quantity: 1 },
@@ -219,8 +242,8 @@ const catalog = new Catalog(readFileSync('references/products.json', 'utf8'));
       });
       for (const selected of [
         [],
-        [{ productId: 'P001', expectedQuantity: 2 }],
-        [{ productId: 'P002', expectedQuantity: 1 }],
+        [{ productId: 'P001', quantity: 0 }],
+        [{ productId: 'P002', quantity: 1 }],
       ])
         await expect(
           service.createOrder(cart.cartId, create(cart, selected), 'WEB'),
@@ -229,27 +252,29 @@ const catalog = new Catalog(readFileSync('references/products.json', 'utf8'));
         service.createOrder(
           cart.cartId,
           {
-            ...create(cart, [{ productId: 'P001', expectedQuantity: 1 }]),
+            ...create(cart, [{ productId: 'P001', quantity: 1 }]),
             constraints: { currency: 'TWD', maxTotal: '0.01' },
           },
           'WEB',
         ),
       ).rejects.toMatchObject({ code: 'BUDGET_EXCEEDED' });
       expect(await db.order.count()).toBe(0);
-      expect((await service.get(cart.cartId)).cartVersion).toBe(1);
+      expect((await service.get(cart.cartId)).cartVersion).toBe(
+        cart.cartVersion,
+      );
       expect(
         (
           await service.createOrder(
             cart.cartId,
-            create(cart, [{ productId: 'P001', expectedQuantity: 1 }]),
+            create(cart, [{ productId: 'P001', quantity: 1 }]),
             'WEB',
           )
         ).order.aiEligible,
       ).toBe(false);
     });
     it('serializes final stock competition and same-cart old versions', async () => {
-      const a = await service.getOrCreate(init(), 'WEB'),
-        b = await service.getOrCreate(init(), 'WEB');
+      const a = await initialize(service, init(), 'WEB'),
+        b = await initialize(service, init(), 'WEB');
       await db.inventory.update({
         where: { productId: 'P001' },
         data: { quantity: 1 },
@@ -272,7 +297,7 @@ const catalog = new Catalog(readFileSync('references/products.json', 'utf8'));
       ).toBe(0);
     });
     it('closes once on cancel/pay races and expires using database time without returning cart rows', async () => {
-      const cart = await service.getOrCreate(init(), 'WEB');
+      const cart = await initialize(service, init(), 'WEB');
       const { order } = await service.createOrder(
         cart.cartId,
         create(cart),
@@ -289,7 +314,7 @@ const catalog = new Catalog(readFileSync('references/products.json', 'utf8'));
           .reservedQuantity,
       ).toBe(0);
       expect((await service.get(cart.cartId)).items).toHaveLength(0);
-      const another = await service.getOrCreate(init(), 'WEB');
+      const another = await initialize(service, init(), 'WEB');
       const made = await service.createOrder(
         another.cartId,
         create(another),
@@ -324,9 +349,9 @@ const catalog = new Catalog(readFileSync('references/products.json', 'utf8'));
         }),
       ).rejects.toBeDefined();
       await expect(
-        service.getOrCreate(init([{ productId: 'P008', quantity: 1 }]), 'WEB'),
+        initialize(service, init([{ productId: 'P008', quantity: 1 }]), 'WEB'),
       ).rejects.toMatchObject({ code: 'CART_ITEMS_INVALID' });
-      const cart = await service.getOrCreate(init(), 'WEB');
+      const cart = await initialize(service, init(), 'WEB');
       const { order } = await service.createOrder(
         cart.cartId,
         create(cart),
@@ -353,11 +378,11 @@ const catalog = new Catalog(readFileSync('references/products.json', 'utf8'));
       ).rejects.toBeDefined();
     });
     it('keeps removed, zero-price and missing-stock validation local to edited target', async () => {
-      const cart = await service.getOrCreate(init(), 'WEB');
+      const cart = await initialize(service, init(), 'WEB');
       await db.inventory.delete({ where: { productId: 'P001' } });
       const op = (type: string, productId: string, quantity?: number) => ({
         operationRequestId: randomUUID(),
-        expectedCartVersion: 1,
+        ...(type === 'add_item' ? {} : { expectedCartVersion: 1 }),
         operation: {
           type,
           productId,
@@ -387,10 +412,11 @@ const catalog = new Catalog(readFileSync('references/products.json', 'utf8'));
       expect(
         (await service.operate(cart.cartId, op('remove_item', 'P001'))).items,
       ).toEqual([]);
-      expect(await db.cartOperation.count()).toBe(1);
+      expect(await db.cartOperation.count()).toBe(2);
     });
-    it('rejects competing distinct keys on one old cart version without losing rows', async () => {
-      const cart = await service.getOrCreate(
+    it('allows competing distinct purchase keys independently of cart version', async () => {
+      const cart = await initialize(
+        service,
         init([
           { productId: 'P001', quantity: 1 },
           { productId: 'P003', quantity: 1 },
@@ -401,20 +427,17 @@ const catalog = new Catalog(readFileSync('references/products.json', 'utf8'));
         ['P001', 'P003'].map((productId) =>
           service.createOrder(
             cart.cartId,
-            create(cart, [{ productId, expectedQuantity: 1 }]),
+            create(cart, [{ productId, quantity: 1 }]),
             'WEB',
           ),
         ),
       );
-      expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(1);
-      expect(results.find((r) => r.status === 'rejected')).toMatchObject({
-        reason: { code: 'CART_VERSION_CONFLICT' },
-      });
-      expect((await service.get(cart.cartId)).items).toHaveLength(1);
+      expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(2);
+      expect((await service.get(cart.cartId)).items).toHaveLength(0);
     });
     it('preserves snapshots through catalog changes, instance restart, pagination and ID mismatches', async () => {
       const initBody = init();
-      let cart = await service.getOrCreate(initBody, 'MCP');
+      let cart = await initialize(service, initBody, 'MCP');
       const body = create(cart);
       const made = await service.createOrder(cart.cartId, body, 'WEB');
       const raw = JSON.parse(readFileSync('references/products.json', 'utf8'));
@@ -426,13 +449,12 @@ const catalog = new Catalog(readFileSync('references/products.json', 'utf8'));
       expect(
         (await restarted.createOrder(cart.cartId, body, 'WEB')).order.summary,
       ).toEqual(made.order.summary);
-      const another = await service.getOrCreate(init(), 'WEB');
+      const another = await initialize(service, init(), 'WEB');
       await expect(
         service.getOrder(made.order.orderId, another.cartId),
       ).rejects.toMatchObject({ code: 'ORDER_CART_MISMATCH' });
       cart = await service.operate(cart.cartId, {
         operationRequestId: randomUUID(),
-        expectedCartVersion: 2,
         operation: { type: 'add_item', productId: 'P003', quantity: 1 },
       });
       const next = await service.createOrder(cart.cartId, create(cart), 'APPS');
@@ -454,7 +476,7 @@ const catalog = new Catalog(readFileSync('references/products.json', 'utf8'));
         where: { productId: 'P001' },
         data: { quantity: 100 },
       });
-      let cart = await service.getOrCreate(init(), 'WEB');
+      let cart = await initialize(service, init(), 'WEB');
       let first: any;
       for (let i = 0; i < 9; i++) {
         const body = create(cart);
@@ -462,7 +484,6 @@ const catalog = new Catalog(readFileSync('references/products.json', 'utf8'));
         if (i === 0) first = { body, order: made.order };
         cart = await service.operate(cart.cartId, {
           operationRequestId: randomUUID(),
-          expectedCartVersion: made.cart.cartVersion,
           operation: { type: 'add_item', productId: 'P001', quantity: 1 },
         });
       }
@@ -494,7 +515,6 @@ const catalog = new Catalog(readFileSync('references/products.json', 'utf8'));
       const nowCart = await service.get(cart.cartId);
       cart = await service.operate(cart.cartId, {
         operationRequestId: randomUUID(),
-        expectedCartVersion: nowCart.cartVersion,
         operation: { type: 'add_item', productId: 'P001', quantity: 1 },
       });
       await expect(
@@ -519,7 +539,7 @@ const catalog = new Catalog(readFileSync('references/products.json', 'utf8'));
         data: { quantity: 1 },
       });
       const limited = new CartService(catalog, db, 1);
-      const cart = await limited.getOrCreate(init(), 'WEB');
+      const cart = await initialize(limited, init(), 'WEB');
       const { order } = await limited.createOrder(
         cart.cartId,
         create(cart),
@@ -532,21 +552,12 @@ const catalog = new Catalog(readFileSync('references/products.json', 'utf8'));
         data: { items: [{ productId: 'P001', quantity: 1 }], version: 3 },
       });
       await expect(
-        limited.createOrder(
-          cart.cartId,
-          { ...create(cart), expectedCartVersion: 3 },
-          'WEB',
-        ),
+        limited.createOrder(cart.cartId, create(cart), 'WEB'),
       ).rejects.toMatchObject({ code: 'CART_ITEMS_INVALID' });
       await limited.expireOrders();
       expect(
-        (
-          await limited.createOrder(
-            cart.cartId,
-            { ...create(cart), expectedCartVersion: 3 },
-            'WEB',
-          )
-        ).order.effectiveStatus,
+        (await limited.createOrder(cart.cartId, create(cart), 'WEB')).order
+          .effectiveStatus,
       ).toBe('CHECKOUT');
     });
     async function trigger(table: string, event: string, body: string) {
@@ -568,7 +579,7 @@ const catalog = new Catalog(readFileSync('references/products.json', 'utf8'));
     it.each(['Order', 'OrderLine', 'Inventory', 'Cart'])(
       'rolls back create_order after the %s persistence boundary fails',
       async (table) => {
-        const cart = await service.getOrCreate(init(), 'WEB');
+        const cart = await initialize(service, init(), 'WEB');
         const before = await db.inventory.findMany({
           orderBy: { productId: 'asc' },
         });
@@ -589,12 +600,14 @@ const catalog = new Catalog(readFileSync('references/products.json', 'utf8'));
         expect(
           await db.inventory.findMany({ orderBy: { productId: 'asc' } }),
         ).toEqual(before);
-        expect((await service.get(cart.cartId)).cartVersion).toBe(1);
+        expect((await service.get(cart.cartId)).cartVersion).toBe(
+          cart.cartVersion,
+        );
         expect((await service.get(cart.cartId)).items).toHaveLength(1);
       },
     );
     it('rolls back cart operations together with their idempotency record', async () => {
-      const cart = await service.getOrCreate(init(), 'WEB');
+      const cart = await initialize(service, init(), 'WEB');
       await trigger(
         'CartOperation',
         'INSERT',
@@ -604,7 +617,6 @@ const catalog = new Catalog(readFileSync('references/products.json', 'utf8'));
         await expect(
           service.operate(cart.cartId, {
             operationRequestId: randomUUID(),
-            expectedCartVersion: 1,
             operation: { type: 'add_item', productId: 'P001', quantity: 1 },
           }),
         ).rejects.toBeDefined();
@@ -612,12 +624,12 @@ const catalog = new Catalog(readFileSync('references/products.json', 'utf8'));
         await clearTrigger('CartOperation');
       }
       expect((await service.get(cart.cartId)).items[0].quantity).toBe(1);
-      expect(await db.cartOperation.count()).toBe(0);
+      expect(await db.cartOperation.count()).toBe(1);
     });
     it.each(['pay', 'cancel'])(
       'rolls back %s without losing the original reservation or snapshot',
       async (action) => {
-        const cart = await service.getOrCreate(init(), 'WEB');
+        const cart = await initialize(service, init(), 'WEB');
         const { order } = await service.createOrder(
           cart.cartId,
           create(cart),
@@ -660,7 +672,7 @@ const catalog = new Catalog(readFileSync('references/products.json', 'utf8'));
     it.each(['pay', 'cancel'])(
       'checks database deadline after inventory lock wait for %s',
       async (action) => {
-        const cart = await service.getOrCreate(init(), 'WEB');
+        const cart = await initialize(service, init(), 'WEB');
         const { order } = await service.createOrder(
           cart.cartId,
           create(cart),
@@ -691,7 +703,7 @@ const catalog = new Catalog(readFileSync('references/products.json', 'utf8'));
       },
     );
     it('commits a payment admitted before deadline even when commit finishes after it', async () => {
-      const cart = await service.getOrCreate(init(), 'WEB');
+      const cart = await initialize(service, init(), 'WEB');
       const { order } = await service.createOrder(
         cart.cartId,
         create(cart),
@@ -709,17 +721,17 @@ const catalog = new Catalog(readFileSync('references/products.json', 'utf8'));
     });
 
     it('reconciles reservation ownership and counts paid revenue only, including unmaterialized expiry', async () => {
-      const cart = await service.getOrCreate(init(), 'WEB');
+      const cart = await initialize(service, init(), 'WEB');
       const first = await service.createOrder(cart.cartId, create(cart), 'MCP');
       await service.payOrder(first.order.orderId);
-      const agent = await service.getOrCreate(init(), 'MCP');
+      const agent = await initialize(service, init(), 'MCP');
       const second = await service.createOrder(
         agent.cartId,
         create(agent),
         'WEB',
       );
       await service.cancelOrder(second.order.orderId);
-      const thirdCart = await service.getOrCreate(init(), 'WEB');
+      const thirdCart = await initialize(service, init(), 'WEB');
       const third = await service.createOrder(
         thirdCart.cartId,
         create(thirdCart),
@@ -763,7 +775,7 @@ const catalog = new Catalog(readFileSync('references/products.json', 'utf8'));
           where: { productId: 'P001' },
           data: { quantity: 2 },
         });
-        const cart = await service.getOrCreate(init(), 'WEB');
+        const cart = await initialize(service, init(), 'WEB');
         const { order } = await service.createOrder(
           cart.cartId,
           create(cart),
@@ -772,7 +784,7 @@ const catalog = new Catalog(readFileSync('references/products.json', 'utf8'));
         expect((await query.get('P001')).availability.currentQuantity).toBe(1);
         await service.payOrder(order.orderId);
         expect((await query.get('P001')).availability.currentQuantity).toBe(1);
-        const other = await service.getOrCreate(init(), 'WEB');
+        const other = await initialize(service, init(), 'WEB');
         const next = await service.createOrder(
           other.cartId,
           create(other),
@@ -801,7 +813,7 @@ const catalog = new Catalog(readFileSync('references/products.json', 'utf8'));
       });
       const ids: string[] = [];
       for (let i = 0; i < 20; i++) {
-        const cart = await service.getOrCreate(init(), 'WEB');
+        const cart = await initialize(service, init(), 'WEB');
         ids.push(
           (await service.createOrder(cart.cartId, create(cart), 'WEB')).order
             .orderId,
@@ -827,7 +839,7 @@ const catalog = new Catalog(readFileSync('references/products.json', 'utf8'));
       try {
         await awaitClosed(20);
         const startupDelay = Date.now() - started;
-        const cart = await service.getOrCreate(init(), 'WEB');
+        const cart = await initialize(service, init(), 'WEB');
         const { order } = await service.createOrder(
           cart.cartId,
           create(cart),
@@ -860,9 +872,10 @@ const catalog = new Catalog(readFileSync('references/products.json', 'utf8'));
       }
     });
     it('reports a broken oldest reservation but releases unrelated orders beyond that batch', async () => {
-      const cart = await service.getOrCreate(init(), 'WEB');
+      const cart = await initialize(service, init(), 'WEB');
       const bad = await service.createOrder(cart.cartId, create(cart), 'WEB');
-      const other = await service.getOrCreate(
+      const other = await initialize(
+        service,
         init([{ productId: 'P003', quantity: 1 }]),
         'WEB',
       );
@@ -892,7 +905,8 @@ const catalog = new Catalog(readFileSync('references/products.json', 'utf8'));
       raw.products.find((p: any) => p.id === 'P001').price = 500;
       raw.products.find((p: any) => p.id === 'P003').price = 500;
       const priced = new CartService(new Catalog(JSON.stringify(raw)), db);
-      const cart = await priced.getOrCreate(
+      const cart = await initialize(
+        priced,
         init([
           { productId: 'P001', quantity: 1 },
           { productId: 'P003', quantity: 1 },
@@ -900,7 +914,7 @@ const catalog = new Catalog(readFileSync('references/products.json', 'utf8'));
         'MCP',
       );
       const selection = {
-        selectedItems: [{ productId: 'P001', expectedQuantity: 1 }],
+        selectedItems: [{ productId: 'P001', quantity: 1 }],
         constraints: { currency: 'TWD' },
       };
       for (const channel of ['WEB', 'MCP', 'WEBMCP', 'APPS'] as const) {
@@ -952,7 +966,7 @@ const catalog = new Catalog(readFileSync('references/products.json', 'utf8'));
       const second = database(url!);
       const restarted = new CartService(catalog, second);
       try {
-        const cart = await service.getOrCreate(init(), 'WEB');
+        const cart = await initialize(service, init(), 'WEB');
         const body = create(cart);
         const orders = await Promise.all([
           service.createOrder(cart.cartId, body, 'MCP'),

@@ -6,6 +6,68 @@ const url = process.env.TEST_DATABASE_URL;
 (url ? describe : describe.skip)(
   'checkout migration cutover guard on isolated PostgreSQL',
   () => {
+    it('adds unique initialization identities while preserving historical creation facts', async () => {
+      if (new URL(url!).pathname !== '/store_test')
+        throw Error('store_test required');
+      const client = new pg.Client({ connectionString: url });
+      await client.connect();
+      const root = 'apps/api/prisma/migrations';
+      try {
+        await client.query('BEGIN');
+        await client.query('CREATE SCHEMA cart_command_migration_test');
+        await client.query(
+          'SET LOCAL search_path TO cart_command_migration_test',
+        );
+        for (const name of readdirSync(root)
+          .filter(
+            (n) =>
+              n.startsWith('2026') &&
+              n < '20261101000000_cart_initialization_identity',
+          )
+          .sort())
+          await client.query(
+            readFileSync(`${root}/${name}/migration.sql`, 'utf8'),
+          );
+        const id = randomUUID(),
+          requestId = randomUUID();
+        await client.query(
+          'INSERT INTO "Cart" (id,items,"createdAt","createRequestId","createPayloadHash") VALUES ($1,$2,now(),$3,$4)',
+          [id, '[]', requestId, 'historical-hash'],
+        );
+        await client.query(
+          readFileSync(
+            `${root}/20261101000000_cart_initialization_identity/migration.sql`,
+            'utf8',
+          ),
+        );
+        expect(
+          (
+            await client.query(
+              'SELECT "createRequestId","createPayloadHash","initializationId" FROM "Cart" WHERE id=$1',
+              [id],
+            )
+          ).rows[0],
+        ).toEqual({
+          createRequestId: requestId,
+          createPayloadHash: 'historical-hash',
+          initializationId: null,
+        });
+        const initializationId = randomUUID();
+        await client.query(
+          'INSERT INTO "Cart" (id,items,"createdAt","initializationId") VALUES ($1,$2,now(),$3)',
+          [randomUUID(), '[]', initializationId],
+        );
+        await expect(
+          client.query(
+            'INSERT INTO "Cart" (id,items,"createdAt","initializationId") VALUES ($1,$2,now(),$3)',
+            [randomUUID(), '[]', initializationId],
+          ),
+        ).rejects.toThrow();
+      } finally {
+        await client.query('ROLLBACK');
+        await client.end();
+      }
+    });
     it('refuses old transactions without removing data and migrates an empty flow preserving negative inventory', async () => {
       if (new URL(url!).pathname !== '/store_test')
         throw Error('store_test required');
@@ -20,7 +82,7 @@ const url = process.env.TEST_DATABASE_URL;
           .filter((n) => n.startsWith('2026'))
           .sort();
         for (const name of names.filter(
-          (n) => n !== '202610310001_checkout_lifecycle',
+          (n) => n < '202610310001_checkout_lifecycle',
         ))
           await client.query(
             readFileSync(`${root}/${name}/migration.sql`, 'utf8'),

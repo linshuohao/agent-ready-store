@@ -1,6 +1,7 @@
 'use client';
 import { useRuntime } from '../../runtime';
 import { CartNotices } from './cart-notices';
+import type { PurchaseSelection } from './purchase-selection';
 import {
   createContext,
   useContext,
@@ -19,16 +20,20 @@ import {
   CartCommands,
   createCartOrder,
   currentCartKey,
-  readCart,
+  addIdentity,
+  initializationKey,
+  requestKey,
+  type RecoveryRequest,
   acceptCart,
   cartFailure,
   type Call,
 } from './lifecycle-commands';
 type Context = {
   canAcceptDelivery: () => boolean;
-  toolInitialize: (
-    input: Parameters<CartCommands['initialize']>[0],
+  toolAdd: (
+    input: Parameters<CartCommands['add']>[0],
   ) => Promise<Call<ShoppingCartView>>;
+  removalRevision: { productId: string; revision: number } | null;
   toolOperate: (
     id: string,
     input: Parameters<CartCommands['operate']>[1],
@@ -38,6 +43,9 @@ type Context = {
     id: string,
     input?: Parameters<typeof createCartOrder>[2],
     entrance?: 'webmcp',
+    selectionOwnership?: PurchaseSelection,
+    requestId?: string,
+    draftOwnership?: Record<string, string>,
   ) => ReturnType<typeof createCartOrder>;
   currentCartId: string | null;
   view: ShoppingCartView | null;
@@ -58,7 +66,7 @@ type Context = {
     expectedCartVersion: number;
     operation: CartOperation;
   }) => Promise<Call<ShoppingCartView>>;
-  retry: () => Promise<Call<ShoppingCartView>>;
+  retry: (requestId: string) => Promise<Call<ShoppingCartView>>;
 };
 const CartContext = createContext<Context | null>(null);
 export const useCartOperations = () => {
@@ -77,11 +85,16 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const current = useRef<string | null>(null),
     snapshot = useRef<ShoppingCartView | null>(null),
     commands = useRef<CartCommands | null>(null),
-    active = useRef(false),
+    active = useRef(0),
     draft = useRef<{ id: string; dirty: boolean; reload: boolean } | null>(
       null,
     );
   const [orderRevision, setOrderRevision] = useState(0);
+  const [removalRevision, setRemovalRevision] = useState<{
+    productId: string;
+    revision: number;
+  } | null>(null);
+  const [requests, setRequests] = useState<RecoveryRequest[]>([]);
   const [currentCartId, setId] = useState<string | null>(null),
     [view, setView] = useState<ShoppingCartView | null>(null),
     [ready, setReady] = useState(false),
@@ -95,12 +108,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }
   const refreshPending = useCallback(() => {
     try {
-      setPending(
-        Boolean(
-          commands.current?.hasPending() ||
-          (current.current && commands.current?.hasPending(current.current)),
-        ),
-      );
+      const list = commands.current?.list() ?? [];
+      setRequests(list);
+      setPending(list.length > 0);
     } catch {
       setMessage(cartFailure('LOCAL_STORAGE_UNAVAILABLE'));
     }
@@ -189,56 +199,54 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     [],
   );
   async function run(work: () => Promise<Call<ShoppingCartView>>) {
-    if (!commands.current || !ready || active.current)
-      return failure('CART_BUSY');
-    active.current = true;
+    if (!commands.current || !ready) return failure('CART_BUSY');
+    active.current++;
     setBusy(true);
     try {
       const result = await work();
       if (result.kind === 'success') {
-        if (!current.current) selectCart(result.data.cartId);
+        if (
+          !current.current &&
+          storage.getItem(currentCartKey) === result.data.cartId
+        )
+          selectCart(result.data.cartId);
         install(result.data);
-        setMessage('已儲存購物車');
+        setMessage(
+          result.recoveryWarning
+            ? '購物車已儲存，但本機恢復資料保存失敗；原請求仍保留供查詢。'
+            : '已儲存購物車',
+        );
       } else
         setMessage(
           result.kind === 'unknown'
-            ? '保存結果未確認，請重試原請求。'
+            ? '保存結果未確認，請先查詢結果；繼續原操作需另外確認。'
             : cartFailure(result.error.code),
         );
       return result;
     } finally {
-      active.current = false;
-      setBusy(false);
+      active.current--;
+      setBusy(active.current > 0);
       refreshPending();
     }
   }
   async function add(productId: string, entrance?: 'webmcp') {
-    if (entrance) return failure('CHECKOUT_FLOW_REPLACED');
-    if (
-      draft.current?.id === current.current &&
-      (draft.current.dirty || draft.current.reload)
-    )
-      return failure('UNSAVED_DRAFT');
     return run(async () => {
-      if (
-        commands.current!.hasPending() ||
-        (current.current && commands.current!.hasPending(current.current))
-      )
-        return failure('CART_RECOVERY_REQUIRED');
-      const id = current.current;
-      if (!id)
-        return commands.current!.initialize({
-          requestId: crypto.randomUUID(),
-          initialItems: [{ productId, quantity: 1 }],
-        });
-      const latest = await readCart(id, transport);
-      if (latest.kind !== 'success') return latest;
-      if (current.current !== id) return failure('STALE_CONTEXT');
-      return commands.current!.operate(id, {
-        operationRequestId: crypto.randomUUID(),
-        expectedCartVersion: latest.data.cartVersion,
-        operation: { type: 'add_item', productId, quantity: 1 },
-      });
+      try {
+        const identity = await addIdentity(storage);
+        return commands.current!.add(
+          {
+            ...identity,
+            operationRequestId: crypto.randomUUID(),
+            productId,
+            quantity: 1,
+          },
+          entrance,
+        );
+      } catch (error) {
+        return failure(
+          error instanceof Error ? error.message : 'LOCAL_STORAGE_UNAVAILABLE',
+        );
+      }
     });
   }
   async function save(intent: {
@@ -247,71 +255,126 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     operation: CartOperation;
   }) {
     if (intent.cartId !== current.current) return failure('STALE_CONTEXT');
-    if (draft.current?.id === intent.cartId && draft.current.reload)
-      return failure('CART_VERSION_CONFLICT');
     return run(() =>
       commands.current!.operate(intent.cartId, {
         operationRequestId: crypto.randomUUID(),
-        expectedCartVersion: intent.expectedCartVersion,
+        ...(intent.operation.type === 'add_item'
+          ? {}
+          : { expectedCartVersion: intent.expectedCartVersion }),
         operation: intent.operation,
-      }),
+      } as Parameters<CartCommands['operate']>[1]),
     );
   }
-  const toolInitialize = (input: Parameters<CartCommands['initialize']>[0]) => {
-    if (current.current && !commands.current?.hasPending())
-      return Promise.resolve(failure('STALE_CONTEXT'));
-    return run(() => commands.current!.initialize(input, 'webmcp'));
-  };
+  const toolAdd = (input: Parameters<CartCommands['add']>[0]) =>
+    run(async () => {
+      try {
+        const saved = storage.getItem(requestKey(input.operationRequestId));
+        if (saved) {
+          const original = JSON.parse(saved) as RecoveryRequest;
+          if (
+            JSON.stringify(original.body) !== JSON.stringify(input) ||
+            original.path !== '/webmcp/carts/add'
+          )
+            return failure('LOCAL_RECOVERY_INVALID');
+          return commands.current!.add(input, 'webmcp');
+        }
+        await addIdentity(
+          storage,
+          'cartId' in input
+            ? { cartId: input.cartId }
+            : { initializationId: input.initializationId },
+        );
+        return commands.current!.add(input, 'webmcp');
+      } catch (error) {
+        const code =
+          error instanceof Error ? error.message : 'LOCAL_STORAGE_UNAVAILABLE';
+        if (code === 'STALE_CONTEXT') {
+          const cartId = storage.getItem(currentCartKey),
+            initializationId = storage.getItem(initializationKey);
+          return {
+            kind: 'failure' as const,
+            error: {
+              code,
+              details: cartId
+                ? { cartId }
+                : initializationId
+                  ? { initializationId }
+                  : {},
+            },
+          };
+        }
+        return failure(code);
+      }
+    });
   const toolOperate = (
     id: string,
     input: Parameters<CartCommands['operate']>[1],
   ) => {
     if (current.current !== id)
       return Promise.resolve(failure('STALE_CONTEXT'));
-    if (
-      draft.current?.id === id &&
-      (draft.current.dirty || draft.current.reload)
-    )
-      return Promise.resolve(failure('UNSAVED_DRAFT'));
+    if (input.operation.type === 'remove_item')
+      setRemovalRevision((previous) => ({
+        productId: input.operation.productId,
+        revision: (previous?.revision ?? 0) + 1,
+      }));
     return run(() => commands.current!.operate(id, input));
   };
   async function createOrder(
     id: string,
     input?: Parameters<typeof createCartOrder>[2],
     entrance?: 'webmcp',
+    selectionOwnership?: PurchaseSelection,
+    requestId?: string,
+    draftOwnership?: Record<string, string>,
   ) {
-    if (!ready || active.current) return failure('CART_BUSY');
+    if (!ready) return failure('CART_BUSY');
     if (current.current !== id) return failure('STALE_CONTEXT');
-    if (
-      input &&
-      draft.current?.id === id &&
-      (draft.current.dirty || draft.current.reload)
-    )
-      return failure('UNSAVED_DRAFT');
-    active.current = true;
-    setBusy(true);
     try {
-      return await createCartOrder(storage, id, input, entrance, transport);
+      return await createCartOrder(
+        storage,
+        id,
+        input,
+        entrance,
+        transport,
+        requestId,
+        selectionOwnership,
+        draftOwnership,
+      );
     } finally {
-      active.current = false;
-      setBusy(false);
       setOrderRevision((n) => n + 1);
     }
   }
-  const retry = () =>
-    run(() =>
-      commands.current!.retry(
-        commands.current!.hasPending()
-          ? undefined
-          : (current.current ?? undefined),
-      ),
-    );
+  const retry = (requestId: string) =>
+    run(() => commands.current!.retry(requestId));
+  const query = async (requestId: string) => {
+    const result = await commands.current!.query(requestId);
+    if (
+      result.kind === 'success' &&
+      result.data.status === 'found' &&
+      'cart' in result.data
+    ) {
+      if (
+        !current.current &&
+        storage.getItem(currentCartKey) === result.data.cart.cartId
+      )
+        selectCart(result.data.cart.cartId);
+      install(result.data.cart);
+      setMessage('已確認原購物車操作結果。');
+    } else
+      setMessage(
+        result.kind === 'success'
+          ? '目前尚未找到結果，原請求仍可能稍後完成。'
+          : '暫時無法查詢，原請求仍保留。',
+      );
+    refreshPending();
+  };
   return (
     <CartContext.Provider
       value={{
         canAcceptDelivery: () =>
           !active.current && !draft.current?.dirty && !draft.current?.reload,
-        toolInitialize,
+        toolAdd,
+        removalRevision,
         toolOperate,
         orderRevision,
         createOrder,
@@ -323,7 +386,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         selectCart,
         resumeCart,
         install,
-        isCurrentCart: (id) => current.current === id,
+        isCurrentCart: (id) => {
+          try {
+            return (
+              current.current === id && storage.getItem(currentCartKey) === id
+            );
+          } catch {
+            return false;
+          }
+        },
         setDraftGuard,
         add,
         save,
@@ -334,10 +405,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         orderPage={orderPage}
         message={message}
         currentCartId={currentCartId}
-        pending={pending}
-        busy={busy}
+        requests={requests}
         dismiss={() => setMessage('')}
-        retry={() => void retry()}
+        retry={(requestId) => void retry(requestId)}
+        query={(requestId) => void query(requestId)}
       />
       {children}
     </CartContext.Provider>

@@ -31,7 +31,7 @@ const quote = (constraints: Record<string, unknown>) =>
     service.quoteSelection(
       cartId,
       {
-        selectedItems: [{ productId: 'P001', expectedQuantity: 1 }],
+        selectedItems: [{ productId: 'P001', quantity: 1 }],
         constraints: { currency: 'TWD', ...constraints },
       },
       'MCP',

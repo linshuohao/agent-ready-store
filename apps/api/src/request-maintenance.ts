@@ -1,7 +1,7 @@
 import type { RequestHandler } from 'express';
 import { result } from './shared/result.js';
 
-// Mounted under /api/v1. Only vocabulary reads are independent of inventory.
+// Mounted under /api/v1. Result reconciliation must never materialize expiry.
 export function requestMaintenance(
   beforeRequest: () => Promise<void>,
 ): RequestHandler {
@@ -9,7 +9,9 @@ export function requestMaintenance(
     if (
       req.path === '/health' ||
       ((req.method === 'GET' || req.method === 'HEAD') &&
-        /^\/catalog\/categories\/?$/i.test(req.path))
+        /^\/(?:catalog\/categories|shopping\/request-result)\/?$/i.test(
+          req.path,
+        ))
     )
       return next();
     const maintenance = await result(beforeRequest);

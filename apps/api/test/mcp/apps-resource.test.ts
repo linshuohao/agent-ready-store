@@ -21,13 +21,13 @@ const token = process.env.MCP_SERVICE_TOKEN;
         (tool) => tool.name === 'search_products',
       );
       expect(tool?._meta?.ui).toMatchObject({
-        resourceUri: 'ui://store/search-products-v8.html',
+        resourceUri: 'ui://store/search-products-v9.html',
       });
       expect(tool?._meta?.['ui/resourceUri']).toBe(
-        'ui://store/search-products-v8.html',
+        'ui://store/search-products-v9.html',
       );
       const resource = await client.readResource({
-        uri: 'ui://store/search-products-v8.html',
+        uri: 'ui://store/search-products-v9.html',
       });
       const html = resource.contents[0];
       expect(html.mimeType).toBe('text/html;profile=mcp-app');
@@ -62,7 +62,7 @@ const token = process.env.MCP_SERVICE_TOKEN;
         data: (visible.structuredContent as any).data,
       });
 
-      expect(tools).toHaveLength(19);
+      expect(tools).toHaveLength(21);
       const categories = tools.find(
         (tool) => tool.name === 'list_product_categories',
       );
@@ -99,9 +99,9 @@ const token = process.env.MCP_SERVICE_TOKEN;
       // Cached final cards may still reference v4/v5/v6; resolve only these exact known URIs.
       for (const name of ['search-products', 'create-order']) {
         const current = await client.readResource({
-          uri: `ui://store/${name}-v8.html`,
+          uri: `ui://store/${name}-v9.html`,
         });
-        for (const version of ['v4', 'v5', 'v6', 'v7']) {
+        for (const version of ['v4', 'v5', 'v6', 'v7', 'v8']) {
           const uri = `ui://store/${name}-${version}.html`;
           const cached = await client.readResource({ uri });
           expect(cached.contents).toEqual(
@@ -136,7 +136,7 @@ const token = process.env.MCP_SERVICE_TOKEN;
       jsonrpc: '2.0',
       id: 1,
       method: 'resources/read',
-      params: { uri: 'ui://store/create-order-v8.html' },
+      params: { uri: 'ui://store/create-order-v9.html' },
     };
     const headers = {
       'Content-Type': 'application/json',

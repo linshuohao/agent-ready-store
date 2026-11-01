@@ -9,7 +9,7 @@ test.beforeAll(async () => {
   const { build } = await import(pathToFileURL(require.resolve('vite')).href);
   const appHtml = await readFile(
     new URL(
-      '../apps/api/dist/mcp-app/search-products-v8.html',
+      '../apps/api/dist/mcp-app/search-products-v9.html',
       import.meta.url,
     ),
     'utf8',
@@ -195,7 +195,7 @@ test('shared cart keeps the quantity draft after conflict until explicit reload'
     .press('Enter');
   await expect(
     f.getByRole('button', {
-      name: '重新載入購物車（放棄未儲存修改）',
+      name: '重新讀取購物車（保留購買量與草稿）',
       exact: true,
     }),
   ).toBeVisible();
@@ -204,10 +204,14 @@ test('shared cart keeps the quantity draft after conflict until explicit reload'
   ).toHaveValue('2');
   await f
     .getByRole('button', {
-      name: '重新載入購物車（放棄未儲存修改）',
+      name: '重新讀取購物車（保留購買量與草稿）',
       exact: true,
     })
     .click();
+  await expect(
+    f.getByRole('spinbutton', { name: '數量 P001', exact: true }),
+  ).toHaveValue('2');
+  await f.getByRole('button', { name: '恢復已儲存數量 P001' }).click();
   await expect(
     f.getByRole('spinbutton', { name: '數量 P001', exact: true }),
   ).toHaveValue('1');

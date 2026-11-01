@@ -1,3 +1,4 @@
+import { createGetRequestResult } from './tools/get-request-result.js';
 import { createListProductCategories } from './tools/list-product-categories.js';
 import {
   createResolveProductChoices,
@@ -74,6 +75,8 @@ export function attachMcp(
     register(createGetOrCreateCart(carts));
     register(createGetCart(carts));
     register(createAddCartItem(carts));
+    register(createAddCartItem(carts, 'APPS'));
+    register(createGetRequestResult(carts));
     register(createUpdateCartItem(carts));
     register(createRemoveCartItem(carts));
     register(createQuoteSelection(carts));

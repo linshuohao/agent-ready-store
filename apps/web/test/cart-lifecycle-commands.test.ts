@@ -1,33 +1,31 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   CartCommands,
-  readCart,
-  acceptCart,
+  addIdentity,
+  pendingRequests,
+  requestKey,
   pendingCartKey,
+  currentCartKey,
+  acceptCart,
+  createCartOrder,
+  queryRequest,
 } from '../src/features/cart/lifecycle-commands';
 const id = '10000000-0000-4000-8000-000000000001';
 const key = '10000000-0000-4000-8000-000000000002';
-const cart = (version = 1, quantity = 1) => ({
+const other = '10000000-0000-4000-8000-000000000003';
+const cart = (version = 1) => ({
   cartId: id,
   cartVersion: version,
   agentCreated: false,
-  items: [
-    {
-      productId: 'P001',
-      quantity,
-      name: 'Item',
-      unitPrice: '100.00',
-      availability: { canPurchase: true, reasons: [], currentQuantity: 10 },
-    },
-  ],
+  items: [],
   issues: [],
   pendingOrders: [],
 });
-const ok = (data: unknown) =>
-  new Response(JSON.stringify({ ok: true, data, requestId: key }));
-const memory = () => {
+const ok = (data: unknown) => Response.json({ ok: true, data });
+function memory() {
   const data = new Map<string, string>();
   return {
+    keys: () => [...data.keys()],
     getItem: (k: string) => data.get(k) ?? null,
     setItem: (k: string, v: string) => {
       data.set(k, v);
@@ -35,158 +33,217 @@ const memory = () => {
     removeItem: (k: string) => {
       data.delete(k);
     },
+    withLock: async <T>(_name: string, work: () => T) => work(),
   };
-};
-afterEach(() => vi.unstubAllGlobals());
-describe('persistent cart commands', () => {
-  it('saves initialization before sending and recovers the identical request across remount without duplicating items', async () => {
-    const storage = memory(),
-      commands = new CartCommands(storage);
-    const input = {
-      requestId: key,
-      initialItems: [{ productId: 'P001', quantity: 1 }],
-    };
-    const fetcher = vi.fn(async (_url: unknown, _options?: RequestInit) => {
-      void _url;
-      void _options;
-      expect(storage.getItem(pendingCartKey())).toContain(key);
-      throw new TypeError('lost response');
+}
+const add = (requestId = key) => ({
+  cartId: id,
+  operationRequestId: requestId,
+  productId: 'P001',
+  quantity: 1,
+});
+describe('independent durable cart commands', () => {
+  it('sends B while A is pending, retains two unknowns and reload never writes', async () => {
+    const storage = memory();
+    let rejectA!: (reason: unknown) => void;
+    const first = new Promise<Response>((_, reject) => {
+      rejectA = reject;
     });
-    vi.stubGlobal('fetch', fetcher);
-    expect(await commands.initialize(input)).toEqual({ kind: 'unknown' });
-    expect(
-      await commands.initialize({ ...input, requestId: id }),
-    ).toMatchObject({
-      kind: 'failure',
-      error: { code: 'CART_RECOVERY_REQUIRED' },
-    });
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (_url, options) => {
-        expect(options.body).toBe(fetcher.mock.calls[0][1]!.body);
-        return ok(cart(2, 2));
-      }),
-    );
-    expect(await new CartCommands(storage).retry()).toMatchObject({
-      kind: 'success',
-      data: { cartVersion: 2 },
-    });
-    expect(storage.getItem(pendingCartKey())).toBeNull();
+    const transport = vi
+      .fn()
+      .mockReturnValueOnce(first)
+      .mockRejectedValueOnce(Error('offline'));
+    const commands = new CartCommands(storage, transport);
+    const a = commands.add(add());
+    expect(storage.getItem(requestKey(key))).toContain(key);
+    await commands.add(add(other));
+    expect(transport).toHaveBeenCalledTimes(2);
+    rejectA(Error('lost'));
+    await a;
+    expect(new CartCommands(storage, transport).list()).toHaveLength(2);
+    expect(transport).toHaveBeenCalledTimes(2);
   });
-  it('keeps the original operation on unknown, refuses new writes, then explicitly retries that key', async () => {
+  it('query is read-only and continue reuses exact original payload, completing only its slot', async () => {
     const storage = memory(),
-      commands = new CartCommands(storage);
-    const input = {
-      operationRequestId: key,
-      expectedCartVersion: 1,
-      operation: { type: 'add_item' as const, productId: 'P001', quantity: 1 },
-    };
-    const fetcher = vi.fn(async (_url: unknown, _options?: RequestInit) => {
-      void _url;
-      void _options;
-      expect(storage.getItem(pendingCartKey(id))).toContain(key);
-      throw new TypeError('lost');
-    });
-    vi.stubGlobal('fetch', fetcher);
-    expect(await commands.operate(id, input)).toEqual({ kind: 'unknown' });
-    expect(
-      await commands.operate(id, { ...input, operationRequestId: id }),
-    ).toMatchObject({
-      kind: 'failure',
-      error: { code: 'CART_RECOVERY_REQUIRED' },
-    });
-    const retry = vi.fn<
-      (url: unknown, options?: RequestInit) => Promise<Response>
-    >(async () => ok(cart(2, 2)));
-    vi.stubGlobal('fetch', retry);
-    expect(await new CartCommands(storage).retry(id)).toMatchObject({
-      kind: 'success',
-      data: { items: [{ quantity: 2 }] },
-    });
-    expect(retry.mock.calls[0][1]!.body).toBe(fetcher.mock.calls[0][1]!.body);
+      transport = vi.fn().mockRejectedValue(Error('lost'));
+    const commands = new CartCommands(storage, transport);
+    await commands.add(add());
+    await commands.add(add(other));
+    transport.mockResolvedValueOnce(ok({ status: 'not_found', kind: 'cart' }));
+    await commands.query(key);
+    expect(transport.mock.calls[2][0]).toContain('/request-result?');
+    expect(transport.mock.calls[2][1]).toBeUndefined();
+    expect(commands.list()).toHaveLength(2);
+    transport.mockResolvedValueOnce(ok(cart(2)));
+    await commands.retry(key);
+    expect(transport.mock.calls[3][1]).toEqual(add());
+    expect(commands.list().map((r) => r.requestId)).toEqual([other]);
   });
-  it('does not write when persistence fails and does not clear uncertainty for malformed or wrong-target responses', async () => {
-    const fetcher = vi.fn(async () => ok({ ...cart(), cartId: key }));
-    vi.stubGlobal('fetch', fetcher);
+  it('storage failure before dispatch stops writing; wrong target remains unknown', async () => {
+    const transport = vi.fn(async () => ok({ ...cart(), cartId: other }));
     const broken = {
       ...memory(),
       setItem: () => {
-        throw Error('unavailable');
+        throw Error('blocked');
       },
     };
-    expect(
-      await new CartCommands(broken).initialize({
-        requestId: key,
-        initialItems: [],
-      }),
-    ).toMatchObject({
+    expect(await new CartCommands(broken, transport).add(add())).toMatchObject({
       kind: 'failure',
       error: { code: 'LOCAL_STORAGE_UNAVAILABLE' },
     });
-    expect(fetcher).not.toHaveBeenCalled();
-    const storage = memory();
-    expect(
-      await new CartCommands(storage).operate(id, {
-        operationRequestId: key,
-        expectedCartVersion: 1,
-        operation: { type: 'remove_item', productId: 'P001' },
-      }),
-    ).toEqual({ kind: 'unknown' });
-    expect(storage.getItem(pendingCartKey(id))).not.toBeNull();
-    expect(await readCart(id)).toEqual({ kind: 'unknown' });
+    expect(transport).not.toHaveBeenCalled();
+    const commands = new CartCommands(memory(), transport);
+    expect(await commands.add(add())).toEqual({ kind: 'unknown' });
+    expect(commands.list()).toHaveLength(1);
   });
-  it('preserves newer and different-cart snapshots and does not retry version conflicts', async () => {
-    expect(acceptCart(cart(3), cart(2), id)?.cartVersion).toBe(3);
-    expect(acceptCart(cart(3), { ...cart(4), cartId: key }, id)?.cartId).toBe(
-      id,
-    );
-    const fetcher = vi.fn(
-      async () =>
-        new Response(
-          JSON.stringify({
-            ok: false,
-            error: {
-              code: 'CART_VERSION_CONFLICT',
-              message: 'conflict',
-              retryable: false,
-            },
-            requestId: key,
-          }),
-          { status: 409 },
-        ),
-    );
-    vi.stubGlobal('fetch', fetcher);
+  it('a late not_found never reopens a successfully recovered request', async () => {
     const storage = memory();
+    await new CartCommands(storage, async () => {
+      throw Error('lost');
+    }).add(add());
+    const request = pendingRequests(storage)[0];
+    let finish!: (r: Response) => void;
+    const late = queryRequest(
+      storage,
+      request,
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    await queryRequest(storage, request, async () =>
+      ok({ status: 'found', kind: 'cart', cart: cart() }),
+    );
+    finish(ok({ status: 'not_found', kind: 'cart' }));
+    await late;
+    expect(pendingRequests(storage)).toEqual([]);
+  });
+  it('legacy initialization can only be queried and blocks a replacement identity', async () => {
+    const storage = memory();
+    storage.setItem(
+      pendingCartKey(),
+      JSON.stringify({
+        kind: 'initialize',
+        input: {
+          requestId: key,
+          initialItems: [{ productId: 'P001', quantity: 1 }],
+        },
+      }),
+    );
+    const transport = vi.fn<
+      (path: string, body?: unknown) => Promise<Response>
+    >(async () => ok({ status: 'not_found', kind: 'initialize' }));
+    const commands = new CartCommands(storage, transport);
+    expect(await commands.retry(key)).toMatchObject({
+      kind: 'failure',
+      error: { code: 'LEGACY_RECOVERY_REQUIRED' },
+    });
+    await expect(addIdentity(storage)).rejects.toThrow(
+      'LEGACY_RECOVERY_REQUIRED',
+    );
+    await commands.query(key);
+    expect(transport).toHaveBeenCalledTimes(1);
+    expect(transport.mock.calls[0][1]).toBeUndefined();
+  });
+  it('shares one initialization identity without holding a network lock and never replaces a switched cart', async () => {
+    const storage = memory();
+    const [a, b] = await Promise.all([
+      addIdentity(storage),
+      addIdentity(storage),
+    ]);
+    expect(a).toEqual(b);
+    let finish!: (r: Response) => void;
+    const commands = new CartCommands(
+      storage,
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const pending = commands.add({
+      ...a,
+      operationRequestId: key,
+      productId: 'P001',
+      quantity: 1,
+    });
+    storage.setItem(currentCartKey, other);
+    finish(ok(cart()));
+    await pending;
+    expect(storage.getItem(currentCartKey)).toBe(other);
+    expect(await addIdentity(storage)).toEqual({ cartId: other });
+  });
+  it('refuses unsafe identity creation when atomic locking is unavailable', async () => {
+    await expect(
+      addIdentity({ ...memory(), withLock: undefined }),
+    ).rejects.toThrow('INITIALIZATION_LOCK_UNAVAILABLE');
+  });
+  it('keeps version conflicts local and does not retry automatically', async () => {
+    const transport = vi.fn(async () =>
+      Response.json(
+        { ok: false, error: { code: 'CART_VERSION_CONFLICT' } },
+        { status: 409 },
+      ),
+    );
+    const commands = new CartCommands(memory(), transport);
     expect(
-      await new CartCommands(storage).operate(id, {
+      await commands.operate(id, {
         operationRequestId: key,
         expectedCartVersion: 1,
         operation: { type: 'remove_item', productId: 'P001' },
       }),
+    ).toMatchObject({ kind: 'failure' });
+    expect(transport).toHaveBeenCalledTimes(1);
+    expect(commands.list()).toEqual([]);
+    expect(acceptCart(cart(3), cart(2), id)?.cartVersion).toBe(3);
+    expect(
+      acceptCart(cart(3), { ...cart(4), cartId: other }, id)?.cartVersion,
+    ).toBe(3);
+  });
+  it('persists separate explicit purchase quantities and does not replay historical orders', async () => {
+    const storage = memory(),
+      transport = vi.fn<(path: string, body?: unknown) => Promise<Response>>(
+        async () => {
+          throw Error('lost');
+        },
+      );
+    const input = {
+      requestId: key,
+      selectedItems: [{ productId: 'P001', quantity: 2 }],
+      constraints: { currency: 'TWD' as const },
+    };
+    await createCartOrder(storage, id, input, undefined, transport);
+    await createCartOrder(
+      storage,
+      id,
+      { ...input, requestId: other },
+      undefined,
+      transport,
+    );
+    expect(pendingRequests(storage)).toHaveLength(2);
+    expect(transport.mock.calls[0][1]).toEqual(input);
+    storage.setItem(
+      'store.order.create.' + id,
+      JSON.stringify({ ...input, requestId: id, expectedCartVersion: 1 }),
+    );
+    expect(
+      await createCartOrder(storage, id, undefined, undefined, transport, id),
     ).toMatchObject({
       kind: 'failure',
-      error: { code: 'CART_VERSION_CONFLICT' },
+      error: { code: 'LEGACY_RECOVERY_REQUIRED' },
     });
-    expect(fetcher).toHaveBeenCalledTimes(1);
-    expect(storage.getItem(pendingCartKey(id))).toBeNull();
+    expect(transport).toHaveBeenCalledTimes(2);
   });
 });
 
-it('recovers a WebMCP initialization through the original channel after a lost response', async () => {
-  const storage = memory(),
-    input = {
-      requestId: key,
-      initialItems: [{ productId: 'P001', quantity: 1 }],
-    };
-  vi.stubGlobal('fetch', async () => {
-    throw Error('lost');
+it('a new request cannot reuse the prior initialization identity after the current cart changes', async () => {
+  const storage = memory();
+  const initializationId = key;
+  expect(await addIdentity(storage, { initializationId })).toEqual({
+    initializationId,
   });
-  await new CartCommands(storage).initialize(input, 'webmcp');
-  vi.stubGlobal('fetch', async (url: string) => {
-    expect(url).toBe('/api/v1/shopping/webmcp/carts');
-    return ok({ ...cart(), agentCreated: true });
-  });
-  expect(
-    await new CartCommands(storage).initialize(input, 'webmcp'),
-  ).toMatchObject({ kind: 'success', data: { agentCreated: true } });
+  storage.setItem(currentCartKey, other);
+  await expect(addIdentity(storage, { initializationId })).rejects.toThrow(
+    'STALE_CONTEXT',
+  );
+  expect(await addIdentity(storage)).toEqual({ cartId: other });
 });

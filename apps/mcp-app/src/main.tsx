@@ -20,6 +20,8 @@ const transport = bridgeTransport({
   open: (url) => app.openLink({ url }),
 });
 const storage = {
+  keys: () => Object.keys(sessionStorage),
+  withLock: async <T,>(_name: string, work: () => T): Promise<T> => work(),
   getItem: (key: string) => sessionStorage.getItem(key),
   setItem: (key: string, value: string) => sessionStorage.setItem(key, value),
   removeItem: (key: string) => sessionStorage.removeItem(key),

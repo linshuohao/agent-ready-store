@@ -24,7 +24,7 @@ it('preserves shortage issues through the shared Web/Apps quote response parser'
   };
   const result = await quoteCart(
     '10000000-0000-4000-8000-000000000001',
-    [{ productId: 'P001', expectedQuantity: 2 }],
+    [{ productId: 'P001', quantity: 2 }],
     async () => new Response(JSON.stringify({ ok: true, data: estimate })),
   );
   expect(result).toMatchObject({

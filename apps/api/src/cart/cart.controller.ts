@@ -72,6 +72,30 @@ export class CartController {
     res.status(status).json(response);
   }
 
+  @Get('shopping/request-result')
+  async requestResult(@Req() req: Request, @Res() res: Response) {
+    await this.send(res, async () => {
+      this.checkRequest(req, false, true);
+      return this.carts.requestResult(req.query);
+    });
+  }
+
+  @Post('shopping/carts/add')
+  async add(@Req() req: Request, @Res() res: Response) {
+    await this.send(res, async () => {
+      this.checkRequest(req, true);
+      return this.carts.add(req.body, 'WEB');
+    });
+  }
+
+  @Post('shopping/webmcp/carts/add')
+  async addWebMcp(@Req() req: Request, @Res() res: Response) {
+    await this.send(res, async () => {
+      this.checkRequest(req, true);
+      return this.carts.add(req.body, 'WEBMCP');
+    });
+  }
+
   @Post('shopping/carts')
   async initialize(@Req() req: Request, @Res() res: Response) {
     await this.send(res, async () => {
