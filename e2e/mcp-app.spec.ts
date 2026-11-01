@@ -74,6 +74,7 @@ test('shared cart, original order payment, remount, explicit share and continued
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   const f = await openFixture(page);
+  await f.getByRole('button', { name: '商品（2）', exact: true }).click();
   await f.getByRole('spinbutton', { name: '數量 P001', exact: true }).fill('2');
   await f
     .getByRole('spinbutton', { name: '數量 P001', exact: true })
@@ -82,8 +83,8 @@ test('shared cart, original order payment, remount, explicit share and continued
     f.getByRole('checkbox', { name: '選取 P001', exact: true }),
   ).toBeEnabled();
   await f.getByRole('checkbox', { name: '選取 P001', exact: true }).check();
-  await expect(f.locator('.cart-totals')).toBeVisible();
-  await f.getByRole('button', { name: '建立待支付訂單', exact: true }).click();
+  await expect(f.getByRole('region', { name: '金額與操作' })).toBeVisible();
+  await f.getByRole('button', { name: '去結算', exact: true }).click();
   await expect(
     f.getByRole('heading', { name: '待支付訂單', exact: true }),
   ).toBeVisible();
@@ -118,7 +119,7 @@ test('shared cart, original order payment, remount, explicit share and continued
   );
   expect(calls.filter((n) => n === 'apps_pay_order')).toHaveLength(1);
   expect(calls.filter((n) => n === 'apps_create_order')).toHaveLength(1);
-  await f.getByRole('link', { name: '繼續購物', exact: true }).click();
+  await f.getByRole('link', { name: 'AGENT / STORE', exact: true }).click();
   await expect(
     f.getByRole('heading', { name: '搜尋結果', exact: true }),
   ).toBeVisible();
@@ -129,7 +130,7 @@ test('shared original payment recovery survives a lost Bridge response without a
 }) => {
   const f = await openFixture(page);
   await f.getByRole('checkbox', { name: '選取 P001', exact: true }).check();
-  await f.getByRole('button', { name: '建立待支付訂單', exact: true }).click();
+  await f.getByRole('button', { name: '去結算', exact: true }).click();
   await expect(
     f.getByRole('heading', { name: '待支付訂單', exact: true }),
   ).toBeVisible();
@@ -186,6 +187,7 @@ test('shared cart keeps the quantity draft after conflict until explicit reload'
   page,
 }) => {
   const f = await openFixture(page);
+  await f.getByRole('button', { name: '商品（2）', exact: true }).click();
   await expect(
     f.getByRole('spinbutton', { name: '數量 P001', exact: true }),
   ).toHaveValue('1');
@@ -239,6 +241,7 @@ test('external cart delivery preserves the current unsaved draft', async ({
   page,
 }) => {
   const f = await openFixture(page);
+  await f.getByRole('button', { name: '商品（2）', exact: true }).click();
   await f.getByRole('spinbutton', { name: '數量 P001', exact: true }).fill('2');
   await page.evaluate(async () => {
     await (window as any).fixture.deliverCart(
@@ -416,3 +419,70 @@ test('embedded search uses available width for compact cards without splitting p
     await f.locator('main').evaluate((el) => el.scrollWidth <= el.clientWidth),
   ).toBe(true);
 });
+
+for (const checkout of [false, true]) {
+  test(`embedded ${checkout ? 'order' : 'cart'} bounds long lists and keeps full totals`, async ({
+    page,
+  }) => {
+    const f = await openFixture(page, checkout ? '?checkout&long' : '?long');
+    await expect(f.locator('.purchase-product')).toHaveCount(2);
+    await f.getByRole('button', { name: '商品（13）', exact: true }).click();
+    await expect(f.locator('.purchase-product')).toHaveCount(4);
+    if (checkout) {
+      const first = f.locator('.purchase-product').first();
+      await expect(first.getByText('黑', { exact: true })).not.toBeVisible();
+      await first.getByText('規格與小計', { exact: true }).click();
+      await expect(first.getByText('黑', { exact: true })).toBeVisible();
+      await expect(first.locator('.order-product-subtotal')).toContainText(
+        '10.00',
+      );
+      await first.getByText('規格與小計', { exact: true }).click();
+    }
+    if (!checkout)
+      await f.getByRole('checkbox', { name: '全選商品', exact: true }).check();
+    await f.getByRole('button', { name: '下一頁', exact: true }).click();
+    await expect(f.locator('.purchase-product').first()).toContainText('P005');
+    if (!checkout) {
+      await expect(
+        f.getByRole('checkbox', { name: '選取 P005', exact: true }),
+      ).toBeChecked();
+      await f
+        .getByRole('spinbutton', { name: '數量 P005', exact: true })
+        .fill('2');
+      await expect(
+        f.getByRole('button', { name: '概覽', exact: true }),
+      ).toBeDisabled();
+      await f
+        .getByRole('spinbutton', { name: '數量 P005', exact: true })
+        .press('Escape');
+    }
+    await f.getByRole('button', { name: '費用明細', exact: true }).click();
+    await expect(f.locator('.purchase-product')).toHaveCount(0);
+    await expect(f.locator('.fee-items > li')).toHaveCount(4);
+    await expect(f.getByRole('dialog')).toHaveCount(0);
+    await expect(f.locator('.amount-row-final')).toContainText('229.00');
+    await f.getByRole('button', { name: '下一頁', exact: true }).click();
+    await expect(f.locator('.fee-items > li').first()).toContainText('P005');
+    await expect(f.locator('.amount-row-final')).toContainText('229.00');
+    await f.getByRole('button', { name: '商品（13）', exact: true }).click();
+    await expect(f.locator('.purchase-product').first()).toContainText('P005');
+    await f.getByRole('button', { name: '概覽', exact: true }).click();
+    await expect(f.locator('.purchase-product')).toHaveCount(2);
+    const layout = await f.locator('.commerce-application').evaluate((el) => ({
+      height: el.getBoundingClientRect().height,
+      overflow: el.scrollWidth > el.clientWidth,
+      scrollRegions: [...el.querySelectorAll('*')].filter(
+        (node) =>
+          ['auto', 'scroll'].includes(getComputedStyle(node).overflowY) &&
+          node.scrollHeight > node.clientHeight,
+      ).length,
+    }));
+    await page.screenshot({
+      path: `test-results/compact-${checkout ? 'order' : 'cart'}-${test.info().project.name}.png`,
+      fullPage: true,
+    });
+    expect(layout.height).toBeLessThan(1100);
+    expect(layout.overflow).toBe(false);
+    expect(layout.scrollRegions).toBe(0);
+  });
+}

@@ -1,17 +1,26 @@
 'use client';
 
 import { CommerceActions, illustration } from '../../index';
-import { Artwork } from '../../runtime';
+import { Artwork, useRuntime } from '../../runtime';
+import { useState } from 'react';
+import {
+  CompactNavigation,
+  ItemPagination,
+  type PurchaseView,
+} from './compact-navigation';
 import { Link } from '../../runtime';
 import { PageTools } from '../../runtime';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { MoneyBreakdown } from './money-breakdown';
-import { formatMoney } from '../../lib/money';
+import { formatMoney, multiplyMoney } from '../../lib/money';
 import { Checkbox } from '../../components/ui/checkbox';
 import { useCartPage } from './use-cart-page';
 import { PurchaseAside } from './purchase-aside';
 export function CartPage({ id }: { id?: string }) {
+  const embedded = useRuntime().surface === 'embedded';
+  const [tab, setTab] = useState<PurchaseView>('overview');
+  const [itemPage, setItemPage] = useState(0);
   const page = useCartPage(id);
   const {
     operations,
@@ -32,6 +41,15 @@ export function CartPage({ id }: { id?: string }) {
     create,
     load,
   } = page;
+  const pages = Math.ceil((view?.items.length ?? 0) / 4);
+  const safePage = Math.min(itemPage, Math.max(0, pages - 1));
+  const visibleItems = !embedded
+    ? view?.items
+    : tab === 'overview'
+      ? view?.items.slice(0, 2)
+      : tab === 'items'
+        ? view?.items.slice(safePage * 4, safePage * 4 + 4)
+        : [];
   const dirtyProduct = view?.items.find(
     (item) => draft[item.productId] !== String(item.quantity),
   )?.productId;
@@ -57,7 +75,12 @@ export function CartPage({ id }: { id?: string }) {
   const conflict =
     operations.currentCartId !== null && operations.currentCartId !== id;
   return (
-    <main id="main" tabIndex={-1} className="commerce-page cart-page">
+    <main
+      id="main"
+      tabIndex={-1}
+      className="commerce-page cart-page"
+      data-compact={embedded || undefined}
+    >
       <div className="purchase-layout purchase-page-layout">
         <div className="purchase-main">
           <div className="commerce-page-heading">
@@ -68,6 +91,22 @@ export function CartPage({ id }: { id?: string }) {
               勾選要購買的商品並調整數量，即可建立待支付訂單。生單後保留庫存15分鐘，尚未支付。
             </p>
           </div>
+          {embedded && view && (
+            <CompactNavigation
+              value={tab}
+              onChange={setTab}
+              count={view.items.length}
+              disabled={Boolean(busy || dirty || reload)}
+            />
+          )}
+          {embedded && view && (
+            <p className="compact-count">
+              共 {view.items.length} 項 · 已選 {selected.length} 項
+              {view.issues.length > 0
+                ? ` · ${view.issues.length} 項問題，請在商品明細確認`
+                : ''}
+            </p>
+          )}
           {loading && <p role="status">正在讀取購物車…</p>}
           {error && <p role="alert">{error}</p>}
           {conflict && (
@@ -88,7 +127,11 @@ export function CartPage({ id }: { id?: string }) {
           {view && (
             <>
               {view.items.length === 0 && <p>購物車目前沒有商品</p>}
-              <section className="purchase-products" aria-label="編輯購物車">
+              <section
+                className="purchase-products"
+                aria-label="編輯購物車"
+                hidden={embedded && tab === 'fees'}
+              >
                 <h2>商品明細</h2>
                 {!!view.items.length && (
                   <label className="cart-selection cart-select-all">
@@ -109,7 +152,7 @@ export function CartPage({ id }: { id?: string }) {
                     全選
                   </label>
                 )}
-                {view.items.map((item) => (
+                {visibleItems?.map((item) => (
                   <article
                     key={item.productId}
                     className="purchase-product cart-line"
@@ -164,120 +207,153 @@ export function CartPage({ id }: { id?: string }) {
                           {i.code}：請調整或移除此商品
                         </p>
                       ))}
-                    <div className="cart-line-controls">
-                      <label htmlFor={`qty-${item.productId}`}>
-                        數量<span className="sr-only"> {item.productId}</span>
-                      </label>
-                      <div
-                        className="cart-quantity-control"
-                        role="group"
-                        aria-label={`調整 ${item.productId} 數量`}
-                      >
-                        <Button
-                          variant="ghost"
-                          aria-label={`減少 ${item.productId} 數量`}
-                          disabled={
-                            busy ||
-                            dirty ||
-                            reload ||
-                            conflict ||
-                            item.quantity <= 1
-                          }
-                          onClick={() =>
-                            void perform({
-                              type: 'set_quantity',
-                              productId: item.productId,
-                              quantity: item.quantity - 1,
-                            })
-                          }
+                    <p className="cart-line-subtotal">
+                      小計{' '}
+                      <strong>
+                        {draft[item.productId] !== String(item.quantity)
+                          ? '更新後顯示'
+                          : item.unitPrice
+                            ? formatMoney(
+                                multiplyMoney(item.unitPrice, item.quantity),
+                              )
+                            : '待確認'}
+                      </strong>
+                    </p>
+                    {(!embedded || tab === 'items') && (
+                      <div className="cart-line-controls">
+                        <label htmlFor={`qty-${item.productId}`}>
+                          數量<span className="sr-only"> {item.productId}</span>
+                        </label>
+                        <div
+                          className="cart-quantity-control"
+                          role="group"
+                          aria-label={`調整 ${item.productId} 數量`}
                         >
-                          −
-                        </Button>
-                        <Input
-                          id={`qty-${item.productId}`}
-                          type="number"
-                          min="1"
-                          step="1"
-                          inputMode="numeric"
-                          aria-label={`數量 ${item.productId}`}
-                          value={draft[item.productId] ?? ''}
-                          disabled={
-                            busy ||
-                            reload ||
-                            conflict ||
-                            Boolean(
-                              dirtyProduct && dirtyProduct !== item.productId,
-                            )
-                          }
-                          onChange={(e) =>
-                            change(item.productId, e.target.value)
-                          }
-                          onBlur={() => {
-                            if (draft[item.productId] !== String(item.quantity))
+                          <Button
+                            variant="ghost"
+                            aria-label={`減少 ${item.productId} 數量`}
+                            disabled={
+                              busy ||
+                              dirty ||
+                              reload ||
+                              conflict ||
+                              item.quantity <= 1
+                            }
+                            onClick={() =>
                               void perform({
                                 type: 'set_quantity',
                                 productId: item.productId,
-                                quantity: Number(draft[item.productId]),
-                              });
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Escape') {
-                              e.preventDefault();
-                              change(item.productId, String(item.quantity));
+                                quantity: item.quantity - 1,
+                              })
                             }
-                            if (
-                              e.key === 'Enter' &&
-                              draft[item.productId] !== String(item.quantity)
-                            ) {
-                              e.preventDefault();
+                          >
+                            −
+                          </Button>
+                          <Input
+                            id={`qty-${item.productId}`}
+                            type="number"
+                            min="1"
+                            step="1"
+                            inputMode="numeric"
+                            aria-label={`數量 ${item.productId}`}
+                            value={draft[item.productId] ?? ''}
+                            disabled={
+                              busy ||
+                              reload ||
+                              conflict ||
+                              Boolean(
+                                dirtyProduct && dirtyProduct !== item.productId,
+                              )
+                            }
+                            onChange={(e) =>
+                              change(item.productId, e.target.value)
+                            }
+                            onBlur={() => {
+                              if (
+                                draft[item.productId] !== String(item.quantity)
+                              )
+                                void perform({
+                                  type: 'set_quantity',
+                                  productId: item.productId,
+                                  quantity: Number(draft[item.productId]),
+                                });
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Escape') {
+                                e.preventDefault();
+                                change(item.productId, String(item.quantity));
+                              }
+                              if (
+                                e.key === 'Enter' &&
+                                draft[item.productId] !== String(item.quantity)
+                              ) {
+                                e.preventDefault();
+                                void perform({
+                                  type: 'set_quantity',
+                                  productId: item.productId,
+                                  quantity: Number(draft[item.productId]),
+                                });
+                              }
+                            }}
+                          />
+                          <Button
+                            variant="ghost"
+                            aria-label={`增加 ${item.productId} 數量`}
+                            disabled={
+                              busy ||
+                              dirty ||
+                              reload ||
+                              conflict ||
+                              !item.availability?.canPurchase ||
+                              item.quantity >=
+                                (item.availability.currentQuantity ?? 0)
+                            }
+                            onClick={() =>
                               void perform({
                                 type: 'set_quantity',
                                 productId: item.productId,
-                                quantity: Number(draft[item.productId]),
-                              });
+                                quantity: item.quantity + 1,
+                              })
                             }
-                          }}
-                        />
+                          >
+                            +
+                          </Button>
+                        </div>
                         <Button
                           variant="ghost"
-                          aria-label={`增加 ${item.productId} 數量`}
-                          disabled={
-                            busy ||
-                            dirty ||
-                            reload ||
-                            conflict ||
-                            !item.availability?.canPurchase ||
-                            item.quantity >=
-                              (item.availability.currentQuantity ?? 0)
-                          }
+                          className="cart-line-remove"
+                          aria-label={`移除 ${item.productId}`}
+                          disabled={busy || dirty || reload || conflict}
                           onClick={() =>
                             void perform({
-                              type: 'set_quantity',
+                              type: 'remove_item',
                               productId: item.productId,
-                              quantity: item.quantity + 1,
                             })
                           }
                         >
-                          +
+                          移除
                         </Button>
                       </div>
-                      <Button
-                        variant="ghost"
-                        className="cart-line-remove"
-                        aria-label={`移除 ${item.productId}`}
-                        disabled={busy || dirty || reload || conflict}
-                        onClick={() =>
-                          void perform({
-                            type: 'remove_item',
-                            productId: item.productId,
-                          })
-                        }
-                      >
-                        移除
-                      </Button>
-                    </div>
+                    )}
                   </article>
                 ))}
+                {embedded && tab === 'overview' && view.items.length > 2 && (
+                  <Button
+                    variant="outline"
+                    onClick={() => setTab('items')}
+                    disabled={Boolean(busy || dirty || reload)}
+                  >
+                    查看全部 {view.items.length} 項商品
+                  </Button>
+                )}
+                {embedded && tab === 'items' && (
+                  <ItemPagination
+                    page={safePage}
+                    pages={pages}
+                    onChange={setItemPage}
+                    disabled={Boolean(busy || dirty || reload)}
+                  />
+                )}
                 {working && <p role="status">正在更新購物車…</p>}
                 {dirty && !working && (
                   <p role="status">
@@ -286,49 +362,16 @@ export function CartPage({ id }: { id?: string }) {
                 )}
               </section>
 
-              <p>購物車與訂單會保留；取消或到期不會自動把商品放回車中。</p>
+              {!embedded && (
+                <p>購物車與訂單會保留；取消或到期不會自動把商品放回車中。</p>
+              )}
             </>
           )}
           <p>
             <Link href="/">繼續選購</Link>
           </p>
-        </div>
-        {view && (
-          <PurchaseAside label="所選商品預估">
-            <h2>所選商品預估</h2>
-            {quote && !dirty && !reload ? (
-              <>
-                <MoneyBreakdown quote={quote} />
-                {quote.issues?.map((issue) => (
-                  <p role="status" key={issue.productId}>
-                    {issue.productId} 庫存不足，請調整數量後再建立訂單。
-                  </p>
-                ))}
-              </>
-            ) : (
-              <p>
-                {selected.length
-                  ? error
-                    ? '目前無法提供所選商品預估。'
-                    : '正在更新所選商品預估。'
-                  : '請勾選要購買的整行商品。'}
-              </p>
-            )}
+          <div className="purchase-secondary-actions">
             <CommerceActions>
-              <Button
-                disabled={
-                  busy ||
-                  dirty ||
-                  reload ||
-                  conflict ||
-                  !selected.length ||
-                  Boolean(quote?.issues?.length) ||
-                  unknownOrder
-                }
-                onClick={() => void create()}
-              >
-                {working ? '正在建立…' : '建立待支付訂單'}
-              </Button>
               {unknownOrder && (
                 <div role="status">
                   <p>原建立結果尚待確認。</p>
@@ -349,6 +392,64 @@ export function CartPage({ id }: { id?: string }) {
                 </p>
               )}
             </CommerceActions>
+          </div>
+        </div>
+        {view && (
+          <PurchaseAside
+            label="所選商品預估"
+            total={quote && !dirty && !reload ? quote.total : null}
+            primaryAction={
+              <Button
+                disabled={
+                  busy ||
+                  dirty ||
+                  reload ||
+                  conflict ||
+                  !selected.length ||
+                  Boolean(quote?.issues?.length) ||
+                  unknownOrder
+                }
+                onClick={() => void create()}
+              >
+                {working ? '正在建立…' : '去結算'}
+              </Button>
+            }
+          >
+            <h2>所選商品預估</h2>
+            {quote && !dirty && !reload ? (
+              <>
+                {!embedded || tab === 'fees' ? (
+                  <MoneyBreakdown
+                    quote={quote}
+                    presentation={embedded ? 'inline' : 'dialog'}
+                  />
+                ) : (
+                  <p className="compact-count">
+                    已選 {selected.length} 項 · 金額以目前儲存數量計算
+                  </p>
+                )}
+                {embedded && Boolean(quote.issues?.length) && (
+                  <p role="status">
+                    所選商品有 {quote.issues?.length}{' '}
+                    項庫存不足，請在商品明細調整數量。
+                  </p>
+                )}
+                {!embedded &&
+                  quote.issues?.map((issue) => (
+                    <p role="status" key={issue.productId}>
+                      {issue.productId} 庫存不足，請調整數量後再建立訂單。
+                    </p>
+                  ))}
+              </>
+            ) : (
+              <p>
+                {selected.length
+                  ? error
+                    ? '目前無法提供所選商品預估。'
+                    : '正在更新所選商品預估。'
+                  : '請勾選要購買的整行商品。'}
+              </p>
+            )}
           </PurchaseAside>
         )}
       </div>

@@ -190,3 +190,36 @@
   color: #616161;
   text-align: center;
 }
+
+/* Amount signs carry meaning independently of color. */
+.cart-totals .amount-row {
+  font-size: 14px;
+  font-weight: 400;
+}
+.cart-totals .amount-row-discount:not(.amount-row-zero) :is(dt, dd) {
+  color: #28623d;
+}
+.cart-totals .amount-row-zero :is(dt, dd) {
+  color: #6b6b6b;
+}
+.cart-totals .amount-row-final {
+  border-top: 2px solid var(--commerce-border);
+  margin-top: 12px;
+  padding-top: 16px;
+}
+.cart-totals .amount-row-final dt {
+  font-size: 15px;
+  font-weight: 600;
+}
+.cart-totals .amount-row-final dd {
+  font-size: 24px;
+  font-weight: 750;
+  line-height: 1.3;
+}
+.cart-totals dd {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.cart-totals .amount-row-shipping {
+  border-bottom: 0;
+}

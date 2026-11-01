@@ -134,11 +134,7 @@ test('cart separates orders and creation navigates with visible feedback', async
   });
   expect(alignment.gap).toBeGreaterThanOrEqual(10);
   expect(alignment.centers).toBeLessThan(2);
-  await expect(page.locator('.purchase-aside .commerce-actions')).toHaveCSS(
-    'margin-top',
-    '24px',
-  );
-  await expect(page.getByRole('button', { name: '建立待支付訂單' })).toHaveCSS(
+  await expect(page.getByRole('button', { name: '去結算' })).toHaveCSS(
     'background-color',
     'rgb(25, 25, 25)',
   );
@@ -147,7 +143,7 @@ test('cart separates orders and creation navigates with visible feedback', async
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBe(true);
-  await page.getByRole('button', { name: '建立待支付訂單' }).click();
+  await page.getByRole('button', { name: '去結算' }).click();
   await expect(page).toHaveURL(new RegExp(`/orders/${orderId}`));
   await expect(
     page.getByRole('status').filter({ hasText: '訂單已建立' }),
@@ -165,6 +161,11 @@ test('payment gives animated feedback and returns focus and scroll to result', a
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   const feedback = page.getByRole('complementary', { name: '訂單操作狀態' });
   await expect(feedback).toContainText('支付成功');
+  const controls = page.getByRole('region', { name: '金額與操作' });
+  const toastBox = await feedback.boundingBox();
+  expect(toastBox!.y + toastBox!.height).toBeLessThanOrEqual(
+    (await controls.boundingBox())!.y,
+  );
   expect(
     await feedback.evaluate((el) => getComputedStyle(el).animationName),
   ).not.toBe('none');
@@ -187,6 +188,17 @@ test('cancel feedback respects reduced motion and share keeps single-order scope
 }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto(`/orders/${orderId}`);
+  await expect(
+    page.locator('.order-deadline-actions').getByRole('timer'),
+  ).toBeVisible();
+  await expect(
+    page
+      .locator('.order-deadline-actions')
+      .getByRole('button', { name: '取消這筆訂單', exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole('link', { name: '繼續購物', exact: true }),
+  ).toHaveCount(0);
   await page.getByRole('button', { name: '取消這筆訂單', exact: true }).click();
   const feedback = page.getByRole('complementary', { name: '訂單操作狀態' });
   await expect(feedback).toContainText('訂單已取消');
@@ -213,7 +225,7 @@ test('late creation never steals navigation from the order list', async ({
   );
   await page.goto(`/cart/${cartId}`);
   await page.getByRole('checkbox', { name: '全選商品' }).check();
-  await page.getByRole('button', { name: '建立待支付訂單' }).click();
+  await page.getByRole('button', { name: '去結算' }).click();
   await page
     .getByRole('banner')
     .getByRole('link', { name: '訂單列表' })
@@ -336,7 +348,7 @@ test('selected checkbox has a visible contrasting mark and continue shopping ope
   expect(styles.height).toBeGreaterThanOrEqual(16);
   await page.goto(`/orders/${orderId}`);
   await expect(
-    page.getByRole('link', { name: '繼續購物', exact: true }),
+    page.getByRole('link', { name: 'AGENT / STORE', exact: true }),
   ).toHaveAttribute('href', '/');
 });
 
@@ -542,44 +554,11 @@ test('order cards show complete product previews, status and fixed amounts acros
   });
 });
 
-test('amount panels start beside the heading and only pin when they fit the viewport', async ({
+test('cart and order actions stay visible with one page scroll and reachable content', async ({
   page,
 }, testInfo) => {
   const order = fixtureOrders.get(page)!;
   const item = order.summary.items[0];
-  item.specs = Object.fromEntries(
-    Array.from({ length: 24 }, (_, i) => [`規格 ${i + 1}`, '詳細規格內容']),
-  );
-  await page.goto(`/orders/${orderId}`);
-  const aside = page.getByRole('complementary', { name: '訂單金額與操作' });
-  await expect(
-    page.getByRole('button', { name: '確認支付', exact: true }),
-  ).toBeEnabled();
-  if (testInfo.project.name === 'desktop') {
-    await page.setViewportSize({ width: 1280, height: 800 });
-    await expect(aside).toHaveCSS('position', 'sticky');
-    const start = await aside.boundingBox();
-    const heading = await page.locator('.commerce-page-heading').boundingBox();
-    expect(Math.abs(start!.y - heading!.y)).toBeLessThan(4);
-    expect(start!.y + start!.height).toBeLessThanOrEqual(800);
-    await page.evaluate(() => window.scrollTo(0, 600));
-    const pinned = await aside.boundingBox();
-    const header = await page.getByRole('banner').boundingBox();
-    expect(pinned!.y).toBeGreaterThanOrEqual(header!.height + 15);
-    expect(pinned!.y + pinned!.height).toBeLessThanOrEqual(800);
-    await page.setViewportSize({ width: 1280, height: 420 });
-    await expect(aside).toHaveCSS('position', 'static');
-    await page
-      .getByRole('button', { name: '確認支付', exact: true })
-      .scrollIntoViewIfNeeded();
-    await expect(
-      page.getByRole('button', { name: '確認支付', exact: true }),
-    ).toBeInViewport();
-    await page.setViewportSize({ width: 1280, height: 800 });
-  } else {
-    await expect(aside).toHaveCSS('position', 'static');
-  }
-  // A long fee list must remain fully expanded and use the page scroll only.
   order.summary.items = Array.from({ length: 12 }, (_, i) => ({
     ...item,
     productId: `P${String(i + 1).padStart(3, '0')}`,
@@ -587,35 +566,134 @@ test('amount panels start beside the heading and only pin when they fit the view
   }));
   order.summary.subtotal = '1200.00';
   order.summary.total = '1300.00';
-  await page.reload();
-  await expect(aside.locator('.fee-items > li')).toHaveCount(12);
-  await expect(aside).toHaveCSS('position', 'static');
-  await expect(aside).toHaveCSS('overflow-y', 'visible');
-  await expect(aside.locator('.fee-items')).toHaveCSS('overflow-y', 'visible');
-  await page
-    .getByRole('button', { name: '確認支付', exact: true })
-    .scrollIntoViewIfNeeded();
+  await page.goto(`/orders/${orderId}`);
+  const aside = page.getByRole('complementary', { name: '訂單金額與操作' });
+  const dock = aside.getByRole('region', { name: '金額與操作' });
+  const pay = page.getByRole('button', { name: '確認支付', exact: true });
+  await expect(dock).toHaveCSS('position', 'fixed');
+  if (testInfo.project.name === 'desktop')
+    await expect(aside).toHaveCSS('position', 'sticky');
+  await expect(pay).toBeInViewport();
+  await expect(dock).toContainText('NT$ 1,300.00');
+  const totalRows = aside.locator('.cart-totals > dl > div');
+  await expect(totalRows.locator('dt')).toHaveText([
+    '商品合計',
+    '全站滿減',
+    'AI 優惠',
+    '運費',
+    '應付金額',
+  ]);
+  await expect(totalRows.nth(1)).toBeVisible();
+  await expect(totalRows.nth(2)).toBeVisible();
   await expect(
-    page.getByRole('button', { name: '確認支付', exact: true }),
+    aside.locator('.cart-totals > dl .amount-row-shipping'),
+  ).toContainText('＋ NT$ 100.00');
+  const before = await dock.boundingBox();
+  await page.evaluate(() => window.scrollTo(0, 600));
+  const after = await dock.boundingBox();
+  expect(Math.abs(before!.y - after!.y)).toBeLessThan(2);
+  await expect(pay).toBeInViewport();
+  await expect(aside).toHaveCSS('overflow-y', 'visible');
+  await expect(dock.getByRole('button')).toHaveCount(1);
+  await expect(dock.getByRole('link')).toHaveCount(0);
+  const dockBox = await dock.boundingBox();
+  expect(dockBox!.x).toBe(0);
+  expect(dockBox!.width).toBe(await page.evaluate(() => window.innerWidth));
+  const trigger = aside.getByRole('button', { name: '查看商品費用明細' });
+  await trigger.click();
+  const dialog = page.getByRole('dialog', {
+    name: '商品費用明細',
+    exact: true,
+  });
+  await expect(dialog.getByRole('listitem')).toHaveCount(12);
+  await expect(page.locator('html')).toHaveCSS('overflow-y', 'hidden');
+  const backgroundY = await page.evaluate(() => window.scrollY);
+  await page.mouse.move(4, 4);
+  await page.mouse.wheel(0, 300);
+  expect(await page.evaluate(() => window.scrollY)).toBe(backgroundY);
+  await page.keyboard.press('Tab');
+  expect(
+    await page.evaluate(() =>
+      Boolean(document.activeElement?.closest('dialog')),
+    ),
+  ).toBe(true);
+  await expect(dialog).toHaveCSS('overflow-y', 'auto');
+  await dialog.getByRole('listitem').last().scrollIntoViewIfNeeded();
+  await expect(dialog.getByRole('listitem').last()).toBeInViewport();
+  await dialog.locator('dl > div').last().scrollIntoViewIfNeeded();
+  await expect(dialog.locator('dl > div').last()).toBeInViewport();
+  await expect(
+    dialog.getByRole('button', { name: '關閉明細' }),
   ).toBeInViewport();
-  await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({
-    path: testInfo.outputPath('amount-panel.png'),
+    path: testInfo.outputPath('fees-dialog.png'),
     fullPage: false,
   });
-  // The cart fixture has one selected line; keep its quote consistent with it.
+  await page.keyboard.press('Escape');
+  await expect(dialog).not.toBeVisible();
+  await expect(trigger).toBeFocused();
+  await expect(page.locator('html')).not.toHaveCSS('overflow-y', 'hidden');
+  const footer = page.locator('.commerce-application > footer');
+  await footer.scrollIntoViewIfNeeded();
+  const footerBox = await footer.boundingBox();
+  expect(footerBox!.y + footerBox!.height).toBeLessThan(
+    (await dock.boundingBox())!.y,
+  );
+  expect(
+    await page.evaluate(
+      () =>
+        [...document.querySelectorAll('.commerce-application *')].filter(
+          (el) =>
+            /^(auto|scroll)$/.test(getComputedStyle(el).overflowY) &&
+            el.scrollHeight > el.clientHeight,
+        ).length,
+    ),
+  ).toBe(0);
+  if (testInfo.project.name === 'desktop') {
+    await page.setViewportSize({ width: 1280, height: 420 });
+    await expect(pay).toBeInViewport();
+    await expect(dock).toHaveCSS('overflow-y', 'visible');
+    await page.setViewportSize({ width: 1280, height: 800 });
+  }
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({
+    path: testInfo.outputPath('fixed-order-actions.png'),
+    fullPage: false,
+  });
   order.summary.items = [item];
   order.summary.subtotal = '100.00';
   order.summary.total = '200.00';
   await page.goto(`/cart/${cartId}`);
-  await page.getByRole('checkbox', { name: '全選商品' }).check();
   const estimate = page.getByRole('complementary', { name: '所選商品預估' });
-  await expect(estimate.locator('.cart-totals')).toBeVisible();
-  if (testInfo.project.name === 'desktop') {
-    await expect(estimate).toHaveCSS('position', 'sticky');
-    const box = await estimate.boundingBox();
-    expect(box!.y + box!.height).toBeLessThanOrEqual(800);
-  } else await expect(estimate).toHaveCSS('position', 'static');
+  const cartDock = estimate.getByRole('region', { name: '金額與操作' });
+  const create = page.getByRole('button', {
+    name: '去結算',
+    exact: true,
+  });
+  await expect(cartDock).toHaveCSS('position', 'fixed');
+  await expect(create).toBeInViewport();
+  await expect(create).toBeDisabled();
+  await expect(cartDock).toContainText('待確認');
+  await page.getByRole('checkbox', { name: '全選商品' }).check();
+  await expect(create).toBeEnabled();
+  await expect(cartDock).toContainText('NT$ 200.00');
+  await page
+    .getByRole('spinbutton', { name: '數量 P001', exact: true })
+    .fill('2');
+  await expect(create).toBeDisabled();
+  await expect(cartDock).toContainText('待確認');
+  await page
+    .getByRole('spinbutton', { name: '數量 P001', exact: true })
+    .press('Escape');
+  await expect(cartDock).toContainText('NT$ 200.00');
+  await page.evaluate(() =>
+    window.scrollTo(0, document.documentElement.scrollHeight),
+  );
+  await expect(create).toBeInViewport();
+  await page.screenshot({
+    path: testInfo.outputPath('fixed-cart-actions.png'),
+    fullPage: false,
+  });
 });
 
 test('order header opens the displayed source order list without switching the current cart', async ({

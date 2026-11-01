@@ -72,7 +72,7 @@ test('fixed order summary pays the original order and continues shopping in the 
   await expect(
     page.getByRole('heading', { name: '支付成功', exact: true }),
   ).toBeVisible();
-  await page.getByRole('link', { name: '繼續購物', exact: true }).click();
+  await page.getByRole('link', { name: 'AGENT / STORE', exact: true }).click();
   await expect(page).toHaveURL(/\/$/);
   await page.goto(`/cart/${cart.cartId}`);
   await expect(page.getByLabel('數量 P003', { exact: true })).toHaveValue('1');
@@ -120,7 +120,7 @@ test('cancellation closes only the chosen order and keeps sibling navigation @ci
   await expect(
     page.getByRole('heading', { name: '訂單已取消', exact: true }),
   ).toBeVisible();
-  await page.getByRole('link', { name: '繼續購物', exact: true }).click();
+  await page.getByRole('link', { name: 'AGENT / STORE', exact: true }).click();
   await expect(page).toHaveURL(/\/$/);
   await page.goto(`/cart/${cart.cartId}`);
   await expect(
@@ -292,7 +292,7 @@ test('opening own order without a pointer resumes the original cart; another car
   await page.evaluate(() => localStorage.removeItem('store.currentCartId'));
   await page.goto(`/orders/${order.orderId}`);
   await expect(
-    page.getByRole('link', { name: '繼續購物', exact: true }),
+    page.getByRole('link', { name: 'AGENT / STORE', exact: true }),
   ).toBeVisible();
   expect(
     await page.evaluate(() => localStorage.getItem('store.currentCartId')),
@@ -441,9 +441,7 @@ test('late creation keeps its original order link without replacing a newly sele
     await gate;
     await route.fulfill({ response });
   });
-  await page
-    .getByRole('button', { name: '建立待支付訂單', exact: true })
-    .click();
+  await page.getByRole('button', { name: '去結算', exact: true }).click();
   await started;
   await page.getByRole('link', { name: 'AGENT / STORE', exact: true }).click();
   await page.evaluate(
@@ -569,9 +567,7 @@ test('returning to cart before a delayed creation completes receives the origina
     await gate;
     await route.fulfill({ response });
   });
-  await page
-    .getByRole('button', { name: '建立待支付訂單', exact: true })
-    .click();
+  await page.getByRole('button', { name: '去結算', exact: true }).click();
   await started;
   await page.getByRole('link', { name: 'AGENT / STORE', exact: true }).click();
   await page.getByRole('link', { name: '購物車', exact: true }).click();

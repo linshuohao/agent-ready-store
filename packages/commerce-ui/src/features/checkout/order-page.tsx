@@ -3,7 +3,6 @@ import { useRuntime } from '../../runtime';
 import { Share2 } from 'lucide-react';
 
 import { CommerceActions } from '../../index';
-import { Link } from '../../runtime';
 import { PageTools } from '../../runtime';
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from '../../runtime';
@@ -13,6 +12,11 @@ import { CartFeedback } from '../cart/feedback';
 import { useCartOperations } from '../cart/provider';
 import { useOrderPage } from './use-order-page';
 import { OrderProduct } from './order-product';
+import {
+  CompactNavigation,
+  ItemPagination,
+  type PurchaseView,
+} from '../cart/compact-navigation';
 import { PurchaseAside } from '../cart/purchase-aside';
 export function OrderPage({
   id,
@@ -24,6 +28,9 @@ export function OrderPage({
   created?: boolean;
 }) {
   const runtime = useRuntime();
+  const embedded = runtime.surface === 'embedded';
+  const [tab, setTab] = useState<PurchaseView>('overview');
+  const [itemPage, setItemPage] = useState(0);
   const [shareError, setShareError] = useState('');
   const page = useOrderPage(id),
     cart = useCartOperations();
@@ -94,6 +101,15 @@ export function OrderPage({
         </CommerceActions>
       </main>
     );
+  const pages = Math.ceil(order.summary.items.length / 4);
+  const safePage = Math.min(itemPage, Math.max(0, pages - 1));
+  const visibleItems = !embedded
+    ? order.summary.items
+    : tab === 'overview'
+      ? order.summary.items.slice(0, 2)
+      : tab === 'items'
+        ? order.summary.items.slice(safePage * 4, safePage * 4 + 4)
+        : [];
   const paid = order.status === 'PAID',
     closed = order.closedAt !== null;
   const title = paid
@@ -111,7 +127,12 @@ export function OrderPage({
     Math.ceil((Date.parse(order.reservationExpiresAt) - page.now) / 1000),
   );
   return (
-    <main id="main" tabIndex={-1} className="commerce-page order-page">
+    <main
+      id="main"
+      tabIndex={-1}
+      className="commerce-page order-page"
+      data-compact={embedded || undefined}
+    >
       {feedback && (
         <CartFeedback
           key={feedback}
@@ -187,29 +208,81 @@ export function OrderPage({
                     已停止新的支付操作，正在核實原單結果；期限已到不代表關閉已提交。
                   </p>
                 ) : (
-                  <p role="timer">
-                    剩餘支付時間：{Math.floor(seconds / 60)} 分 {seconds % 60}{' '}
-                    秒
-                  </p>
+                  <div className="order-deadline-actions">
+                    <p role="timer">
+                      剩餘支付時間：{Math.floor(seconds / 60)} 分 {seconds % 60}{' '}
+                      秒
+                    </p>{' '}
+                    {!share &&
+                      !paid &&
+                      !closed &&
+                      (!page.pendingAction ||
+                        page.pendingAction === 'cancel') &&
+                      order.allowedActions.canCancel && (
+                        <Button
+                          variant="outline"
+                          disabled={
+                            page.busy ||
+                            page.loading ||
+                            page.expired ||
+                            page.conflict
+                          }
+                          onClick={() => void page.act('cancel')}
+                        >
+                          {page.pendingAction === 'cancel'
+                            ? '重試原單取消'
+                            : '取消這筆訂單'}
+                        </Button>
+                      )}
+                  </div>
                 )}
               </>
             )}
           </div>
+          {embedded && (
+            <CompactNavigation
+              value={tab}
+              onChange={setTab}
+              count={order.summary.items.length}
+              disabled={page.busy || page.loading}
+            />
+          )}
           {page.message && <p role="alert">{page.message}</p>}
           {page.unknown && !paid && !closed && (
             <p role="status">
               原操作結果待確認，請先查詢原單。重試只操作這筆訂單。
             </p>
           )}
-          <div className="purchase-products">
+          <div
+            className="purchase-products"
+            hidden={embedded && tab === 'fees'}
+          >
             <h2>商品明細</h2>
             <ul className="purchase-product-list">
-              {order.summary.items.map((item) => (
+              {visibleItems.map((item) => (
                 <li key={item.productId} className="purchase-product">
-                  <OrderProduct item={item} />
+                  <OrderProduct
+                    item={item}
+                    compact={embedded}
+                    expandableDetails={embedded && tab === 'items'}
+                  />
                 </li>
               ))}
             </ul>
+            {embedded &&
+              tab === 'overview' &&
+              order.summary.items.length > 2 && (
+                <Button variant="outline" onClick={() => setTab('items')}>
+                  查看全部 {order.summary.items.length} 項商品
+                </Button>
+              )}
+            {embedded && tab === 'items' && (
+              <ItemPagination
+                page={safePage}
+                pages={pages}
+                onChange={setItemPage}
+              />
+            )}
           </div>
 
           {!share && confirmation && (
@@ -249,82 +322,75 @@ export function OrderPage({
               {resumeError && <p role="alert">{resumeError}</p>}
             </section>
           )}
+          <div className="purchase-secondary-actions">
+            <CommerceActions>
+              {(page.message ||
+                page.unknown ||
+                page.conflict ||
+                (!paid && !closed && page.expired)) && (
+                <Button
+                  disabled={page.loading}
+                  onClick={() => void page.load()}
+                >
+                  重新查詢訂單
+                </Button>
+              )}
+              {!share && !sameCart && (
+                <>
+                  <Button
+                    disabled={!cart.ready || cart.busy}
+                    onClick={() =>
+                      setConfirmation({ currentId: cart.currentCartId })
+                    }
+                  >
+                    接續這次購物
+                  </Button>
+                </>
+              )}
+            </CommerceActions>
+          </div>
           <p className="hint">
             Demo 僅模擬支付，不會產生真實扣款。訂單 ID
             用於定位資料，不代表身分驗證或存取隔離。
           </p>
         </div>
-        <PurchaseAside label="訂單金額與操作">
-          <MoneyBreakdown
-            quote={order.summary}
-            mode={paid ? 'completed' : 'confirmation'}
-          />
-          <CommerceActions>
-            {!paid &&
-              !closed &&
-              (!page.pendingAction || page.pendingAction === 'pay') &&
-              order.allowedActions.canPay && (
-                <Button
-                  disabled={
-                    page.busy || page.loading || page.expired || page.conflict
-                  }
-                  onClick={() => void page.act('pay')}
-                >
-                  {page.busy
-                    ? '正在處理…'
-                    : page.unknown
-                      ? '重試原單支付'
-                      : '確認支付'}
-                </Button>
-              )}
-            {!share &&
-              !paid &&
-              !closed &&
-              (!page.pendingAction || page.pendingAction === 'cancel') &&
-              order.allowedActions.canCancel && (
-                <Button
-                  variant="outline"
-                  disabled={
-                    page.busy || page.loading || page.expired || page.conflict
-                  }
-                  onClick={() => void page.act('cancel')}
-                >
-                  {page.pendingAction === 'cancel'
-                    ? '重試原單取消'
-                    : '取消這筆訂單'}
-                </Button>
-              )}
-            {(page.message ||
-              page.unknown ||
-              page.conflict ||
-              (!paid && !closed && page.expired)) && (
-              <Button disabled={page.loading} onClick={() => void page.load()}>
-                重新查詢訂單
-              </Button>
-            )}
-            {!share && sameCart && (
-              <Link
-                className="commerce-action-secondary"
-                href="/"
-                prefetch={false}
+        <PurchaseAside
+          label="訂單金額與操作"
+          total={order.summary.total}
+          totalLabel={paid ? '實付金額' : closed ? '訂單金額' : '應付金額'}
+          primaryAction={
+            !paid &&
+            !closed &&
+            (!page.pendingAction || page.pendingAction === 'pay') &&
+            order.allowedActions.canPay && (
+              <Button
+                disabled={
+                  page.busy || page.loading || page.expired || page.conflict
+                }
+                onClick={() => void page.act('pay')}
               >
-                繼續購物
-              </Link>
-            )}
-            {!share && !sameCart && (
-              <>
-                <Button
-                  disabled={!cart.ready || cart.busy}
-                  onClick={() =>
-                    setConfirmation({ currentId: cart.currentCartId })
-                  }
-                >
-                  接續這次購物
-                </Button>
-              </>
-            )}
-          </CommerceActions>
-        </PurchaseAside>{' '}
+                {page.busy
+                  ? '正在處理…'
+                  : page.unknown
+                    ? '重試原單支付'
+                    : '確認支付'}
+              </Button>
+            )
+          }
+        >
+          {(!embedded || tab === 'fees') && (
+            <MoneyBreakdown
+              presentation={embedded ? 'inline' : 'dialog'}
+              quote={order.summary}
+              mode={paid ? 'completed' : 'confirmation'}
+            />
+          )}
+          {embedded && tab !== 'fees' && (
+            <p className="compact-count">
+              共 {order.summary.items.length} 項商品 · 商品與金額已固定
+            </p>
+          )}
+        </PurchaseAside>
       </section>
     </main>
   );

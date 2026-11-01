@@ -9,10 +9,29 @@ type OrderItem = OrderView['summary']['items'][number];
 export function OrderProduct({
   item,
   compact = false,
+  expandableDetails = false,
 }: {
   item: OrderItem;
   compact?: boolean;
+  expandableDetails?: boolean;
 }) {
+  const subtotal = (
+    <div className="order-product-subtotal">
+      <span>商品小計</span>
+      <strong>{formatMoney(item.lineSubtotal)}</strong>
+    </div>
+  );
+  const specs =
+    Object.keys(item.specs).length > 0 ? (
+      <dl className="order-product-specs">
+        {Object.entries(item.specs).map(([key, value]) => (
+          <div key={key}>
+            <dt>{key}</dt>
+            <dd>{String(value)}</dd>
+          </div>
+        ))}
+      </dl>
+    ) : null;
   return (
     <div className={`order-product${compact ? ' order-product-compact' : ''}`}>
       <div className="commerce-product-art">
@@ -33,20 +52,17 @@ export function OrderProduct({
         </p>
       </div>
       {!compact && (
-        <div className="order-product-subtotal">
-          <span>商品小計</span>
-          <strong>{formatMoney(item.lineSubtotal)}</strong>
-        </div>
+        <>
+          {subtotal}
+          {specs}
+        </>
       )}
-      {!compact && Object.keys(item.specs).length > 0 && (
-        <dl className="order-product-specs">
-          {Object.entries(item.specs).map(([key, value]) => (
-            <div key={key}>
-              <dt>{key}</dt>
-              <dd>{String(value)}</dd>
-            </div>
-          ))}
-        </dl>
+      {compact && expandableDetails && (
+        <details className="order-product-disclosure">
+          <summary>規格與小計</summary>
+          {subtotal}
+          {specs}
+        </details>
       )}
     </div>
   );

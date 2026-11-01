@@ -167,9 +167,7 @@ test('ordinary Web order on a WebMCP-created cart does not inherit AI eligibilit
   await page.goto('/products/P001');
   const init = await initialize(page, false);
   await page.getByLabel('選取 P001', { exact: true }).check();
-  await page
-    .getByRole('button', { name: '建立待支付訂單', exact: true })
-    .click();
+  await page.getByRole('button', { name: '去結算', exact: true }).click();
   await expect(page).toHaveURL(/\/orders\//);
   await expect(
     page.getByRole('heading', { name: '待支付訂單', exact: true }),

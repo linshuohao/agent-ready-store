@@ -32,7 +32,7 @@ test('defaults to no selection, protects drafts on focus, saves quantities and c
     { productId: 'P003', quantity: 1 },
   ]);
   const create = page.getByRole('button', {
-    name: '建立待支付訂單',
+    name: '去結算',
     exact: true,
   });
   await expect(page.getByLabel('選取 P001', { exact: true })).not.toBeChecked();
@@ -71,7 +71,7 @@ test('defaults to no selection, protects drafts on focus, saves quantities and c
   await create.click();
   await expect(page).toHaveURL(/\/orders\//);
   await expect(
-    page.getByRole('link', { name: '繼續購物', exact: true }),
+    page.getByRole('link', { name: 'AGENT / STORE', exact: true }),
   ).toHaveAttribute('href', '/');
   await page.goto(`/cart/${cart.cartId}`);
   await expect(page.getByLabel('數量 P001', { exact: true })).toHaveCount(0);
@@ -131,12 +131,10 @@ test('unknown add operation recovers its original key after reload and same SKU 
 }) => {
   const cart = await setup(page);
   await page.getByLabel('選取 P001', { exact: true }).check();
-  await page
-    .getByRole('button', { name: '建立待支付訂單', exact: true })
-    .click();
+  await page.getByRole('button', { name: '去結算', exact: true }).click();
   await expect(page).toHaveURL(/\/orders\//);
   await expect(
-    page.getByRole('link', { name: '繼續購物', exact: true }),
+    page.getByRole('link', { name: 'AGENT / STORE', exact: true }),
   ).toHaveAttribute('href', '/');
   await page.goto(`/cart/${cart.cartId}`);
   await expect(
@@ -255,9 +253,7 @@ test('recovering an unknown creation records the original order without discardi
     await route.abort('failed');
   });
   await page.getByLabel('選取 P001', { exact: true }).check();
-  await page
-    .getByRole('button', { name: '建立待支付訂單', exact: true })
-    .click();
+  await page.getByRole('button', { name: '去結算', exact: true }).click();
   await expect(
     page.getByRole('button', { name: '恢復原建立訂單請求' }),
   ).toBeVisible();
@@ -292,9 +288,7 @@ test('blur saves one changed row and a create version conflict offers explicit r
     expectedCartVersion: 2,
     operation: { type: 'add_item', productId: 'P003', quantity: 1 },
   });
-  await page
-    .getByRole('button', { name: '建立待支付訂單', exact: true })
-    .click();
+  await page.getByRole('button', { name: '去結算', exact: true }).click();
   await expect(
     page.getByRole('button', { name: '重新載入購物車（放棄未儲存修改）' }),
   ).toBeVisible();

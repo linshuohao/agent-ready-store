@@ -12,7 +12,13 @@ let cart: ShoppingCartView = {
   cartId: id,
   cartVersion: 1,
   agentCreated: true,
-  items: ['P001', 'P002'].map((productId) => ({
+  items: (new URL(location.href).searchParams.has('long')
+    ? Array.from(
+        { length: 13 },
+        (_, index) => `P${String(index + 1).padStart(3, '0')}`,
+      )
+    : ['P001', 'P002']
+  ).map((productId) => ({
     productId,
     quantity: 1,
     name: '同名耳機',
@@ -119,11 +125,15 @@ const summary = (items: ShoppingCartView['items']) => ({
     unitPrice: i.unitPrice!,
     lineSubtotal: (i.quantity * 10).toFixed(2),
   })),
-  subtotal: '20.00',
+  subtotal: items
+    .reduce((total, item) => total + item.quantity * 10, 0)
+    .toFixed(2),
   thresholdDiscount: '0.00',
   aiDiscount: '1.00',
   shipping: '100.00',
-  total: '119.00',
+  total: (
+    items.reduce((total, item) => total + item.quantity * 10, 0) + 99
+  ).toFixed(2),
 });
 function createFixtureOrder(selected: ShoppingCartView['items']) {
   order ??= {
@@ -133,7 +143,7 @@ function createFixtureOrder(selected: ShoppingCartView['items']) {
     status: 'CHECKOUT',
     effectiveStatus: 'CHECKOUT',
     createdAt: '2026-01-01T00:00:00.000Z',
-    reservationExpiresAt: '2099-01-01T00:00:00.000Z',
+    reservationExpiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
     paidAt: null,
     closedAt: null,
     closeReason: null,

@@ -41,7 +41,10 @@ test('cart cards show artwork and support bounded quantity controls and draft re
   const minus = page.getByRole('button', { name: '減少 P001 數量' });
   const plus = page.getByRole('button', { name: '增加 P001 數量' });
   await expect(input).toHaveValue('1');
-  await expect(page.locator('.cart-line-subtotal')).toHaveCount(0);
+  await expect(page.locator('.cart-line-subtotal')).not.toContainText('優惠');
+  await expect(page.locator('.cart-line-subtotal').first()).toContainText(
+    'NT$ 1,290.00',
+  );
   await expect(page.locator('.cart-line-price')).toContainText(
     '單價 NT$ 1,290.00',
   );
@@ -49,6 +52,9 @@ test('cart cards show artwork and support bounded quantity controls and draft re
   await expect(minus).toBeDisabled();
   await plus.click();
   await expect(input).toHaveValue('2');
+  await expect(page.locator('.cart-line-subtotal')).toContainText(
+    'NT$ 2,580.00',
+  );
   await expect(plus).toBeEnabled();
   await plus.click();
   await expect(input).toHaveValue('3');
@@ -56,6 +62,7 @@ test('cart cards show artwork and support bounded quantity controls and draft re
   await minus.click();
   await expect(input).toHaveValue('2');
   await input.fill('0');
+  await expect(page.locator('.cart-line-subtotal')).toContainText('更新後顯示');
   await input.press('Enter');
   await expect(
     page.getByText('數量必須是正整數。', { exact: true }),
@@ -83,7 +90,7 @@ test('cart cards show artwork and support bounded quantity controls and draft re
 
 test('cart fee panel lists each selected line before totals without repeating unit prices', async ({
   page,
-}) => {
+}, testInfo) => {
   const cartId = '11111111-1111-4111-8111-111111111112';
   const cart = {
     cartId,
@@ -148,7 +155,42 @@ test('cart fee panel lists each selected line before totals without repeating un
   await page.goto(`/cart/${cartId}`);
   await page.getByRole('checkbox', { name: '全選商品' }).check();
   const panel = page.getByRole('complementary', { name: '所選商品預估' });
-  const rows = panel
+  await expect(panel.locator('.amount-row-discount').first()).toContainText(
+    '− NT$ 100.00',
+  );
+  await expect(
+    panel.locator('.cart-totals > dl .amount-row-zero'),
+  ).toContainText('NT$ 0.00');
+  await expect(
+    panel.locator('.cart-totals > dl .amount-row-shipping'),
+  ).toContainText('免運');
+  const hierarchy = await panel.evaluate((el) => ({
+    base: parseFloat(
+      getComputedStyle(el.querySelector('.amount-row-base dd')!).fontSize,
+    ),
+    final: parseFloat(
+      getComputedStyle(el.querySelector('.amount-row-final dd')!).fontSize,
+    ),
+  }));
+  expect(hierarchy.final).toBeGreaterThan(hierarchy.base);
+  await expect(
+    panel.locator('.cart-totals > dl .amount-row-shipping'),
+  ).toHaveCSS('border-bottom-width', '0px');
+  await expect(panel.locator('.cart-totals > dl .amount-row-final')).toHaveCSS(
+    'border-top-width',
+    '2px',
+  );
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({
+    path: testInfo.outputPath('amount-hierarchy.png'),
+    fullPage: false,
+  });
+  await panel.getByRole('button', { name: '查看商品費用明細' }).click();
+  const dialog = page.getByRole('dialog', {
+    name: '商品費用明細',
+    exact: true,
+  });
+  const rows = dialog
     .getByRole('list', { name: '商品費用明細' })
     .getByRole('listitem');
   await expect(rows).toHaveCount(2);
@@ -156,20 +198,28 @@ test('cart fee panel lists each selected line before totals without repeating un
   await expect(rows.nth(0)).toContainText('× 2 件');
   await expect(rows.nth(0)).toContainText('NT$ 2,580.00');
   await expect(rows.nth(1)).toContainText('NT$ 780.00');
-  await expect(panel).not.toContainText('NT$ 1,290.00');
-  await expect(panel.locator('dl > div').first()).toContainText('商品合計');
-  await expect(panel.locator('dl > div').first()).toContainText('NT$ 3,360.00');
-  await expect(panel.locator('dl > div').last()).toContainText('NT$ 3,260.00');
-  const positions = await panel.evaluate((el) => ({
+  await expect(dialog).not.toContainText('NT$ 1,290.00');
+  await expect(dialog.locator('.amount-row-discount').first()).toContainText(
+    '− NT$ 100.00',
+  );
+  await expect(dialog.locator('.amount-row-shipping')).toContainText('免運');
+  await expect(dialog.locator('dl > div').first()).toContainText('商品合計');
+  await expect(dialog.locator('dl > div').first()).toContainText(
+    'NT$ 3,360.00',
+  );
+  await expect(dialog.locator('dl > div').last()).toContainText('NT$ 3,260.00');
+  const positions = await dialog.evaluate((el) => ({
     list: el.querySelector('ul')!.getBoundingClientRect().bottom,
     totals: el.querySelector('dl')!.getBoundingClientRect().top,
   }));
   expect(positions.list).toBeLessThanOrEqual(positions.totals);
   await expect(panel).toHaveCSS('overflow-y', 'visible');
+  await dialog.getByRole('button', { name: '關閉明細' }).click();
   await page
     .getByRole('checkbox', { name: '選取 P001', exact: true })
     .uncheck();
+  await panel.getByRole('button', { name: '查看商品費用明細' }).click();
   await expect(rows).toHaveCount(1);
   await expect(rows).toContainText('保溫瓶');
-  await expect(page.locator('.cart-line-subtotal')).toHaveCount(0);
+  await expect(page.locator('.cart-line-subtotal')).toHaveCount(2);
 });
