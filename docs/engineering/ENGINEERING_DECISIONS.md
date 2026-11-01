@@ -84,7 +84,8 @@
 - 内容：稳定 main、短生命周期分支、Conventional Commits、Branch → Commit → Verify → Review → PR → Merge；优先 Merge Commit，不设长期 develop，不要求每小任务分支。本轮只本地初始化与提交。
 - 理由：以可审查增量保留真实工程过程。
 - 替代方案：直接在 main 开发、长期 develop、默认 squash；不采用。
-- 影响范围：本地 Git 与后续远程协作；服务器端保护和 CI 待后续配置。
+- 影响范围：本地 Git 与后续远程协作；决策建立时服务器端保护和 CI 尚待配置。
+- 2026-11-01 当前状态：GitHub origin、业务 CI 与 `main` 分支保护均已配置并核实；仅允许 Merge Commit，保留完整历史。实际门禁与安全设置见[仓库配置](DELIVERY_STATUS.md#repository-settings)，本条保留最初仅本地初始化的历史范围。
 
 ## ENG-005 — 分层上下文与只读原件
 
