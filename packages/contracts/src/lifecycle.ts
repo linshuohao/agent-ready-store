@@ -61,14 +61,20 @@ export const selectionConstraintsInput = z
   .object({
     currency: z.literal('TWD'),
     maxTotal: money
-      .describe('优惠后含运总额上限，币种TWD；不得擅自提高用户预算。')
+      .describe(
+        '优惠后含运总额上限，币种TWD，两位小数字符串，如1000.00；不得擅自提高用户预算。',
+      )
       .optional(),
     items: z
       .array(
         z
           .object({
             productId,
-            maxUnitPrice: money.optional(),
+            maxUnitPrice: money
+              .describe(
+                '用户明确的TWD商品单价上限，两位小数字符串，如1000.00。',
+              )
+              .optional(),
             specs: specs
               .describe(
                 '用户明确硬约束的目录原文键值，精确相等；不翻译、不添加推荐特性。',

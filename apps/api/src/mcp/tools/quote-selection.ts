@@ -12,7 +12,7 @@ export function createQuoteSelection(carts: CartService): ToolDefinition {
   return {
     name: 'quote_selection',
     description:
-      '按完整selectedItems及预算/币种/规格只读预估，无UI、不占库、不生单。购买有预算/规格时优先预检以减少失败卡片；通过不保证稍后仍有库存，create_order仍重验。非强制前置步骤。',
+      '需要核对本店选定商品的优惠后含运总额、预算或规格约束时，按完整selectedItems及constraints只读预估。需要已有真实cartId；无车且仅询价时说明无法取得完整报价，不为询价加购建车或编造cartId。无UI、不占库、不生单。购买有预算/规格时优先预检以减少失败卡片；通过不保证稍后仍有库存，create_order仍重验。非强制前置步骤。',
     inputSchema: selectionQuote,
     annotations: {
       readOnlyHint: true,

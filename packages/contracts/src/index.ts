@@ -26,7 +26,13 @@ export interface ProductCategory {
 }
 export const searchInput = pageInput
   .extend({
-    q: z.string().max(200).default(''),
+    q: z
+      .string()
+      .max(200)
+      .describe(
+        '商品关键词，如耳机或Bluetooth；不是自然语言语义搜索，不传整句需求。服务端已做简繁归一和登记别名匹配，不为仅简繁差异重复查询。预算用价格字段，用途和规格用详情核验；留空浏览目录。',
+      )
+      .default(''),
     category: z
       .string()
       .max(200)
@@ -37,10 +43,28 @@ export const searchInput = pageInput
       .max(200)
       .describe('目录品牌原文，精确匹配；不限品牌时省略。')
       .optional(),
-    minPrice: z.number().nonnegative().max(Number.MAX_SAFE_INTEGER).optional(),
-    maxPrice: z.number().nonnegative().max(Number.MAX_SAFE_INTEGER).optional(),
-    purchasableOnly: z.boolean().default(false),
-    sort: z.literal('recommendation').default('recommendation'),
+    minPrice: z
+      .number()
+      .nonnegative()
+      .max(Number.MAX_SAFE_INTEGER)
+      .describe('TWD商品单价下限（含边界），不是整单总额。')
+      .optional(),
+    maxPrice: z
+      .number()
+      .nonnegative()
+      .max(Number.MAX_SAFE_INTEGER)
+      .describe(
+        'TWD商品单价上限（含边界），例如1000；优惠后含运总预算用quote_selection的constraints.maxTotal核验。',
+      )
+      .optional(),
+    purchasableOnly: z
+      .boolean()
+      .describe('true仅保留当前快照中可购买的商品；不预留库存。')
+      .default(false),
+    sort: z
+      .literal('recommendation')
+      .describe('按目录推荐分数排序，不是按价格或用户用途个性化排序。')
+      .default('recommendation'),
   })
   .refine(
     (v) =>
@@ -71,7 +95,13 @@ export const searchTargetInput = z
   );
 export const groupedSearchInput = z
   .object({
-    queries: z.array(searchTargetInput).min(1).max(5),
+    queries: z
+      .array(searchTargetInput)
+      .min(1)
+      .max(5)
+      .describe(
+        '一次查询1至5个购物目标，各自保留关键词和单价条件；id在本次集合中唯一，续页沿用原id。',
+      ),
     catalogRevision: z.string().min(1).max(128).optional(),
     searchRevision: z.string().min(1).max(128).optional(),
   })
@@ -102,7 +132,13 @@ export interface GroupedSearchResult {
   products: ProductSummary[];
 }
 export const productInput = z
-  .object({ productId: z.string().min(1).max(64) })
+  .object({
+    productId: z
+      .string()
+      .min(1)
+      .max(64)
+      .describe('商品查询结果中的真实商品ID，不传商品名或自行编造ID。'),
+  })
   .strict();
 export type SearchInput = z.input<typeof searchInput>;
 export type AvailabilityReason =

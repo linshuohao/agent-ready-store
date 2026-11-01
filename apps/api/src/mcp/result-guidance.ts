@@ -14,9 +14,9 @@ export function mcpResult<T>(value: Result<T>, toolRecovery?: string) {
   const recovery =
     toolRecovery ??
     (code === 'TEMPORARY_UNAVAILABLE'
-      ? '结果可能未知；先用get_request_result只读查询。只有明确继续原操作才按原请求键及原载荷发送，可能完成原生单或改车；旧契约请求只可查询。不换键、不创建替代车或订单。'
+      ? '先按原操作区分：纯查询失败只说明查询未完成，不使用写请求恢复或声称发生了购买；取消失败使用get_order核实原单。改车/生单结果可能未知，先用get_request_result只读查询；只有明确继续原操作才按原请求键及原载荷发送，可能完成原生单或改车。旧契约请求只可查询，不换键、不创建替代车或订单。'
       : code === 'VALIDATION_ERROR'
-        ? '确定失败；按当前工具schema修正非法参数，保留用户硬条件；修正载荷后使用新请求键，不用原键发送不同载荷。'
+        ? '确定失败；按当前工具schema修正非法参数，保留用户硬条件；仅原操作为尚未成功的改车/生单时，修正载荷后使用新请求键，不用原键发送不同载荷。纯查询不需要写请求键。'
         : '操作未完成；按错误码核对原目标，不能盲目重试、缩单或创建替代订单。');
   return {
     ...value,

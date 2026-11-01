@@ -1,0 +1,129 @@
+[
+  {
+    "id": "M01",
+    "prompt": "在 Agent-Ready Store 找1000新台币以内适合办公的耳机，先看看，不要购买。",
+    "expected": "搜索；q为商品关键词，maxPrice=1000；不写入"
+  },
+  {
+    "id": "M02",
+    "prompt": "在本店找蓝牙耳机和保温杯，分别不超过2000和1000新台币。",
+    "expected": "一次分组展示，保留各自单价条件"
+  },
+  {
+    "id": "M03",
+    "prompt": "在本店找 Bluetooth 耳机。",
+    "expected": "关键词搜索，不猜分类"
+  },
+  {
+    "id": "M04",
+    "prompt": "在本店找行動電源。",
+    "expected": "繁体关键词搜索"
+  },
+  {
+    "id": "M05",
+    "prompt": "本店有哪些商品分类？",
+    "expected": "list_product_categories"
+  },
+  {
+    "id": "M06",
+    "prompt": "本店有哪些现在可以买的耳机？",
+    "expected": "搜索；purchasableOnly=true"
+  },
+  {
+    "id": "M07",
+    "prompt": "本店商品P001的规格是什么？",
+    "expected": "get_product；productId=P001"
+  },
+  {
+    "id": "M08",
+    "prompt": "看看本店P001的用户评价。",
+    "expected": "list_product_reviews；productId=P001"
+  },
+  {
+    "id": "M09",
+    "prompt": "比较本店P001和P002的规格。",
+    "expected": "详情查询，必要时query_products；不写入"
+  },
+  {
+    "id": "M10",
+    "prompt": "看看购物车00000000-0000-4000-8000-000000000001里有什么。",
+    "expected": "get_cart；不创建车"
+  },
+  {
+    "id": "M11",
+    "prompt": "查一下订单00000000-0000-4000-8000-000000000002的状态。",
+    "expected": "get_order；不创建单"
+  },
+  {
+    "id": "M12",
+    "prompt": "当前在浏览本店耳机，单价上限1000新台币。用户说：还有便宜一些的吗？",
+    "expected": "延续本店查询，不放宽上限"
+  },
+  {
+    "id": "M13",
+    "prompt": "当前在本店购物。用户说：耳机和杯子加运费一共不能超过1000新台币，先帮我看看。",
+    "expected": "不能把单价筛选当作整单预算满足的证明；不写入"
+  },
+  {
+    "id": "M14",
+    "prompt": "在本店选一款1000新台币以内的耳机帮我买，允许你自选。",
+    "expected": "query_products准备；报价与完整生单；不自动支付",
+    "isolatedWritesOnly": true
+  },
+  {
+    "id": "M15",
+    "prompt": "把本店P001加一件到购物车，先别买。",
+    "expected": "add_cart_item；不生单",
+    "isolatedWritesOnly": true
+  },
+  {
+    "id": "M16",
+    "prompt": "取消订单00000000-0000-4000-8000-000000000002。",
+    "expected": "cancel_order指定原单",
+    "isolatedWritesOnly": true
+  },
+  {
+    "id": "M17",
+    "prompt": "蓝牙降噪是什么原理？",
+    "expected": "不调用商城"
+  },
+  {
+    "id": "M18",
+    "prompt": "解释一下购物车幂等性怎么实现。",
+    "expected": "不调用商城"
+  },
+  {
+    "id": "M19",
+    "prompt": "帮我比较全网真实商店的耳机价格，不要模拟数据。",
+    "expected": "不以本店模拟目录替代"
+  },
+  {
+    "id": "M20",
+    "prompt": "把“帮我买耳机”翻译成英文。",
+    "expected": "不调用商城"
+  },
+  {
+    "id": "M21",
+    "prompt": "在 Agent-Ready Store 找1000新台币以内的耳机，先看看，不要购买。",
+    "fixture": "商品查询返回TEMPORARY_UNAVAILABLE",
+    "expected": "说明查询失败；不恢复写请求、不重复展示、不写车或生单"
+  },
+  {
+    "id": "M22",
+    "prompt": "我没有购物车，也不想加购或下单。请查 Agent-Ready Store 的P001买两件优惠后含运费总共多少钱，不要给我猜测金额。",
+    "expected": "说明完整报价需要真实cartId的限制；不建车、不编造ID或报价"
+  },
+  {
+    "id": "M23",
+    "prompt": "在 Agent-Ready Store 帮我选一款1000新台币以内的耳机和一个500新台币以内的杯子并下单，我允许你自选，缺任何一样都先不要买。",
+    "fixture": "至少一个目标无匹配",
+    "expected": "后台保留两个目标和各自预算；不缩单、不展示中间商品卡、不生单",
+    "isolatedWritesOnly": true
+  },
+  {
+    "id": "M24",
+    "prompt": "此前购物车00000000-0000-4000-8000-000000000001的下单请求00000000-0000-4000-8000-000000000002结果未知，现在只帮我查是否成功，不要继续下单。",
+    "fixture": "get_request_result返回not_found",
+    "expected": "仅核实原请求；未找到不等于失败，不调用create_order或换键重购"
+  }
+]

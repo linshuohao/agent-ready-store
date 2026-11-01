@@ -11,7 +11,7 @@ export function createGetCart(carts: CartService): ToolDefinition {
   return {
     name: 'get_cart',
     description:
-      '按明确cartId读取当前车、版本及待支付订单；读取不建车、不支付。',
+      '用户想查看本店购物车内容、数量、当前版本或待支付订单时，按已知cartId读取；不从聊天历史推测当前车。只读、无UI，不建车、不支付。',
     inputSchema: cartTarget,
     annotations: {
       readOnlyHint: true,

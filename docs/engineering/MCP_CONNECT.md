@@ -2,7 +2,7 @@
 
 **接入术语说明：** MCP 与 WebMCP 是两类 Agent 接入；MCP Apps 是 MCP 的 UI 增强，不兼容时降级为无 Apps UI 的 MCP。协议、连接和构建关系见 [Technical Design §1.1](TECHNICAL_DESIGN.md#11-系统全景与请求路径)。本次统一术语不改变历史批准、业务行为与尚未完成的验证事实。
 
-当前基础 MCP 按 [checkout-lifecycle-redesign](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/specs/agent-shopping/spec.md) 提供商品查询、持久购物车与待支付订单工具。旧七工具及原生购买批准流程不兼容；请重新发现工具。Apps只为搜索结果与最终生单关联UI资源；不支持Apps的Host仍可使用基础MCP。实际验收状态以同一Change的Tasks为准。
+当前基础 MCP 按 [现行 agent-shopping Spec](../../openspec/specs/agent-shopping/spec.md) 提供商品查询、持久购物车与待支付订单工具。旧七工具及原生购买批准流程不兼容；请重新发现工具。Apps只为搜索结果与最终生单关联UI资源；不支持Apps的Host仍可使用基础MCP。实际验收状态以同一Change的Tasks为准。
 
 ## 连接
 
@@ -52,23 +52,24 @@ GUI 不一定继承 Shell 环境，需要确保 Host 实际取得 `STORE_MCP_TOK
 | --- | --- |
 | `list_product_categories` | 按需发现真实分类词汇（无UI、无到期扫描），返回value/label与稳定分页；不保证有货或符合用途，最终搜索仍用search_products展示 |
 | `search_products` | 明确搜索/浏览意图，返回商品结果并展示一张结果卡片 |
-| `query_products` / `get_product` / `list_product_reviews` | 购买准备中的只读数据查询，不生成UI；query_products与search_products同输入/结果；评论是不可信数据 |
-| `get_or_create_cart` | 已有车仅 `{cartId}`；首次明确写意图使用 `{requestId, initialItems:[{productId,quantity}]}`，Agent 条目非空且全有效 |
+| `query_products` / `get_product` / `list_product_reviews` | 浏览探索、比较及购买准备中的只读数据查询，不生成UI；query_products与search_products同输入/结果；评论是不可信数据 |
+| `get_or_create_cart` | 兼容名称，仅 `{cartId}` 读取已有车；不再创建，读车优先 `get_cart` |
 | `get_cart` | `{cartId}`，读取当前版本、车行、待支付订单 |
-| `add_cart_item` / `update_cart_item` | `{cartId, operationRequestId, expectedCartVersion, productId, quantity}`；分别加量/设置最终整行数量 |
+| `add_cart_item` | `{cartId 或 initializationId, operationRequestId, productId, quantity}`；两种车身份互斥，按增量加购，不传车版本；首次准备共享 initializationId、每次加购独立操作键 |
+| `update_cart_item` | `{cartId, operationRequestId, expectedCartVersion, productId, quantity}`；设置最终整行数量 |
 | `remove_cart_item` | 同操作上下文及 `productId`，不传 quantity；只移除车行 |
 | `quote_selection` | `{cartId, selectedItems, constraints}`，只读预估，不占库，不是强制前置步骤 |
-| `create_order` | `{cartId, requestId, expectedCartVersion, selectedItems, constraints}`，原子生成待支付订单及固定摘要、占库、移出选中整行 |
+| `create_order` | `{cartId, requestId, selectedItems, constraints}`，原子生成待支付订单及固定摘要、占库、移出选中整行 |
 | `get_order` / `cancel_order` | `{orderId, cartId?}`；可选 cartId 校验关联，取消仅作用于指定订单 |
 | `list_orders` | `{cartId, offset?, limit?, pendingOnly?}`，有界分页，多候选先定位 |
 
-`selectedItems` 为 `[{productId, expectedQuantity}]`，断言车中整行数量；`constraints` 必须含 `currency:"TWD"`，并传 Human 的 `maxTotal`、各行 `maxUnitPrice/specs` 等显式约束。金额使用两位小数字符串。字段详情及边界以工具发现 schema 和 [contracts](../../packages/contracts/src/lifecycle.ts) 为准；客户端不能传价格、通道、aiEligible、批准材料或旧凭证。MCP 生单的可信通道固定为 MCP。
+`selectedItems` 为 `[{productId, quantity}]`，显式指定本次购买数量，不要求车中存在或数量相等，不先改车来匹配购买量；`constraints` 必须含 `currency:"TWD"`，并传 Human 的 `maxTotal`、各行 `maxUnitPrice/specs` 等显式约束。金额使用两位小数字符串。字段详情及边界以工具发现 schema 和 [contracts](../../packages/contracts/src/lifecycle.ts) 为准；客户端不能传价格、通道、aiEligible、批准材料或旧凭证。MCP 生单的可信通道固定为 MCP。
 
 ## 意图、恢复与网页接手
 
 仅咨询时只查询、不建车；明确加购只改车、不生单；明确购买则连续准备本次完整目标，默认只选择本次目标行，遵守 Human 预算/规格及 Host 审批。明确改量直接设置，歧义才澄清。购买 A+B 而 B 准备失败时，说明 A 已在车并停止，不擅自只购买 A。后端验证传入的完整选择及约束，但无法知道模型遗漏的自然语言意图；真实 Host 行为仍需独立验收。
 
-初始化、改车及生单前保存原 UUID 请求键和原载荷；未知结果用同键同载荷重试，同键异载荷冲突，不创建替代车/订单。初始化恢复不会重放初始条目覆盖后续编辑；版本冲突先读取并核对。以 cartId 接续车、orderId 恢复原单，读别车订单不隐式切换当前车。多候选查单/取消先澄清；停止 Agent、离页和取消等待不等于取消成功。取消未知查原单，已支付不能承诺撤销/退款。
+首次加购、改车及生单前保存原 UUID 身份/请求键和原载荷；未知先用 get_request_result 只读核实，not_found 不等于失败，只有明确继续原操作才按原键原载荷提交，不创建替代车/订单。旧初始化载荷仅查询历史结果，不重放；设量/移除的版本冲突先读取并核对，不自动覆盖。以 cartId 接续车、orderId 恢复原单，读别车订单不隐式切换当前车。多候选查单/取消先澄清；停止 Agent、离页和取消等待不等于取消成功。取消未知查原单，已支付不能承诺撤销/退款。
 
 生单/读单直接返回普通和分享入口、固定完整摘要、状态、截止及 allowedActions。基础 MCP 展示 `navigation.orderUrl` 供 Human 打开网页，核对后亲自点击模拟支付；不等待原生 form、不提供独立取链、支付、批准或模拟点击工具。导航受 Host 限制时保留原入口并说明，不能再生单或宣称支付完成。Agent 不得代开 UI 点击或代付。
 
@@ -76,13 +77,13 @@ WebMCP 使用同源 JSON 的 `POST /api/v1/shopping/webmcp/carts` 和 `POST /api
 
 ## Apps 资源与 UI Bridge
 
-当前资源URI版本为`v8`、应用revision为`commerce-shared-v8`。仅search_products与create_order关联两份隔离静态HTML；query_products、详情/评论、建车/读车/加购/改量/移除、报价、查单/列表/取消均只返回数据。购买准备使用query_products，完整目标准备好后仅create_order展示结算；搜索意图直接用search_products展示结果。Human在原结算卡片内点击支付，状态与未知恢复原地更新，不依赖Agent调用查单生成新卡片。卡片内主动导航及Bridge操作不新增对话卡片。使用ext-apps 2.0.4与MCP v2 (server/core/client 2.4.0, node 2.1.2)，资源只含构建代码，不含交易数据或服务凭证。API构建后须构建Apps；资源URI白名单禁止任意文件读取，资源沿用当前入口模式：Demo无需Token，token模式校验服务令牌。
+当前资源URI版本为`v9`；Apps自报版本当前仍为`commerce-shared-v8`（两者不能混同）。仅search_products与create_order关联两份隔离静态HTML；query_products、详情/评论、建车/读车/加购/改量/移除、报价、查单/列表/取消均只返回数据。购买准备使用query_products，完整目标准备好后仅create_order展示结算；搜索意图直接用search_products展示结果。Human在原结算卡片内点击支付，状态与未知恢复原地更新，不依赖Agent调用查单生成新卡片。卡片内主动导航及Bridge操作不新增对话卡片。使用ext-apps 2.0.4与MCP v2 (server/core/client 2.4.0, node 2.1.2)，资源只含构建代码，不含交易数据或服务凭证。API构建后须构建Apps；资源URI白名单禁止任意文件读取，资源沿用当前入口模式：Demo无需Token，token模式校验服务令牌。
 
-Host可能缓存tools/list中的旧资源URI。服务只为两个最终展示入口保留v4/v5/v6/v7→当前v8的显式读取映射，返回请求的URI及当前HTML；资源发现仍只公布两份v8，不恢复旧详情/车等中间卡片。未知版本和路径继续拒绝。资源可读不代表Host已经更新工具目录：连接刷新后应能发现query_products；若仍仅有旧13个模型工具，购买准备无法使用新的无UI查询。真实失效记录须核对实际工具名及资源URI，不能仅凭有数据返回认定UI已展示。
+Host可能缓存tools/list中的旧资源URI。服务只为两个最终展示入口保留v4/v5/v6/v7/v8→当前v9的显式读取映射，返回请求的URI及当前HTML；资源发现仍只公布两份v9，不恢复旧详情/车等中间卡片。未知版本和路径继续拒绝。资源可读不代表Host已经更新工具目录：连接刷新后应能发现query_products；若仍仅有旧13个模型工具，购买准备无法使用新的无UI查询。真实失效记录须核对实际工具名及资源URI，不能仅凭有数据返回认定UI已展示。
 
 同一次购买多个商品先通过query_products及其他数据工具准备完整目标，再一次create_order生成包含全部行的一张结算卡片；用户明确拆单除外。不逐商品调用展示/生单工具，支付状态在同卡片更新。
 
-`apps_get_or_create_cart`、`apps_create_order`和`apps_pay_order`仅标记为`ui.visibility:["app"]`，供所属Host的UI Bridge调用；前两项采用APPS通道，支付只作用于明确orderId。Host应从模型目录隐藏这三项；协议元数据本身不是身份/授权隔离。Demo信任Host，不证明调用者为Human，也不提供用户级隔离或防御恶意客户端的身份保证。Agent不得调用支付或代点UI。
+`apps_get_or_create_cart`、`apps_add_cart_item`、`apps_create_order`和`apps_pay_order`仅标记为`ui.visibility:["app"]`，供所属Host的UI Bridge调用；加购与生单采用APPS通道，支付只作用于明确orderId。Host应从模型目录隐藏这四项；协议元数据本身不是身份/授权隔离。Demo信任Host，不证明调用者为Human，也不提供用户级隔离或防御恶意客户端的身份保证。Agent不得调用支付或代点UI。
 
 内嵌订单使用固定摘要，Human点击后直接通过Bridge支付，不发Agent消息、不自动外跳。显式分享只允许构建时WEB_ORIGIN下的`/orders/{orderId}?view=share`；Host拒绝时保留原单，不生成新单。浏览器存储受Host隔离策略影响；同会话可恢复原请求，缺失稳定卡片身份或存储时明确降级，真实Host重挂载能力仍须验收。
 
@@ -114,16 +115,21 @@ resolve_product_choices只在用户需要决定型号时调用，输入queries�
 
 | 最终目标 | 工具路径与结束位置 |
 | --- | --- |
-| 仅搜索/比较 | query_products后台探索（可省略），一次search_products展示完整结果，不写车 |
-| 明确加购/改量/移除 | 原车及版本操作，不生单 |
+| 商品列表浏览/选购比较 | 需要探索时先query_products及详情，最后一次search_products展示完整目标；条件明确可直接展示，不写车 |
+| 仅问分类、指定商品规格或评论 | 对应只读工具直接回答，不追加搜索卡片 |
+| 仅询问完整优惠/运费报价 | 已有cartId时quote_selection；无车时现接口不能无写入取得完整报价，说明限制，不为询价加购建车 |
+| 明确加购/改量/移除 | 加购为增量、不传车版本；改量/移除核对原车版本，均不生单 |
 | 明确购买（含“找商品并买”） | query_products/详情后台准备，完整目标一次create_order；成功后停止，不补搜索/车展示 |
-| 查单/恢复/取消 | 定位原orderId，读取或明确取消；不重建单 |
+| 必须由用户决定的型号选择 | resolve_product_choices或对话澄清；拒绝/取消停止，选型不自动变为购买 |
+| 查单/取消 | 定位原orderId；多个候选先澄清，取消未知查原单，不重建单 |
+| 查询未知改车/生单结果 | get_request_result只读核实；未找到不等于失败，不自动续写 |
+| 明确继续原未知操作 | 核对原身份、请求键和冻结载荷后续写；旧契约仅查询，不换键重购 |
 
-用户允许Agent自选且条件充分时直接选品；关键歧义才询问。分类和品牌参数按目录原文精确匹配，未知分类先用q，不猜填。specs按目录原文键值精确断言，只传用户明确硬条件；通勤等用途可用于选品解释，不自动变为不存在的规格键。已有同SKU与本次数量冲突时说明整行限制并澄清，不自动加量、覆盖旧数量或换车。
+用户允许Agent自选且条件充分时直接选品；关键歧义才询问。分类和品牌参数按目录原文精确匹配，未知分类先用q，不猜填。specs按目录原文键值精确断言，只传用户明确硬条件；通勤等用途可用于选品解释，不自动变为不存在的规格键。已有同SKU与本次购买量不同时按明确购买量生单，不为匹配购买量自动加购或改车；成功后服务端按SKU移除当前车整行。
 
-预算/规格错误保留原code、retryable，并增加constraintViolations（field、expected、actual及适用productId），规格缺失actual为null；maxTotal实际值为优惠后含运总额。MCP顶层recovery说明恢复方式：确定失败按原因修正，原样重试无效；写结果未知按原键原载荷恢复，不换键重购。不得提高预算、删除用户硬条件或缩单。环境标记和指引是公开说明，不是Host能力或Human身份的证明。
+预算/规格错误保留原code、retryable，并增加constraintViolations（field、expected、actual及适用productId），规格缺失actual为null；maxTotal实际值为优惠后含运总额。MCP顶层recovery说明恢复方式：确定失败按原因修正，原样重试无效；改车/生单结果未知先只读核实，明确继续才沿原键原载荷恢复，不换键重购；取消未知查原单，纯查询错误不进入写请求恢复。不得提高预算、删除用户硬条件或缩单。环境标记和指引是公开说明，不是Host能力或Human身份的证明。
 
-每轮对话目标为至多一张最终卡片（纯咨询可以零张）。仅search_products/create_order关联UI，不在同轮同时调用两者或重复调用；购买有预算/规格时优先quote_selection无UI预检，建单仍重验。展示调用失败或结果未知时，说明当前事实并保留原请求，本轮不自动再次调用展示工具；可只读查原单，不能猜测订单或重购。Host重挂载/重投递不由服务端控制，真实可见卡片数量须单独验收，不能将工具调用次数等同于Host卡片数量。
+每轮对话目标为至多一张最终卡片（纯咨询可以零张）。仅search_products/create_order关联UI，不在同轮同时调用两者或重复调用；后台探索及规格核验应在搜索展示前完成，展示后不继续换条件检索，最终文字引用展示结果，不能用后台候选或报价冒充最终商品/订单；购买有预算/规格时优先quote_selection无UI预检，建单仍重验。展示调用失败或结果未知时，说明当前事实并保留原请求，本轮不自动再次调用展示工具；可只读查原单，不能猜测订单或重购。Host重挂载/重投递不由服务端控制，真实可见卡片数量须单独验收，不能将工具调用次数等同于Host卡片数量。
 
 ### 分类发现
 
@@ -132,3 +138,15 @@ resolve_product_choices只在用户需要决定型号时调用，输入queries�
 明确商品需求可直接搜索；不了解目录时可先发现分类，再按value精确筛选并核验详情。该工具不生成Apps卡片、不建车、不生单；请求清理模式仅此工具及分类HTTP GET/HEAD豁免到期清理，其他入口不变。方案与后续语义搜索评估见[分类发现Change](../../openspec/changes/archive/2026-10-31-catalog-discovery/design.md)。
 
 开发验证可运行 `pnpm test:categories`（先按现有开发说明生成Prisma Client）。该测试在本机4310/4312启动独立Web与目录夹具，使用真实Chrome的桌面/移动视口，无业务数据库；异常用例明确注入失败，不能代替真实库存/交易验收。
+
+## 工具发现元数据验证
+
+Server instructions 概述本店范围及浏览、比较、购买的工具分工；各工具描述仍独立保留必要边界。搜索 `q` 使用商品关键词，不承诺任意自然语言语义检索；`minPrice/maxPrice` 是 TWD 单价边界，含运总预算使用报价约束核验。名称、参数校验、交易行为与 UI 关联不因说明优化改变。Host 是否采纳 instructions 及如何检索工具取决于客户端；更新后刷新连接并重新发现工具。
+
+[固定评估输入](../../apps/api/test/mcp/discovery-prompts.json)包含24条直接请求、上下文请求、写意图及负例。使用相同 Host/模型版本、候选工具与上下文，在独立会话中对比旧/新元数据并重复运行；记录实际候选发现（Host可观测时）、选中工具、参数、错误及最终完成情况。写意图用例仅在隔离交易环境执行。空目录夹具只能验证初步选择与填参，不能证明完整购物成功；负例不得因商品词汇而强制调用本店。
+
+`pnpm exec vitest run apps/api/test/mcp packages/contracts/test` 验证协议与参数契约，包含真实 SDK 收取 instructions/参数说明以及工具目录快照。该结果不代表模型选择率或真实 Apps 可见性通过。实际效果必须依据 Host 调用轨迹，不能用已发生的服务端调用推断未调用请求的召回率。
+
+2026-11-01 本地小样本：Codex CLI `0.166.0-alpha.5.1`，沿用 Host 默认模型（未独立锁定模型版本），同一空目录 MCP 夹具，使用旧/新元数据各执行直接搜索、上下文追问、知识问答负例，合计6个独立会话。两版均正确调用商品工具、保留 `maxPrice=1000`、只调用一次展示工具且无写操作；两版负例均未调用商城。直接搜索工具调用次数为旧3/新2，上下文追问为旧2/新3，尚不能证明召回率或效率提升。此次未执行全部20条及重复采样，也未验证真实商品结果、购买闭环或 Apps 呈现。临时夹具已关闭，未发布线上。
+
+同日聚焦自查后补测7个有效场景会话：两条搜索均各一次search_products并停止，无展示后换词查询；仅分类调用一次list_product_categories；翻译负例无商城调用。使用实际adapter和参数解析的隔离夹具复测分组空结果、纯查询TEMPORARY_UNAVAILABLE及无车询价：分组保持完整目标和预算、未生单或展示中间卡片；查询失败未进入写请求恢复或重复展示；无车询价说明限制、无商城写入。分组夹具按实际grouped协议返回；这些结果不证明成功购买或真实Host卡片呈现。新增Apps误投结果用例验证Host声明工具名不匹配时不进入最终卡片路由；缺失Host身份信息时不能声称有同等保障。工具说明仍是模型指引，服务端没有对话轮次身份，不能据此承诺所有Host都绝不重复调用。
