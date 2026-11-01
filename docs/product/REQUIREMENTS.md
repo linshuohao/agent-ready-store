@@ -1,6 +1,6 @@
 # Agent-Ready Store — Requirements Baseline
 
-**状态：Draft v0.3，全局基线未整体批准。** 本文汇总当前需求；已批准增量的依据与历史见§12.3，实际完成情况见[交付状态](../engineering/DELIVERY_STATUS.md)。
+**状态：已定稿，待交付。** 本文汇总当前交付范围内的需求，阶段由Human确认；依据与历史见§12.3，交付内容与证据见[交付状态](../engineering/DELIVERY_STATUS.md)。
 
 ## 1. 阅读口径与产品目标
 
@@ -287,7 +287,7 @@ flowchart LR
 
 原件建议投入两个工作天、工具不限、不要求特定 Skill 套件；作品仅用于面试评估，不用于商业用途。“本次全部完成”是原始范围期待，按已确认调整后的本基线验收，不恢复被否决的行为，也不据此生成新的排期或授权开发。（[作业一][作业-一]；[PM 六][PM-六]；[DECISIONS「原始要求的记录边界」](../../DECISIONS.md#原始要求的记录边界审计补充)）
 
-## 11. Pending、缺口与后置边界
+## 11. 交付范围与后置边界
 
 <a id="p-02"></a>
 **P-02：** 已有目录/评论契约沿正式product-discovery及相应归档，本次不重开查询选型；未批准的未来规模指标不自行补齐。
@@ -301,7 +301,7 @@ flowchart LR
 
 ### 12.1 关键验收场景
 
-以下是目标，非本轮已通过的运行事实；原AC编号保留，旧预期见历史快照，细化行为与场景维护在正式OpenSpec规格，变更经过留在归档Change。
+以下是当前交付的验收标准；原AC编号保留，旧预期见历史快照，细化行为与场景维护在正式OpenSpec规格，变更经过留在归档Change。
 
 | ID | 验收结果 |
 | --- | --- |
@@ -341,13 +341,10 @@ flowchart LR
 
 ### 12.3 批准范围与历史
 
-- **版本状态：Draft v0.3，全局基线未整体批准。** 2026-10-31（Asia/Shanghai）；该全局稿仍非整体Approved；相关已批准增量已实施、验收并归档。
-- **依据与范围：** [结算生命周期决定与限定替代](../../DECISIONS.md#checkout-lifecycle-20261031)、[T-08～T-11](../engineering/ENGINEERING_DECISIONS.md#order-lifecycle-decisions)及[归档Change](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/proposal.md)。规划阶段Human仅授权传播与审查，后续实施授权与验收见归档Tasks；上一轮明确不新增禁售功能。
-- **批准与历史：** 已批准v0.2及其后续限定补充完整保留于[传播前快照](archive/2026-10-31-REQUIREMENTS.md)，包括2026-10-29 Human批准来源。本稿承接已采用设计选择，不据此新增整体Approved或实施授权；相关正式Spec已按已批准Change同步。
-- **取代范围：** 目标流程以持续Cart、单车多Order、生单锁价预留、Human支付原单、ID长期接续取代旧整车确认/凭证期限/成功才生单；未改变的商品发现、价格算法、原件边界及工程交付要求继续保留。各需求ID沿用并明确新含义，旧含义由快照追溯。
-- **Pending：** 规划审查结果见同一Change Tasks；相关增量的限定批准、实施授权及Human验收已完成；直接证据与自动化范围分开记录于归档Tasks。真实支付、账户隐私、禁售功能和生产级权限均不在本轮范围。
-
-查询增量的批准与实施依据见[grouped-multilingual-search](../../openspec/changes/archive/2026-10-31-grouped-multilingual-search/proposal.md)。D-01/03～07/21～24的限定替代关系见DECISIONS；D-02/08～20未改部分继续有效。文档整理不追认旧讨论，不新增实施授权。
+- **当前状态：已定稿，待交付。** Human于2026-11-01在当前文档核对中明确确认项目已进入待交付阶段；适用于当前Demo范围，不扩大到真实支付、账户隐私、禁售或生产级权限。
+- **依据：** [产品决策](../../DECISIONS.md)、[工程决策](../engineering/ENGINEERING_DECISIONS.md)及[正式Spec](../../openspec/specs/)共同限定当前行为。
+- **历史：** 旧版批准与被替代的需求见[历史快照](archive/2026-10-31-REQUIREMENTS.md)，具体变更、审查和验收记录见OpenSpec归档。
+- **取代范围：** 持续Cart、单车多Order、生单锁价预留、Human支付原单、ID长期接续取代旧整车确认及凭证期限流程；商品发现、价格算法、原件边界及交付要求继续适用。各需求ID保留，旧含义由快照追溯。
 
 <!-- 来源链接：使用引用式链接保持正文简洁，目标均为只读原件或已有决策。 -->
 

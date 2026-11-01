@@ -1,6 +1,6 @@
 # Agent-Ready Store — 总体技术设计
 
-**状态：商店当前技术方案（2026-10-31，Asia/Shanghai）。** 订单生命周期重构与Web/Apps完整应用复用已按Human授权实施，本文描述当前采用的架构；Human已确认人工验收通过，相关Change已同步正式Spec并归档，不据此扩大为全局基线整体Approved声明。T-11的完整复用限定替代已有明确Human批准；授权与历史批准分别追溯至[工程决策](ENGINEERING_DECISIONS.md)及[Change Tasks](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/tasks.md)，实际交付事实见[DELIVERY_STATUS](DELIVERY_STATUS.md)。
+**状态：已定稿，待交付。** 本文描述当前Demo采用的总体架构，阶段确认与范围见[需求基线](../product/REQUIREMENTS.md#123-批准范围与历史)。技术取舍见[工程决策](ENGINEERING_DECISIONS.md)，详细变更与验收见OpenSpec，交付内容及证据入口见[DELIVERY_STATUS](DELIVERY_STATUS.md)。
 
 <a id="order-lifecycle-architecture"></a>
 <a id="阅读入口"></a>
@@ -92,7 +92,7 @@ Human可在网站或Apps点击模拟支付；Agent工具只承接查询、选购
 <a id="71-可执行验证入口"></a>
 ### 质量目标与验收链路
 
-面向开发者定位设计与实现、测试人员定位条件与判据、交付人员核对运行证据。下表引用现有需求，不新设指标或另一套验收任务；测试入口只说明如何验证。历史结算/搜索执行证据分别在[结算Tasks](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/tasks.md)与[搜索Tasks](../../openspec/changes/archive/2026-10-31-grouped-multilingual-search/tasks.md)，最新运行版本、CI和真实Host缺口只维护在[交付状态](DELIVERY_STATUS.md)。本轮购物命令隔离正在实施，实际验证见当前Change，不以设计正文推断完成。
+面向开发者定位设计与实现、测试人员定位条件与判据、交付人员核对运行证据。下表引用现有需求，不新设指标或另一套验收任务；测试入口只说明如何验证。历史结算/搜索执行证据分别在[结算Tasks](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/tasks.md)与[搜索Tasks](../../openspec/changes/archive/2026-10-31-grouped-multilingual-search/tasks.md)，最新运行版本、CI和真实Host缺口只维护在[交付状态](DELIVERY_STATUS.md)。购物命令的并发与恢复验证见[隔离Tasks](../../openspec/changes/archive/2026-11-01-cart-command-state-isolation/tasks.md)。
 
 | 目标与依据 | 环境/触发 → 可观察验收条件 | 设计与验证入口 | 证据及待确认边界 |
 | --- | --- | --- | --- |
@@ -104,7 +104,7 @@ Human可在网站或Apps点击模拟支付；Agent工具只承接查询、选购
 | 交互恢复与隔离：[AC-12](../product/REQUIREMENTS.md#ac-12)、[AC-19](../product/REQUIREMENTS.md#ac-19) | 丢响应、离页、重挂载、乱序与组分页失败 → 恢复原请求/订单，不自动重购/支付，不覆盖新目标 | [前端状态协调](FRONTEND_DESIGN.md#53-状态归属与保存范围)、[车命令](../../apps/web/test/cart-lifecycle-commands.test.ts)、[报价](../../apps/web/test/selection-quote.test.ts)、[订单命令](../../apps/web/test/order-lifecycle-commands.test.ts)、[Apps浏览器](../../e2e/mcp-app.spec.ts) | 历史自动化与Human记录分开引用；Host替身不能替代真实Host行为 |
 | 页面可读可操作：[NFR-01](../product/REQUIREMENTS.md#nfr-01) | 桌面/移动、键盘与错误状态 → 保留完整金额与条件、可见焦点、错误关联和可恢复动作 | [前端体验边界](FRONTEND_DESIGN.md#59-响应式可访问性与性能边界)、[目录E2E](../../e2e/catalog.spec.ts)、[订单E2E](../../e2e/order-lifecycle.spec.ts) | 历史浏览器检查可复用；未记录的读屏/缩放/Host组合不能推定通过，不声明WCAG合规等级 |
 | 入口与运行边界 | HTTP/MCP/Apps调用及服务重启 → 同一业务语义，保留来源校验、跨车接续和分享展示边界；dev/HMR及生产构建/启动可用，重启不seed/重置库存，测试库隔离 | [后端运行](BACKEND_DESIGN.md#63-运行拓扑与数据边界)、[MCP测试](../../apps/api/test/mcp/lifecycle-mcp.test.ts)、[WebMCP E2E](../../e2e/webmcp.spec.ts)、[CI](../../.github/workflows/ci.yml) | 当前CI结果与版本见交付状态；Demo无顾客身份隔离，不能推出生产安全保证 |
-| 性能与可运维性 | 公开首屏/API/Host往返及释放积压需要在指定环境测量；指标不得从功能测试推算 | [前端性能边界](FRONTEND_DESIGN.md#59-响应式可访问性与性能边界)、[只读metrics](CHECKOUT_CORE.md#数据库运行与隔离验证) | 响应延迟、吞吐、可用性、恢复时限及告警阈值均**未设定/待确认**；生产目标当前不在范围，如纳入由Human明确场景和预算后设计/验证 |
+| 性能与可运维性 | 公开首屏/API/Host往返及释放积压需要在指定环境测量；指标不得从功能测试推算 | [前端性能边界](FRONTEND_DESIGN.md#59-响应式可访问性与性能边界)、[只读metrics](CHECKOUT_CORE.md#数据库运行与隔离验证) | 当前Demo不承诺生产级响应延迟、吞吐、可用性、恢复时限或告警阈值；未来纳入生产目标时另行明确场景、预算与验证 |
 
 <a id="72-验证边界与演进"></a>
 ### 验证边界与演进
@@ -223,4 +223,4 @@ Human可在网站或Apps点击模拟支付；Agent工具只承接查询、选购
 
 ## MCP 演示接入（2026-11-01 当前限定补充）
 
-Human 已批准 maintainability-modernization，并随后明确线上正常演示也使用 `demo`。未配置模式时本地与线上均免 Token，公网域名可用；仍按配置检查 Host/Origin。显式 `token` 提供可选服务接入门槛，不构成顾客身份或用户级订单隔离。工具可见性、Human 支付及交易约束不变。该确认替代此前“仅本地免认证、线上必须token”的范围；实现与验收见当前 Change，不代表已发布。
+Human 已批准 maintainability-modernization，并随后明确线上正常演示也使用 `demo`。未配置模式时本地与线上均免 Token，公网域名可用；仍按配置检查 Host/Origin。显式 `token` 提供可选服务接入门槛，不构成顾客身份或用户级订单隔离。工具可见性、Human 支付及交易约束不变。该确认替代此前“仅本地免认证、线上必须token”的范围；实现与Human验收见[维护性升级归档](../../openspec/changes/archive/2026-11-01-maintainability-modernization/tasks.md)；已记录的部署版本见交付状态，不以本段推断最新线上状态。
