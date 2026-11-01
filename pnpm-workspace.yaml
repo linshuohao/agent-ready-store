@@ -9,3 +9,7 @@ allowBuilds:
 # Apps uses published JS through Vite; the SDK's optional Bun runtime is unused.
 ignoredOptionalDependencies:
   - '@oven/bun-*'
+
+# Patch the modern glob API without replacing legacy callable minimatch 3.x.
+overrides:
+  'minimatch@10.2.6': 11.0.1
