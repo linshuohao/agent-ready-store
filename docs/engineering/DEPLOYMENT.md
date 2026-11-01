@@ -9,18 +9,34 @@
 | 前端 | Vercel 项目 `agent-ready-store`，[公开网页](https://agent-ready-store.vercel.app)，已验证购物与模拟支付 |
 | 文档与展示 | Vercel 项目 `agent-ready-store-docs`，[在线入口](https://agent-ready-store-docs.vercel.app)；构建与发布配置见[文档站说明](../../site/README.md#vercel-发布) |
 | 后端 | Vercel 项目 `agent-ready-store-api`，[健康检查](https://agent-ready-store-api.vercel.app/api/v1/health)，REST / MCP 已验证 |
-| 数据库 | Neon Free 项目 `agent-ready-store-demo`（`fancy-salad-72400395`），PG18 / AWS US East；已执行7个迁移并导入30条库存，不要重复 seed |
-| Git | 部署 PR #3 已通过 Merge Commit `61b2e7d` 合入 main |
+| 数据库 | Neon Free 项目 `agent-ready-store-demo`（`fancy-salad-72400395`），PG18 / AWS US East；已执行8个迁移，保留原有30条商品库存数据，不要重复 seed |
+| Git | 购物车隔离 [PR #9](https://github.com/linshuohao/agent-ready-store/pull/9) 已以 Merge Commit `78e3d76` 合入 main |
 
 之前尝试 Render Free 时被银行卡验证阻断，未创建服务；Human 已选择上述 Vercel 方案。原始附件访问及向 Vercel 后端 Production 写入本项目 Neon/MCP 凭据均已获得明确授权。原件仍不公开，密钥不进入 Git、前端变量或日志。
 
 ## 当前发布与自动更新
 
-2026-10-31 文档站上线收尾版本为 `c8075a1`，文档站、商城和 API 的 Production 部署均为 READY；对应 [GitHub Actions](https://github.com/linshuohao/agent-ready-store/actions/runs/41188565691) 已通过。线上文档回归覆盖 109 份正文、16 屏展示、旧入口、刷新返回及四种屏宽；商城首页与 API 健康检查正常。下方保留首次部署时的业务验收记录，不将其视为每次文档更新都重跑了购物验收。
+2026-11-01，商城、API、文档站三个 Production 项目均已部署 `78e3d7634f7d70f829a480cea26f01c486043e40`，状态均为 READY。[合并后 CI](https://github.com/linshuohao/agent-ready-store/actions/runs/41275113495) 的 Verify 与 Delivery image 均成功；[PR #9](https://github.com/linshuohao/agent-ready-store/pull/9)保留本次发布及验证记录。真实 Host 验收仍待完成，详情见[交付状态](DELIVERY_STATUS.md#购物车命令隔离已部署2026-11-01)。
+
+此前 `c8075a1` 的文档站回归覆盖109份正文、16屏展示、旧入口、刷新返回及四种屏宽；该历史证据不代表本轮重新执行全部文档浏览器回归。
 
 三个 Vercel 项目连接同一仓库 main，推送后由 Vercel Git 集成自动部署。GitHub Actions 执行业务测试和镜像验证，当前与部署独立运行，尚无“Actions 通过后才发布”的门禁。
 
-## 验证结果
+## 本次发布与验证（2026-11-01）
+
+Human 授权合并与部署后，明确接受本次 Demo 简化发布：先备份并执行兼容迁移，再合并触发配套服务更新；允许发布窗口内短暂请求失败及旧页面需刷新。本次未执行严格停写、排空或原子切流，不宣称验证了所有旧在途请求；历史未知请求保持只读核对，不自动重放。此选择限于本次 Demo，不推广为生产零中断发布保证。
+
+- 备份：Neon 分支 `backup-before-cart-command-20261101`（`br-aged-art-b7qi2cd8`，无 compute）及本地受限权限 pg_dump 文件；不包含在 Git 或公开文档站中。未执行数据恢复或回滚。
+- 迁移：对原库执行 `pnpm --filter @store/api db:migrate`，成功应用 `20261101000000_cart_initialization_identity`。新增唯一初始化身份并允许两个历史字段为空；不 reset、不 seed、不删除购物车、订单或幂等事实。
+- 发布：迁移完成后合并 PR，Vercel Git 集成分别构建三个项目；API 与前端均 READY 后执行线上业务验收，不将构建排队顺序视为严格发布门禁。
+- 线上 MCP SDK 发现21个工具、两份 v9 Apps HTML资源；新契约可用，旧初始化和旧生单载荷被拒绝。
+- 同一初始化身份并发加购2和3，落到同一辆车、数量为5；车量5可显式购买2并清理该SKU整行。之后加购1，再重放原生单键，仍返回原订单且保留新增数量1。
+- 未知结果只读查询返回 `not_found`，前后订单列表不变；已成功请求可查询原单，Web代理查询结果一致。线上首页正常，浏览器发现新版 WebMCP 契约；本次未重新执行云端人工支付全流程。
+- 测试车 `b868a557-8dec-466b-9e05-fe260de6dcaf`，测试单 `0419c23a-8af5-4db8-8075-ef43d371019e` 已取消、释放预留；未清空业务数据。线上验收为真实 HTTP/MCP SDK 证据，不等于 Apps Host UI 验收。
+
+商城部署 `dpl_4Z5Sk7hpzGJwWBtfJJFieszxFL74`、API部署 `dpl_9d8zcGq17zmyU4S6FwyhArkKLAuQ`、文档站部署 `dpl_23V9ksXxT88LpCXpnz87tpehcJTk` 均对应上述合并提交。操作及回滚边界见[购物车切换说明](../../apps/api/docs/cart-command-cutover.md)。
+
+## 历史首次部署验证（2026-10-31）
 
 2026-10-31，前后端 Production 均部署提交 `266489a`。Vercel Hobby 与 Neon Free 已完成配置，本次未绑定银行卡、未启用付费方案。
 
@@ -29,7 +45,7 @@
 - 云端 MCP SDK 连接成功，发现18个工具，商品搜索成功，两个 MCP Apps HTML 资源可读取且引用正确前端地址。入口为 `https://agent-ready-store-api.vercel.app/mcp`，该次验收使用 Bearer 令牌；当前版本的默认模式见下方认证模式说明。
 - 浏览器完成搜索、加购、勾选、生单与模拟支付；订单 `6b8ad24e-8273-45a2-8fc5-5ce05487d3cb` 显示支付成功，成交金额 NT$1,790。该记录属于部署验收，不替代真实 Agent 购物录影。
 
-请求清理的截止检查、并发释放与故障日志已在隔离 PostgreSQL 和接口测试中验证；未在云端修改时间或批量清空数据制造测试条件。后续纯文档提交不改变以上运行版本。
+请求清理的截止检查、并发释放与故障日志已在隔离 PostgreSQL 和接口测试中验证；未在云端修改时间或批量清空数据制造测试条件。以上仅记录该历史版本的验收，不代表当前部署提交。
 
 ## 项目配置
 
@@ -59,7 +75,7 @@
 
 ## 到期清理与限制
 
-云端采用 Human 2026-10-31 批准的请求模式：REST 业务请求与通过当前入口模式校验的 MCP 工具调用先等待最多100单的一批清理，再执行请求；健康检查不触发。无访问时不运行后台任务，不保证截止后5秒物化，积压由后续请求继续处理。十五分钟支付截止、原子释放和保守可售量不变；失败显式返回，不静默放大库存。本地/Docker 默认仍每秒扫描。
+云端采用 Human 2026-10-31 批准的请求模式：REST 业务请求与通过当前入口模式校验的 MCP 工具调用先等待最多100单的一批清理，再执行请求；健康检查、分类发现及只读请求结果查询不触发。无访问时不运行后台任务，不保证截止后5秒物化，积压由后续请求继续处理。十五分钟支付截止、原子释放和保守可售量不变；失败显式返回，不静默放大库存。本地/Docker 默认仍每秒扫描。
 
 Hobby 超额可能暂停，冷启动与数据库唤醒可能增加首个请求延迟；这里不承诺生产 SLA。Demo 的 ID 接续、模拟支付和身份边界沿用 README，不用于真实交易。体验完毕后删除云端项目/数据库或停止继续使用，避免长期保留演示数据。
 
@@ -69,7 +85,7 @@ Hobby 超额可能暂停，冷启动与数据库唤醒可能增加首个请求�
 
 全新数据库才执行 `pnpm db:migrate` 与 `pnpm db:seed`，已有数据库只按必要迁移升级。当前库已初始化，不 reset、不重复导入。凭据保存在被 Git 忽略的本地 `.env` 或平台敏感变量。
 
-发布前检查目标团队、项目、提交和验证结果。可从获授权分支手动发布 Production，不需要为了部署先合并 PR。依次部署后端、验证健康/商品/MCP，再部署前端并验证搜索、加购、创建订单、模拟支付/取消及跨端链接。验证数据要可追踪，未支付测试订单及时取消；不通过清空数据库恢复。
+发布前检查目标团队、项目、提交和验证结果。可从获授权分支手动发布 Production，不需要为了部署先合并 PR。手动发布可先部署后端、验证健康/商品/MCP，再部署前端；使用 Git 自动发布时项目独立构建，不保证切换顺序。按变更风险验证搜索、加购、生单、模拟支付/取消及跨端链接；本次简化发布范围与证据见上文。验证数据要可追踪，未支付测试订单及时取消；不通过清空数据库恢复。
 
 ## 官方资料
 
@@ -81,4 +97,4 @@ Hobby 超额可能暂停，冷启动与数据库唤醒可能增加首个请求�
 
 本地与线上 Demo 均默认 `MCP_AUTH_MODE=demo`，不要求 Token，也不限制为回环域名。`MCP_ALLOWED_HOSTS` 与 `WEB_ORIGIN` 填写实际访问域名；Host/Origin、输入校验与交易约束保持有效。
 
-需要共享令牌接入门槛时，服务端显式设为 `token` 并配置有效的 `MCP_SERVICE_TOKEN`，Host 客户端使用同值的 Bearer Header；详见[MCP 接入指南](MCP_CONNECT.md#可选-token-接入门槛)。Token 不等于用户级授权。切换模式需同步服务端和客户端配置；本说明不表示本轮已修改远端配置或完成发布。
+需要共享令牌接入门槛时，服务端显式设为 `token` 并配置有效的 `MCP_SERVICE_TOKEN`，Host 客户端使用同值的 Bearer Header；详见[MCP 接入指南](MCP_CONNECT.md#可选-token-接入门槛)。Token 不等于用户级授权。切换模式需同步服务端和客户端配置；本次发布未切换认证模式；Demo 免令牌连接已由线上 MCP SDK 验证。
