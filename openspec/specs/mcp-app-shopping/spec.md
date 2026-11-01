@@ -9,10 +9,10 @@
 ## Requirements
 
 ### Requirement: Apps资源与公开展示
-系统 SHALL 提供可发现的隔离静态UI资源并关联实际步骤工具结果；静态资源无交易数据、运行时凭证或私有商品字段。动态视图展示服务端公开商品、车版本/条目/预估及订单固定快照，不执行商品评论脚本或指令，不客户端计算优惠。不支持Apps的Host可使用新基础MCP，不承诺旧七工具schema兼容。
+系统 SHALL 提供可发现的隔离静态UI资源并关联实际步骤工具结果；静态资源无交易数据、运行时凭证或私有商品字段。动态视图展示服务端公开商品、车版本/条目/预估及订单固定快照，不执行商品评论脚本或指令，不客户端计算优惠。不支持Apps的Host可使用新基础MCP，不承诺旧七工具schema兼容。 MCP Demo仅按agent-shopping的「Demo入口模式」免除Token认证，其他边界不变。
 
 #### Scenario: 资源加载和公开数据
-- **WHEN** Host读取合法资源、未知资源或无有效服务认证请求资源
+- **WHEN** Host读取合法资源、未知资源或显式token认证模式下无有效服务认证请求资源
 - **THEN** 分别返回静态视图、明确错误或拒绝，不读取任意文件；商品同名不合并，问题条目可见，已有订单不使车只读
 
 #### Scenario: 内嵌搜索结果与垂直区块布局
@@ -24,7 +24,7 @@
 - **THEN** 购买准备使用无UI的query_products及详情/购物车/报价工具，同一次购买完整集合只调用一次create_order生成包含全部商品的一张最终结算卡片（Human明确拆单除外）；搜索使用search_products生成一张搜索结果卡片；支付与状态恢复在原结算卡片更新，不生成中间工具卡片、不自动外跳
 
 #### Scenario: Host缓存最终卡片旧URI
-- **WHEN** 已认证Host读取此前公布的search-products或create-order的v4/v5/v6资源URI
+- **WHEN** 已通过当前入口模式校验的Host读取此前公布的search-products或create-order的v4/v5/v6资源URI
 - **THEN** 精确映射至当前最终卡片静态HTML，响应保留请求URI；资源列表仍只公布两份当前资源，不恢复旧中间卡片或接受任意版本/文件路径；工具发现缓存仍需Host刷新，不视为UI真实呈现证明
 
 ### Requirement: Bridge适配与上下文接续
