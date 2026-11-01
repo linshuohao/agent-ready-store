@@ -1,15 +1,17 @@
 'use client';
 import { useMemo, type ReactNode } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { CommerceApplication } from '@store/commerce-ui/application';
 import { httpTransport, browserStorage } from '@store/commerce-ui/transport';
 import { PageTools } from './features/webmcp/page-tools';
 export function WebCommerce({ children }: { children: ReactNode }) {
+  const searchParams = useSearchParams();
+  const query = searchParams.toString();
   const pathname = usePathname(),
     router = useRouter();
   const runtime = useMemo(
     () => ({
-      location: pathname,
+      location: pathname + (query ? `?${query}` : ''),
       navigation: router,
       transport: httpTransport,
       storage: browserStorage,
@@ -28,7 +30,7 @@ export function WebCommerce({ children }: { children: ReactNode }) {
         window.open(url, '_blank', 'noopener,noreferrer');
       },
     }),
-    [pathname, router],
+    [pathname, query, router],
   );
   return (
     <CommerceApplication runtime={runtime}>{children}</CommerceApplication>

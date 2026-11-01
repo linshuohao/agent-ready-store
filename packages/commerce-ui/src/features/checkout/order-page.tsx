@@ -1,5 +1,6 @@
 'use client';
 import { useRuntime } from '../../runtime';
+import { Share2 } from 'lucide-react';
 
 import { CommerceActions } from '../../index';
 import { Link } from '../../runtime';
@@ -11,6 +12,8 @@ import { MoneyBreakdown } from '../cart/money-breakdown';
 import { CartFeedback } from '../cart/feedback';
 import { useCartOperations } from '../cart/provider';
 import { useOrderPage } from './use-order-page';
+import { OrderProduct } from './order-product';
+import { PurchaseAside } from '../cart/purchase-aside';
 export function OrderPage({
   id,
   share = false,
@@ -77,13 +80,6 @@ export function OrderPage({
             重新查詢訂單
           </Button>
         </CommerceActions>
-        {!share && (
-          <CommerceActions>
-            <Link className="commerce-action-secondary" href="/cart">
-              前往購物車
-            </Link>
-          </CommerceActions>
-        )}
       </main>
     );
   if (!order)
@@ -116,7 +112,6 @@ export function OrderPage({
   );
   return (
     <main id="main" tabIndex={-1} className="commerce-page order-page">
-      {!share && <PageTools orderId={id} />}
       {feedback && (
         <CartFeedback
           key={feedback}
@@ -128,81 +123,138 @@ export function OrderPage({
           <p role="status">{feedback}</p>
         </CartFeedback>
       )}
-      <div className="commerce-page-heading">
-        <p className="eyebrow">{share ? 'SHARED ORDER' : 'ORDER'}</p>
-        <h1 ref={heading} tabIndex={-1} aria-live="polite">
-          {title}
-        </h1>
-        <p className="order-reference">
-          訂單編號：<span data-testid="order-id">{order.orderId}</span>
-        </p>
-        <p>
-          來源：
-          {order.createdByChannel === 'WEB'
-            ? '自行選購'
-            : `AI 購物 · ${order.createdByChannel}`}{' '}
-          · {order.aiEligible ? '含本單 AI 優惠' : '一般訂單'}
-        </p>
-        <p>
-          預留截止：
-          <time dateTime={order.reservationExpiresAt}>
-            {new Date(order.reservationExpiresAt).toLocaleString('zh-TW')}
-          </time>
-        </p>
-        {paid ? (
-          <p>這筆訂單已完成支付，以下為固定成交內容。</p>
-        ) : closed ? (
-          <p>
-            此單已關閉，無法支付；商品不會自動放回購物車。需要時請重新選購。
-          </p>
-        ) : (
-          <>
+      <section
+        className="purchase-layout purchase-page-layout"
+        aria-label="訂單固定摘要"
+      >
+        <div className="purchase-main">
+          <div className="commerce-page-heading">
+            <p className="eyebrow">{share ? 'SHARED ORDER' : 'ORDER'}</p>
+            {!share && <PageTools orderId={id} />}
+            <h1 ref={heading} tabIndex={-1} aria-live="polite">
+              {title}
+            </h1>
+            <div className="order-reference-row">
+              <p className="order-reference">
+                訂單編號：<span data-testid="order-id">{order.orderId}</span>
+              </p>
+              {!share && (
+                <Button
+                  variant="outline"
+                  className="order-share-button"
+                  aria-label="分享這筆訂單"
+                  onClick={() => {
+                    setShareError('');
+                    void runtime
+                      .share(order.navigation.shareUrl, order.orderId)
+                      .catch(() =>
+                        setShareError('無法開啟分享入口，原訂單已保留。'),
+                      );
+                  }}
+                >
+                  <Share2 aria-hidden="true" />
+                  分享
+                </Button>
+              )}
+            </div>
+            {shareError && <p role="alert">{shareError}</p>}
             <p>
-              商品與金額已固定，請核對後親自確認支付。離開頁面不會取消訂單。
+              來源：
+              {order.createdByChannel === 'WEB'
+                ? '自行選購'
+                : `AI 購物 · ${order.createdByChannel}`}{' '}
+              · {order.aiEligible ? '含本單 AI 優惠' : '一般訂單'}
             </p>
-            {page.expired || order.effectiveStatus === 'EXPIRED' ? (
-              <p role="status">
-                已停止新的支付操作，正在核實原單結果；期限已到不代表關閉已提交。
+            <p>
+              預留截止：
+              <time dateTime={order.reservationExpiresAt}>
+                {new Date(order.reservationExpiresAt).toLocaleString('zh-TW')}
+              </time>
+            </p>
+            {paid ? (
+              <p>這筆訂單已完成支付，以下為固定成交內容。</p>
+            ) : closed ? (
+              <p>
+                此單已關閉，無法支付；商品不會自動放回購物車。需要時請重新選購。
               </p>
             ) : (
-              <p role="timer">
-                剩餘支付時間：{Math.floor(seconds / 60)} 分 {seconds % 60} 秒
-              </p>
-            )}
-          </>
-        )}
-      </div>
-      {page.message && <p role="alert">{page.message}</p>}
-      {page.unknown && !paid && !closed && (
-        <p role="status">
-          原操作結果待確認，請先查詢原單。重試只操作這筆訂單。
-        </p>
-      )}
-      <section className="purchase-layout" aria-label="訂單固定摘要">
-        <div className="purchase-products">
-          <h2>商品明細</h2>
-          <ul className="purchase-product-list">
-            {order.summary.items.map((item) => (
-              <li key={item.productId} className="purchase-product">
-                <div className="purchase-product-heading">
-                  <h3>{item.name}</h3>
-                  <p className="purchase-product-meta">
-                    {item.productId} · {item.brand} · {item.quantity} 件
+              <>
+                <p>
+                  商品與金額已固定，請核對後親自確認支付。離開頁面不會取消訂單。
+                </p>
+                {page.expired || order.effectiveStatus === 'EXPIRED' ? (
+                  <p role="status">
+                    已停止新的支付操作，正在核實原單結果；期限已到不代表關閉已提交。
                   </p>
-                </div>
-                <dl>
-                  {Object.entries(item.specs).map(([key, value]) => (
-                    <div key={key}>
-                      <dt>{key}</dt>
-                      <dd>{String(value)}</dd>
-                    </div>
-                  ))}
-                </dl>
-              </li>
-            ))}
-          </ul>
+                ) : (
+                  <p role="timer">
+                    剩餘支付時間：{Math.floor(seconds / 60)} 分 {seconds % 60}{' '}
+                    秒
+                  </p>
+                )}
+              </>
+            )}
+          </div>
+          {page.message && <p role="alert">{page.message}</p>}
+          {page.unknown && !paid && !closed && (
+            <p role="status">
+              原操作結果待確認，請先查詢原單。重試只操作這筆訂單。
+            </p>
+          )}
+          <div className="purchase-products">
+            <h2>商品明細</h2>
+            <ul className="purchase-product-list">
+              {order.summary.items.map((item) => (
+                <li key={item.productId} className="purchase-product">
+                  <OrderProduct item={item} />
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {!share && confirmation && (
+            <section
+              aria-label="接續確認"
+              aria-labelledby="resume-heading"
+              className="notice"
+            >
+              <h2 id="resume-heading">接續訂單的購物車？</h2>
+              <p>
+                將接續這筆訂單的來源購物車。目前的購物車資料會保留，不會合併或刪除。
+              </p>
+              <CommerceActions>
+                <Button
+                  onClick={() => {
+                    if (cart.resumeCart(order.cartId, confirmation.currentId)) {
+                      setConfirmation(null);
+                      router.push(`/cart/${order.cartId}`);
+                    } else
+                      setResumeError(
+                        '目前購物車或操作已改變，請先完成原操作後再確認。',
+                      );
+                  }}
+                >
+                  確認接續原購物車
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setConfirmation(null);
+                    setResumeError('');
+                  }}
+                >
+                  保留目前購物車
+                </Button>
+              </CommerceActions>
+              {resumeError && <p role="alert">{resumeError}</p>}
+            </section>
+          )}
+          <p className="hint">
+            Demo 僅模擬支付，不會產生真實扣款。訂單 ID
+            用於定位資料，不代表身分驗證或存取隔離。
+          </p>
         </div>
-        <aside className="purchase-aside" aria-label="訂單金額與操作">
+        <PurchaseAside label="訂單金額與操作">
           <MoneyBreakdown
             quote={order.summary}
             mode={paid ? 'completed' : 'confirmation'}
@@ -231,6 +283,7 @@ export function OrderPage({
               (!page.pendingAction || page.pendingAction === 'cancel') &&
               order.allowedActions.canCancel && (
                 <Button
+                  variant="outline"
                   disabled={
                     page.busy || page.loading || page.expired || page.conflict
                   }
@@ -268,80 +321,11 @@ export function OrderPage({
                 >
                   接續這次購物
                 </Button>
-                <Link href="/cart">返回目前購物車</Link>
               </>
             )}
-            {!share && (
-              <Link href={`/orders/${id}?view=share`} prefetch={false}>
-                分享這筆訂單
-              </Link>
-            )}
           </CommerceActions>
-        </aside>
+        </PurchaseAside>{' '}
       </section>
-      {!share && confirmation && (
-        <section
-          aria-label="接續確認"
-          aria-labelledby="resume-heading"
-          className="notice"
-        >
-          <h2 id="resume-heading">接續訂單的購物車？</h2>
-          <p>
-            將接續這筆訂單的來源購物車。目前的購物車資料會保留，不會合併或刪除。
-          </p>
-          <CommerceActions>
-            <Button
-              onClick={() => {
-                if (cart.resumeCart(order.cartId, confirmation.currentId)) {
-                  setConfirmation(null);
-                  router.push(`/cart/${order.cartId}`);
-                } else
-                  setResumeError(
-                    '目前購物車或操作已改變，請先完成原操作後再確認。',
-                  );
-              }}
-            >
-              確認接續原購物車
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setConfirmation(null);
-                setResumeError('');
-              }}
-            >
-              保留目前購物車
-            </Button>
-          </CommerceActions>
-          {resumeError && <p role="alert">{resumeError}</p>}
-        </section>
-      )}
-      {!share && (
-        <p>
-          <Link href={`/orders?cartId=${order.cartId}`} prefetch={false}>
-            查看所有訂單
-          </Link>
-        </p>
-      )}
-      {!share && (
-        <CommerceActions>
-          <Button
-            variant="outline"
-            onClick={() => {
-              void runtime
-                .share(order.navigation.shareUrl, order.orderId)
-                .catch(() => setShareError('無法開啟分享入口，原訂單已保留。'));
-            }}
-          >
-            分享這筆訂單
-          </Button>
-          {shareError && <p role="alert">{shareError}</p>}
-        </CommerceActions>
-      )}
-      <p className="hint">
-        Demo 僅模擬支付，不會產生真實扣款。訂單 ID
-        用於定位資料，不代表身分驗證或存取隔離。
-      </p>
     </main>
   );
 }

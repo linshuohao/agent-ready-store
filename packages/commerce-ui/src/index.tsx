@@ -24,9 +24,21 @@ export function MoneyBreakdown({
       {mode === 'estimate' && (
         <p className="hint">未儲存的調整尚未計入報價；庫存與價格仍可能變動。</p>
       )}
+      <ul className="fee-items" aria-label="商品費用明細">
+        {quote.items.map((item) => (
+          <li key={item.productId}>
+            <span className="fee-item-name">
+              {item.name}
+              <span className="sr-only">，{item.productId}</span>
+              <span className="fee-item-quantity"> × {item.quantity} 件</span>
+            </span>
+            <strong>{formatMoney(item.lineSubtotal)}</strong>
+          </li>
+        ))}
+      </ul>
       <dl>
         {[
-          ['商品小計', quote.subtotal],
+          ['商品合計', quote.subtotal],
           ['全站滿減', quote.thresholdDiscount],
           ['AI 優惠', quote.aiDiscount],
           ['運費', quote.shipping],
@@ -38,14 +50,6 @@ export function MoneyBreakdown({
           </div>
         ))}
       </dl>
-      <ul aria-label="已儲存商品明細">
-        {quote.items.map((item) => (
-          <li key={item.productId}>
-            {item.name} · {item.productId} · {item.quantity} 件 ×{' '}
-            {formatMoney(item.unitPrice)} = {formatMoney(item.lineSubtotal)}
-          </li>
-        ))}
-      </ul>
     </section>
   );
 }

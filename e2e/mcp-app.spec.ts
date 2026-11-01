@@ -101,7 +101,10 @@ test('shared cart, original order payment, remount, explicit share and continued
   await expect(
     f.getByRole('heading', { name: '支付成功', exact: true }),
   ).toBeVisible();
-  await f.getByRole('link', { name: '查看所有訂單', exact: true }).click();
+  await f
+    .getByRole('banner')
+    .getByRole('link', { name: '訂單列表', exact: true })
+    .click();
   await f.getByRole('link', { name: /訂單 20000000/ }).click();
   await expect(
     f.getByRole('heading', { name: '支付成功', exact: true }),

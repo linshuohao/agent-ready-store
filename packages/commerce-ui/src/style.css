@@ -124,16 +124,33 @@
 .cart-totals dl > div:last-child dt {
   color: var(--commerce-ink);
 }
-.cart-totals ul {
-  border-top: 1px solid var(--commerce-border);
-  margin: var(--commerce-space-md) 0 0;
-  padding: var(--commerce-space-sm) 0 0;
+.cart-totals .fee-items {
+  margin: 0 0 var(--commerce-space-md);
+  padding: 0 0 var(--commerce-space-sm);
+  border-bottom: 1px solid var(--commerce-border);
   list-style: none;
 }
-.cart-totals li {
-  font-size: 12px;
-  margin-block: 8px;
+.fee-items > li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-block: 8px;
+  font-size: 13px;
+}
+.fee-item-name {
+  min-width: 0;
   overflow-wrap: anywhere;
+}
+.fee-item-quantity {
+  color: #616161;
+  white-space: nowrap;
+}
+.fee-items strong {
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
 }
 @media (max-width: 760px) {
   :root {

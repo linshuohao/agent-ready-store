@@ -61,8 +61,13 @@ test('defaults to no selection, protects drafts on focus, saves quantities and c
   await expect(page.getByLabel('選取 P001', { exact: true })).not.toBeChecked();
   await page.getByLabel('選取 P001', { exact: true }).check();
   await expect(
-    page.getByRole('complementary', { name: '所選商品預估' }).getByText(/2 件/),
+    page
+      .getByRole('complementary', { name: '所選商品預估' })
+      .locator('.cart-totals'),
   ).toBeVisible();
+  await expect(
+    page.getByRole('spinbutton', { name: '數量 P001', exact: true }),
+  ).toHaveValue('2');
   await create.click();
   await expect(page).toHaveURL(/\/orders\//);
   await expect(

@@ -106,7 +106,10 @@ test('cancellation closes only the chosen order and keeps sibling navigation @ci
     page.getByRole('button', { name: '確認支付', exact: true }),
   ).toHaveCount(0);
   expect(await available()).toBe(before);
-  await page.getByRole('link', { name: '查看所有訂單', exact: true }).click();
+  await page
+    .getByRole('banner')
+    .getByRole('link', { name: '訂單列表', exact: true })
+    .click();
   await page
     .getByRole('link', { name: `訂單 ${second.order.orderId}`, exact: true })
     .click();
@@ -383,13 +386,19 @@ test('late payment for A survives navigation to B and an older query cannot repl
   await page.goto(`/orders/${order.orderId}`);
   await page.getByRole('button', { name: '確認支付', exact: true }).click();
   await started;
-  await page.getByRole('link', { name: '查看所有訂單', exact: true }).click();
+  await page
+    .getByRole('banner')
+    .getByRole('link', { name: '訂單列表', exact: true })
+    .click();
   await page
     .getByRole('link', { name: `訂單 ${b.order.orderId}`, exact: true })
     .click();
   await expect(page.getByTestId('order-id')).toHaveText(b.order.orderId);
   release();
-  await page.getByRole('link', { name: '查看所有訂單', exact: true }).click();
+  await page
+    .getByRole('banner')
+    .getByRole('link', { name: '訂單列表', exact: true })
+    .click();
   await page
     .getByRole('link', { name: `訂單 ${order.orderId}`, exact: true })
     .click();

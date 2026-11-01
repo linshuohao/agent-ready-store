@@ -42,7 +42,7 @@ async function setup(page: Page) {
     allowedActions: { canPay: true, canCancel: true },
     navigation: {
       orderUrl: `http://localhost:3000/orders/${orderId}`,
-      shareUrl: `http://localhost:3000/orders/${orderId}?view=share`,
+      shareUrl: `${process.env.WEB_BASE_URL ?? 'http://127.0.0.1:3000'}/orders/${orderId}?view=share`,
     },
   };
   fixtureOrders.set(page, order);
@@ -123,10 +123,13 @@ test('cart separates orders and creation navigates with visible feedback', async
   ).toBeGreaterThanOrEqual(20);
   const alignment = await check.evaluate((el) => {
     const box = el.getBoundingClientRect();
-    const text = el.closest('label')!.lastElementChild!.getBoundingClientRect();
+    const art = el
+      .closest('.cart-line-heading')!
+      .querySelector('.cart-line-art')!
+      .getBoundingClientRect();
     return {
-      gap: text.left - box.right,
-      centers: Math.abs((box.top + box.bottom - text.top - text.bottom) / 2),
+      gap: art.left - box.right,
+      centers: Math.abs((box.top + box.bottom - art.top - art.bottom) / 2),
     };
   });
   expect(alignment.gap).toBeGreaterThanOrEqual(10);
@@ -167,7 +170,10 @@ test('payment gives animated feedback and returns focus and scroll to result', a
   ).not.toBe('none');
   await page.mouse.move(0, 0);
   await expect(feedback).toHaveCount(0, { timeout: 7000 });
-  await page.getByRole('link', { name: '查看所有訂單', exact: true }).click();
+  await page
+    .getByRole('banner')
+    .getByRole('link', { name: '訂單列表', exact: true })
+    .click();
   await expect(page).toHaveURL(/\/orders\?/);
   await expect(
     page.getByRole('heading', { name: '訂單列表', exact: true }),
@@ -407,4 +413,239 @@ test('order list retry is separated from error copy', async ({
   const button = (await retry.boundingBox())!;
   expect(button.y - copy.y - copy.height).toBeGreaterThanOrEqual(16);
   await page.screenshot({ path: testInfo.outputPath('order-list-error.png') });
+});
+
+test('order detail uses header navigation and one share button beside the order number', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    (window as any).sharedUrls = [];
+    window.open = ((url: string) => {
+      (window as any).sharedUrls.push(url);
+      return null;
+    }) as typeof window.open;
+  });
+  await page.goto(`/orders/${orderId}`);
+  const header = page.getByRole('banner');
+  await expect(
+    header.getByRole('link', { name: '訂單列表', exact: true }),
+  ).toBeVisible();
+  await expect(
+    header.getByRole('link', { name: '購物車', exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole('link', { name: '查看所有訂單' })).toHaveCount(0);
+  const share = page.getByRole('button', { name: '分享這筆訂單', exact: true });
+  await expect(share).toHaveCount(1);
+  await expect(page.locator('.order-reference-row')).toContainText(orderId);
+  await expect(
+    page.locator('.order-reference-row').getByRole('button'),
+  ).toHaveCount(1);
+  await expect(share).toBeInViewport();
+  await share.click();
+  expect(await page.evaluate(() => (window as any).sharedUrls)).toEqual([
+    `${process.env.WEB_BASE_URL ?? 'http://127.0.0.1:3000'}/orders/${orderId}?view=share`,
+  ]);
+  // Query-only navigation must also update the shared header boundary.
+  await page.goto(`/orders/${orderId}?view=share`);
+  await expect(header.getByRole('navigation')).toHaveCount(0);
+  await expect(
+    page.getByRole('button', { name: '分享這筆訂單', exact: true }),
+  ).toHaveCount(0);
+});
+
+test('order cards show complete product previews, status and fixed amounts across list and detail', async ({
+  page,
+}, testInfo) => {
+  const original = fixtureOrders.get(page)!;
+  original.summary.items.push({
+    productId: 'P009',
+    name: '適合通勤與戶外使用的輕量保溫水瓶，長商品名稱展示測試',
+    brand: 'Daily',
+    specs: { 容量: '500 ml', 材質: '不鏽鋼' },
+    quantity: 2,
+    unitPrice: '350.00',
+    lineSubtotal: '700.00',
+  });
+  original.summary.subtotal = '800.00';
+  original.summary.total = '900.00';
+  const list = (['CHECKOUT', 'PAID', 'CANCELLED', 'EXPIRED'] as const).map(
+    (state, i) => ({
+      ...structuredClone(original),
+      orderId: `10000000-0000-4000-8000-00000000000${i + 2}`,
+      effectiveStatus: state,
+      status: state === 'PAID' ? 'PAID' : 'CHECKOUT',
+      paidAt: state === 'PAID' ? new Date().toISOString() : null,
+      closedAt: ['CANCELLED', 'EXPIRED'].includes(state)
+        ? new Date().toISOString()
+        : null,
+      closeReason: ['CANCELLED', 'EXPIRED'].includes(state) ? state : null,
+      allowedActions: {
+        canPay: state === 'CHECKOUT',
+        canCancel: state === 'CHECKOUT',
+      },
+    }),
+  );
+  await page.route('**/api/v1/shopping/carts/*/orders*', (route) =>
+    route.fulfill({
+      json: { ok: true, data: { items: list, nextOffset: null } },
+    }),
+  );
+  await page.goto(`/orders?cartId=${cartId}`);
+  const cards = page.locator('.order-list-item');
+  await expect(cards).toHaveCount(4);
+  for (const [i, label] of ['待支付', '已支付', '已取消', '已超時'].entries()) {
+    await expect(cards.nth(i).locator('.order-list-status')).toHaveText(label);
+    await expect(cards.nth(i).getByAltText('商品示意，非實物照片')).toHaveCount(
+      2,
+    );
+    await expect(cards.nth(i)).toContainText('× 2 件');
+    await expect(cards.nth(i).locator('.order-list-total')).toContainText(
+      'NT$ 900.00',
+    );
+  }
+  await expect(page.locator('.order-list-deadline')).toHaveCount(1);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({
+    path: testInfo.outputPath('orders-list.png'),
+    fullPage: true,
+  });
+  await cards.first().getByRole('link').click();
+  const products = page.locator('.purchase-product');
+  await expect(products).toHaveCount(2);
+  await expect(
+    products.nth(1).getByAltText('商品示意，非實物照片'),
+  ).toBeVisible();
+  await expect(
+    products.nth(1).locator('.order-product-subtotal'),
+  ).toContainText('NT$ 700.00');
+  await expect(products.nth(1).getByRole('definition')).toHaveText([
+    '500 ml',
+    '不鏽鋼',
+  ]);
+  await expect(
+    page.getByRole('button', { name: '確認支付', exact: true }),
+  ).toBeEnabled();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({
+    path: testInfo.outputPath('order-detail.png'),
+    fullPage: true,
+  });
+});
+
+test('amount panels start beside the heading and only pin when they fit the viewport', async ({
+  page,
+}, testInfo) => {
+  const order = fixtureOrders.get(page)!;
+  const item = order.summary.items[0];
+  item.specs = Object.fromEntries(
+    Array.from({ length: 24 }, (_, i) => [`規格 ${i + 1}`, '詳細規格內容']),
+  );
+  await page.goto(`/orders/${orderId}`);
+  const aside = page.getByRole('complementary', { name: '訂單金額與操作' });
+  await expect(
+    page.getByRole('button', { name: '確認支付', exact: true }),
+  ).toBeEnabled();
+  if (testInfo.project.name === 'desktop') {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await expect(aside).toHaveCSS('position', 'sticky');
+    const start = await aside.boundingBox();
+    const heading = await page.locator('.commerce-page-heading').boundingBox();
+    expect(Math.abs(start!.y - heading!.y)).toBeLessThan(4);
+    expect(start!.y + start!.height).toBeLessThanOrEqual(800);
+    await page.evaluate(() => window.scrollTo(0, 600));
+    const pinned = await aside.boundingBox();
+    const header = await page.getByRole('banner').boundingBox();
+    expect(pinned!.y).toBeGreaterThanOrEqual(header!.height + 15);
+    expect(pinned!.y + pinned!.height).toBeLessThanOrEqual(800);
+    await page.setViewportSize({ width: 1280, height: 420 });
+    await expect(aside).toHaveCSS('position', 'static');
+    await page
+      .getByRole('button', { name: '確認支付', exact: true })
+      .scrollIntoViewIfNeeded();
+    await expect(
+      page.getByRole('button', { name: '確認支付', exact: true }),
+    ).toBeInViewport();
+    await page.setViewportSize({ width: 1280, height: 800 });
+  } else {
+    await expect(aside).toHaveCSS('position', 'static');
+  }
+  // A long fee list must remain fully expanded and use the page scroll only.
+  order.summary.items = Array.from({ length: 12 }, (_, i) => ({
+    ...item,
+    productId: `P${String(i + 1).padStart(3, '0')}`,
+    name: `商品 ${i + 1}`,
+  }));
+  order.summary.subtotal = '1200.00';
+  order.summary.total = '1300.00';
+  await page.reload();
+  await expect(aside.locator('.fee-items > li')).toHaveCount(12);
+  await expect(aside).toHaveCSS('position', 'static');
+  await expect(aside).toHaveCSS('overflow-y', 'visible');
+  await expect(aside.locator('.fee-items')).toHaveCSS('overflow-y', 'visible');
+  await page
+    .getByRole('button', { name: '確認支付', exact: true })
+    .scrollIntoViewIfNeeded();
+  await expect(
+    page.getByRole('button', { name: '確認支付', exact: true }),
+  ).toBeInViewport();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({
+    path: testInfo.outputPath('amount-panel.png'),
+    fullPage: false,
+  });
+  // The cart fixture has one selected line; keep its quote consistent with it.
+  order.summary.items = [item];
+  order.summary.subtotal = '100.00';
+  order.summary.total = '200.00';
+  await page.goto(`/cart/${cartId}`);
+  await page.getByRole('checkbox', { name: '全選商品' }).check();
+  const estimate = page.getByRole('complementary', { name: '所選商品預估' });
+  await expect(estimate.locator('.cart-totals')).toBeVisible();
+  if (testInfo.project.name === 'desktop') {
+    await expect(estimate).toHaveCSS('position', 'sticky');
+    const box = await estimate.boundingBox();
+    expect(box!.y + box!.height).toBeLessThanOrEqual(800);
+  } else await expect(estimate).toHaveCSS('position', 'static');
+});
+
+test('order header opens the displayed source order list without switching the current cart', async ({
+  page,
+}) => {
+  const sourceCartId = '10000000-0000-4000-8000-000000000099';
+  fixtureOrders.get(page)!.cartId = sourceCartId;
+  await page.goto(`/orders/${orderId}`);
+  await expect(page.getByTestId('order-id')).toHaveText(orderId);
+  const header = page.getByRole('banner');
+  const orders = header.getByRole('link', { name: '訂單列表', exact: true });
+  await expect(orders).toHaveAttribute(
+    'href',
+    `/orders?cartId=${sourceCartId}`,
+  );
+  await expect(
+    header.getByRole('link', { name: '購物車', exact: true }),
+  ).toHaveAttribute('href', `/cart/${cartId}`);
+  expect(
+    await page.evaluate(() => localStorage.getItem('store.currentCartId')),
+  ).toBe(cartId);
+  await orders.click();
+  await expect(page.getByRole('region', { name: '所有訂單' })).toContainText(
+    orderId,
+  );
+  await expect(orders).toHaveAttribute(
+    'href',
+    `/orders?cartId=${sourceCartId}`,
+  );
+  expect(
+    await page.evaluate(() => localStorage.getItem('store.currentCartId')),
+  ).toBe(cartId);
 });
