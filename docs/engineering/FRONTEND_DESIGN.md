@@ -457,6 +457,8 @@ Server MCP通过Streamable HTTP调用共享用例，返回结构化公开数据�
 <a id="58-首屏交互接管与反馈"></a>
 ### 首屏、交互接管与反馈
 
+局部异步交互遵循[Product Design：局部更新与布局稳定](../product/PRODUCT_DESIGN.md#stable-local-updates)，作为共享组件实现与审查依据。
+
 ```mermaid
 flowchart TD
     Request[请求列表或详情URL] --> RSC[RSC读取公开DTO并生成首屏]

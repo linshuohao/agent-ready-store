@@ -322,3 +322,7 @@ Human 已确认按“共享分类发现、Web分类下拉框、MCP目录探索�
 ## MCP 线上 Demo 范围替代 — 2026-11-01
 
 **Human Accepted（当前对话后续明确授权，maintainability-modernization）**：本地和线上正常演示均默认 `demo`，无需 Token，允许实际公网 Host/Origin 配置。明确替代上条“仅本地免认证、公开部署仍须 Token”的范围；上条保留作为决策演进记录。显式 `token` 为可选共享令牌接入门槛，不是顾客身份或用户级授权。Host/Origin、输入校验、Human 点击模拟支付与交易不变量不变；此次授权不包含发布或远端配置操作。
+
+## D-25 — 局部更新与布局稳定
+
+**Status：Accepted（2026-11-01，Human在当前对话明确要求作为项目原则）。** 从购物车数量调整及评论翻页推广到共享界面的日常局部操作；原则正文与验收标准统一维护于[Product Design：局部更新与布局稳定](docs/product/PRODUCT_DESIGN.md#stable-local-updates)。常规加购成功反馈按该原则收敛；既有支付、取消等重要业务确认约束继续适用。本次确认不代表所有页面已完成实施或验收。

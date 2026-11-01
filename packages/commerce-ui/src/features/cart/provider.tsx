@@ -214,7 +214,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         setMessage(
           result.recoveryWarning
             ? '購物車已儲存，但本機恢復資料保存失敗；原請求仍保留供查詢。'
-            : '已儲存購物車',
+            : '',
         );
       } else
         setMessage(

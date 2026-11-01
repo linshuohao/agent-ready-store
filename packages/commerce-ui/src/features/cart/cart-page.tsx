@@ -227,6 +227,7 @@ export function CartPage({ id }: { id?: string }) {
                         </p>
                       ))}
                     {selection[item.productId] &&
+                      !rows.includes(item.productId) &&
                       Number(selection[item.productId].quantity) !==
                         item.quantity && (
                         <p className="cart-issue">
@@ -239,38 +240,33 @@ export function CartPage({ id }: { id?: string }) {
                         {rowErrors[item.productId]}
                       </p>
                     )}
-                    {rows.includes(item.productId) && (
-                      <p role="status" className="cart-issue">
-                        正在保存此商品…
-                      </p>
-                    )}
                     <p className="cart-line-subtotal">
                       小計{' '}
                       <strong>
-                        {!selection[item.productId] &&
-                        draft[item.productId] !== String(item.quantity)
-                          ? '更新後顯示'
-                          : item.unitPrice &&
-                              Number.isSafeInteger(
+                        {item.unitPrice &&
+                        Number.isSafeInteger(
+                          Number(
+                            selection[item.productId]?.quantity ??
+                              draft[item.productId] ??
+                              item.quantity,
+                          ),
+                        ) &&
+                        Number(
+                          selection[item.productId]?.quantity ??
+                            draft[item.productId] ??
+                            item.quantity,
+                        ) > 0
+                          ? formatMoney(
+                              multiplyMoney(
+                                item.unitPrice,
                                 Number(
                                   selection[item.productId]?.quantity ??
+                                    draft[item.productId] ??
                                     item.quantity,
                                 ),
-                              ) &&
-                              Number(
-                                selection[item.productId]?.quantity ??
-                                  item.quantity,
-                              ) > 0
-                            ? formatMoney(
-                                multiplyMoney(
-                                  item.unitPrice,
-                                  Number(
-                                    selection[item.productId]?.quantity ??
-                                      item.quantity,
-                                  ),
-                                ),
-                              )
-                            : '待確認'}
+                              ),
+                            )
+                          : '待確認'}
                       </strong>
                     </p>
                     {(!embedded || tab === 'items') && (
@@ -415,12 +411,9 @@ export function CartPage({ id }: { id?: string }) {
                     disabled={Boolean(busy || dirty || reload)}
                   />
                 )}
-                {working && <p role="status">正在更新購物車…</p>}
-                {dirty && !working && (
-                  <p role="status">
-                    數量會在離開欄位或按 Enter 後自動更新，按 Esc 撤銷輸入。
-                  </p>
-                )}
+                <p className="hint">
+                  數量會在離開欄位或按 Enter 後自動更新，按 Esc 撤銷輸入。
+                </p>
               </section>
 
               {!embedded && (
@@ -547,6 +540,7 @@ export function CartPage({ id }: { id?: string }) {
                 {!embedded || tab === 'fees' ? (
                   <MoneyBreakdown
                     quote={quote}
+                    updating={quoteLoading}
                     presentation={embedded ? 'inline' : 'dialog'}
                   />
                 ) : (

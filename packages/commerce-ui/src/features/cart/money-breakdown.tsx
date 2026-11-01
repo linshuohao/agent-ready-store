@@ -7,9 +7,11 @@ import { formatMoney } from '../../lib/money';
 export function MoneyBreakdown({
   quote,
   mode = 'estimate',
+  updating = false,
   presentation = 'dialog',
 }: {
   quote: Quote;
+  updating?: boolean;
   presentation?: 'dialog' | 'inline';
   mode?: 'estimate' | 'confirmation' | 'completed';
 }) {
@@ -76,7 +78,11 @@ export function MoneyBreakdown({
           查看商品費用明細
         </Button>
       )}
-      <AmountRows quote={quote} completed={mode === 'completed'} />
+      <AmountRows
+        quote={quote}
+        completed={mode === 'completed'}
+        updating={updating}
+      />
       {presentation === 'dialog' && (
         <dialog
           ref={dialog}
@@ -100,7 +106,11 @@ export function MoneyBreakdown({
             </Button>
           </div>
           {feeItems(quote.items)}
-          <AmountRows quote={quote} completed={mode === 'completed'} />
+          <AmountRows
+            quote={quote}
+            completed={mode === 'completed'}
+            updating={updating}
+          />
         </dialog>
       )}
     </section>
@@ -111,9 +121,11 @@ export function MoneyBreakdown({
 function AmountRows({
   quote,
   completed,
+  updating,
 }: {
   quote: Quote;
   completed: boolean;
+  updating: boolean;
 }) {
   const rows = [
     ['商品合計', quote.subtotal, 'base'],
@@ -123,7 +135,7 @@ function AmountRows({
     [completed ? '實付金額' : '應付金額', quote.total, 'final'],
   ] as const;
   return (
-    <dl>
+    <dl aria-busy={updating}>
       {rows.map(([label, amount, kind]) => {
         const zero = amount === '0.00';
         const display =

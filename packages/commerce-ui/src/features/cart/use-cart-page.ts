@@ -38,6 +38,7 @@ export function useCartPage(id?: string) {
   const choices = useRef<PurchaseSelection>({});
   const [quote, setQuote] = useState<SelectionQuote | null>(null),
     quoteSequence = useRef(0);
+  const quoteCartId = useRef(id);
   const [quoteError, setQuoteError] = useState(''),
     [quoteLoading, setQuoteLoading] = useState(false),
     [quoteRevision, setQuoteRevision] = useState(0);
@@ -196,7 +197,9 @@ export function useCartPage(id?: string) {
   useEffect(() => {
     const sequence = ++quoteSequence.current;
     const items = purchaseItems(selection);
-    setQuote(null);
+    // Keep the last confirmed estimate mounted while refreshing this cart.
+    if (!id || !items || quoteCartId.current !== id) setQuote(null);
+    quoteCartId.current = id;
     setQuoteLoading(Boolean(id && items));
     setQuoteError(
       Object.keys(selection).length && !items
@@ -208,12 +211,14 @@ export function useCartPage(id?: string) {
       if (!alive.current || sequence !== quoteSequence.current) return;
       setQuoteLoading(false);
       if (result.kind === 'success') setQuote(result.data);
-      else
+      else {
+        setQuote(null);
         setQuoteError(
           result.kind === 'unknown'
             ? '預估結果暫未確認，請重新查詢。'
             : cartFailure(result.error.code),
         );
+      }
     });
     return () => {
       quoteSequence.current++;
