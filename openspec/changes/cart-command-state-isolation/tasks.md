@@ -59,10 +59,14 @@ Human已授权审查、修复后实施，并要求接口契约、前端、后端
 - 前端Agent：Apps SDK浏览器Host替身13/13通过；WebMCP与订单/反馈非CI回归整跑及失败修复后的定向复验通过，没有把不同轮次合计伪称为同次全绿。
 - 协调Agent生产验收：API/Apps构建完成；Web Turbopack最初因沙箱临时端口失败，清除失败构建的可生成缓存后在允许本机端口环境成功构建。使用干净隔离store_e2e_test与API3005/Web3006运行`playwright.ci.config.ts`，桌面/mobile共30测试全部通过（20.2秒），涵盖双标签首次一车、独立按钮、购买量与草稿、选择/编辑代次、恢复只读、乱序报价、支付/取消与完整购物闭环。最终typecheck/lint通过；MCP发现JSON仅格式调整。
 - 5.1部分已完成：HTTP/MCP为真实API/数据库连接；Web/WebMCP为真实浏览器与API；Apps为SDK Host替身加后端APPS工具集成，尚无外部真实Host运行证据，故保留未完成，不冒称真实Host验收。5.4已获Human本地验收确认；远程部署排空未执行。
-- 交付状态：当前分支feat/cart-command-state-isolation；已授权规划提交5fa7c6e。Human已验收本地结果并授权提交本轮实施Diff；本提交作为实施Checkpoint，提交后运行Guard。未Push/Merge/远程部署，真实Host缺口未完成，未同步归档正式Spec。按Git Checkpoint Policy，实施高风险交接Guard需提交覆盖当前成果后方可通过。
+- 交付状态：当前分支feat/cart-command-state-isolation；已授权规划提交5fa7c6e。Human已验收本地结果并授权提交本轮实施Diff；实施提交6efb4d6已完成且Guard通过。未Push/Merge/远程部署，真实Host缺口未完成，正式Spec已在本分支同步，尚未归档。按Git Checkpoint Policy，实施高风险交接Guard需提交覆盖当前成果后方可通过。
 
-提交授权前，实施阶段Guard曾实际运行，结果BLOCKED：规划Checkpoint不覆盖实施文件，当前实施Diff尚未提交。此阻塞仅针对实施Checkpoint/后续交接，不代表测试或Review失败；现已获得对应提交授权，将形成Checkpoint并重跑Guard。
+提交授权前，实施阶段Guard曾实际运行，结果BLOCKED：规划Checkpoint不覆盖实施文件，当前实施Diff尚未提交。此阻塞仅针对实施Checkpoint/后续交接，不代表测试或Review失败；后续已获授权并完成实施Checkpoint 6efb4d6，重跑Guard通过。
 
 ### Local acceptance service correction
 
 Human报告旧地址仍全局禁用；运行证据显示3000来自Projects旧工作树（按钮依赖全局busy），3002来自mcp-intent-guidance工作树，并非本Change。Human随后明确授权以新服务替换旧服务。已备份本地store数据库、停止旧3000/3002进程并确认端口释放，仅应用initialization identity增量迁移，再从当前分支启动配套API3002/Web3000；原购物数据保留。localhost:3000浏览器探针拦截写请求后验证A在途只禁A，B仍可点击且立即独立发请求，无探针业务写入。临时3005/3006预览已停止。此为已授权本地服务切换，不代表远程部署或真实Host验收；原有未提交Diff状态不变。
+
+### Spec synchronization and PR preparation
+
+Human要求继续后续步骤；已将7份已验收行为Delta同步到本分支正式Spec，保留各Purpose、未涉及需求及既有场景；全部13份正式Spec严格校验通过。已fetch核对origin/main仍为db3f0e4，本分支无需合并其他main增量。PR正文准备为本地草稿，未发布。任务5.1外部真实Apps Host仍未完成，按归档规则保留Change活跃，不推断为已验证或已豁免。实施后没有新的业务源码变更，复用既有测试证据；本轮只做Spec/交付记录核对。
