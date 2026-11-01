@@ -599,3 +599,9 @@ export const groupedSearchOutput = z
       )
     );
   });
+
+export {
+  mcpAppTools,
+  mcpAppVersion,
+  mcpCachedAppVersions,
+} from './mcp-resources.js';

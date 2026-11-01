@@ -6,23 +6,37 @@
 
 ## 连接
 
-线上 Demo 已部署，连接地址为 `https://agent-ready-store-api.vercel.app/mcp`，使用项目维护者提供的访问令牌。无需自行启动 API 或初始化数据库。
+线上 Demo 地址为 `https://agent-ready-store-api.vercel.app/mcp`。本版本默认 `MCP_AUTH_MODE=demo`，本地和线上均无需 Token；无需自行启动线上 API 或初始化数据库。本文说明本版本配置，不代表本轮已经发布或验证线上认证模式。
 
-仅支持 stdio 的 Host 需使用其支持的 HTTP bridge。Token 仅是服务身份，不是 Human 购买授权，也不区分顾客。不要把 Token 写入对话、截图或 Git。
-
-本机开发时，在 `.env` 配置至少24字符的 `MCP_SERVICE_TOKEN`、`MCP_ALLOWED_HOSTS` 和 `WEB_ORIGIN`，按 README 启动；将下列 URL 改为 `http://localhost:3002/mcp`，使用本机令牌。远程 Host 的 localhost 不代表你的电脑；不要移除认证或 Host/Origin 检查。
-
-基础 MCP 与 MCP Apps 使用下列同一连接配置。Host 支持 MCP Apps 时，通过工具元数据发现并读取 UI 资源；无需另添加一个 Apps Server。Host 是否能调用 MCP 工具与是否能呈现 Apps UI 须分别核实。
+基础 MCP 与 MCP Apps 使用同一连接。Host 支持 MCP Apps 时，通过工具元数据读取 UI 资源，无需另添加 Apps Server。仅支持 stdio 的 Host 需使用其支持的 HTTP bridge。
 
 - Transport：MCP Streamable HTTP
 - URL：`https://agent-ready-store-api.vercel.app/mcp`
-- Header：`Authorization: Bearer <MCP_SERVICE_TOKEN>`
+- Demo 模式：无需 Authorization Header
 
-请在目标 Agent 自己的 MCP 设置中添加这组参数。不同 Agent 的安装入口和配置格式不同，应按其 Host 的 MCP 设置说明填写；不要把以下 Codex 示例原样用于其他 Agent。
+本机将 URL 改为 `http://localhost:3002/mcp`。服务端仍须配置实际 `MCP_ALLOWED_HOSTS` 和 `WEB_ORIGIN`，线上可以使用公网域名；两种模式均保留 Host/Origin 和输入校验。远程 Host 的 localhost 不代表你的电脑。
 
 ## Codex CLI / Codex Desktop
 
-Codex 支持项目级 `.codex/config.toml`，但该项目须设为 trusted。若 Codex 已从启动环境取得 `STORE_MCP_TOKEN`，可使用：
+Codex 支持项目级 `.codex/config.toml`，项目须设为 trusted。默认 Demo 配置：
+
+```toml
+[mcp_servers.agent_ready_store]
+url = "https://agent-ready-store-api.vercel.app/mcp"
+```
+
+配置后刷新连接并核对下列工具，不沿用旧 enabled_tools 白名单。其他 Agent 按其 Host 的 Streamable HTTP 设置填写，不直接照搬 Codex 格式。
+
+## 可选 Token 接入门槛
+
+需要只让持有共享令牌的客户端接入时，例如非公开演示或限制测试入口，维护者可以显式启用 `token`。服务端设置：
+
+```dotenv
+MCP_AUTH_MODE=token
+MCP_SERVICE_TOKEN=<至少24字符的随机令牌>
+```
+
+可用 `openssl rand -hex 32` 生成随机值，通过安全环境配置传递，不写入对话、截图或 Git。客户端在同一 URL 上增加 `Authorization: Bearer <MCP_SERVICE_TOKEN>`。Codex 可从启动环境读取与服务端相同的值：
 
 ```toml
 [mcp_servers.agent_ready_store]
@@ -30,7 +44,7 @@ url = "https://agent-ready-store-api.vercel.app/mcp"
 bearer_token_env_var = "STORE_MCP_TOKEN"
 ```
 
-通过安全本机环境提供与服务端一致的 Token；GUI 不一定继承 Shell 环境。配置后刷新连接并核对下列工具，不沿用旧 enabled_tools 白名单。其他 Host 使用其 Streamable HTTP 设置。
+GUI 不一定继承 Shell 环境，需要确保 Host 实际取得 `STORE_MCP_TOKEN`。显式 `token` 模式缺失或无效服务端 Token 会启动失败，不回退 Demo；未设置模式时即使配置了 Token，也保持 Demo。该令牌只是可选服务接入门槛，不区分顾客、不提供用户级订单隔离，也不是 Human 购买授权。
 
 ## 工具与输入
 
@@ -62,13 +76,13 @@ WebMCP 使用同源 JSON 的 `POST /api/v1/shopping/webmcp/carts` 和 `POST /api
 
 ## Apps 资源与 UI Bridge
 
-当前资源URI版本为`v8`、应用revision为`commerce-shared-v8`。仅search_products与create_order关联两份隔离静态HTML；query_products、详情/评论、建车/读车/加购/改量/移除、报价、查单/列表/取消均只返回数据。购买准备使用query_products，完整目标准备好后仅create_order展示结算；搜索意图直接用search_products展示结果。Human在原结算卡片内点击支付，状态与未知恢复原地更新，不依赖Agent调用查单生成新卡片。卡片内主动导航及Bridge操作不新增对话卡片。使用ext-apps 2.0.4与MCP v2 (server/core/client 2.4.0, node 2.1.2)，资源只含构建代码，不含交易数据或服务凭证。API构建后须构建Apps；资源URI白名单禁止任意文件读取，资源同样需要服务认证。
+当前资源URI版本为`v8`、应用revision为`commerce-shared-v8`。仅search_products与create_order关联两份隔离静态HTML；query_products、详情/评论、建车/读车/加购/改量/移除、报价、查单/列表/取消均只返回数据。购买准备使用query_products，完整目标准备好后仅create_order展示结算；搜索意图直接用search_products展示结果。Human在原结算卡片内点击支付，状态与未知恢复原地更新，不依赖Agent调用查单生成新卡片。卡片内主动导航及Bridge操作不新增对话卡片。使用ext-apps 2.0.4与MCP v2 (server/core/client 2.4.0, node 2.1.2)，资源只含构建代码，不含交易数据或服务凭证。API构建后须构建Apps；资源URI白名单禁止任意文件读取，资源沿用当前入口模式：Demo无需Token，token模式校验服务令牌。
 
 Host可能缓存tools/list中的旧资源URI。服务只为两个最终展示入口保留v4/v5/v6/v7→当前v8的显式读取映射，返回请求的URI及当前HTML；资源发现仍只公布两份v8，不恢复旧详情/车等中间卡片。未知版本和路径继续拒绝。资源可读不代表Host已经更新工具目录：连接刷新后应能发现query_products；若仍仅有旧13个模型工具，购买准备无法使用新的无UI查询。真实失效记录须核对实际工具名及资源URI，不能仅凭有数据返回认定UI已展示。
 
 同一次购买多个商品先通过query_products及其他数据工具准备完整目标，再一次create_order生成包含全部行的一张结算卡片；用户明确拆单除外。不逐商品调用展示/生单工具，支付状态在同卡片更新。
 
-`apps_get_or_create_cart`、`apps_create_order`和`apps_pay_order`仅标记为`ui.visibility:["app"]`，供所属Host的UI Bridge调用；前两项采用APPS通道，支付只作用于明确orderId。Host应从模型目录隐藏这三项；协议元数据本身不是身份/授权隔离。Demo信任Host，不证明调用者为Human，也不防御持有服务Token的恶意客户端。Agent不得调用支付或代点UI。
+`apps_get_or_create_cart`、`apps_create_order`和`apps_pay_order`仅标记为`ui.visibility:["app"]`，供所属Host的UI Bridge调用；前两项采用APPS通道，支付只作用于明确orderId。Host应从模型目录隐藏这三项；协议元数据本身不是身份/授权隔离。Demo信任Host，不证明调用者为Human，也不提供用户级隔离或防御恶意客户端的身份保证。Agent不得调用支付或代点UI。
 
 内嵌订单使用固定摘要，Human点击后直接通过Bridge支付，不发Agent消息、不自动外跳。显式分享只允许构建时WEB_ORIGIN下的`/orders/{orderId}?view=share`；Host拒绝时保留原单，不生成新单。浏览器存储受Host隔离策略影响；同会话可恢复原请求，缺失稳定卡片身份或存储时明确降级，真实Host重挂载能力仍须验收。
 

@@ -1,1 +1,4 @@
-export const appTools = ['search_products', 'create_order'];
+export {
+  mcpAppTools as appTools,
+  mcpAppVersion as appVersion,
+} from '@store/contracts';

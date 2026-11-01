@@ -69,6 +69,9 @@ for (const doc of documents) {
 }
 for (const [url, entry] of Object.entries(legacyRoutes))
   mapping.set(url.slice(1), entry.default);
+for (const [url, entry] of Object.entries(legacyRoutes))
+  if (/^\/(delivery|presentation)\//.test(url))
+    mapping.set('docs' + url, entry.default);
 mapping.set('openspec/specs/', '/specs.html');
 mapping.set('openspec/changes/archive/', '/history.html');
 const md = new MarkdownIt({ html: true });

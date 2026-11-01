@@ -26,7 +26,7 @@
 
 - [Actions run 41173631160](https://github.com/linshuohao/agent-ready-store/actions/runs/41173631160)：Verify 与 Delivery image 均通过，含真实 PostgreSQL、HTTP/MCP、桌面与移动浏览器测试。
 - 云端 REST 经前端代理完成建车、生单、取消，验证库存恢复；商品原始文件的公开路径返回404。
-- 云端 MCP SDK 连接成功，发现18个工具，商品搜索成功，两个 MCP Apps HTML 资源可读取且引用正确前端地址。入口为 `https://agent-ready-store-api.vercel.app/mcp`，客户端须使用 Bearer 令牌。
+- 云端 MCP SDK 连接成功，发现18个工具，商品搜索成功，两个 MCP Apps HTML 资源可读取且引用正确前端地址。入口为 `https://agent-ready-store-api.vercel.app/mcp`，该次验收使用 Bearer 令牌；当前版本的默认模式见下方认证模式说明。
 - 浏览器完成搜索、加购、勾选、生单与模拟支付；订单 `6b8ad24e-8273-45a2-8fc5-5ce05487d3cb` 显示支付成功，成交金额 NT$1,790。该记录属于部署验收，不替代真实 Agent 购物录影。
 
 请求清理的截止检查、并发释放与故障日志已在隔离 PostgreSQL 和接口测试中验证；未在云端修改时间或批量清空数据制造测试条件。后续纯文档提交不改变以上运行版本。
@@ -44,7 +44,8 @@
 | 变量 | 值或来源 |
 | --- | --- |
 | `DATABASE_URL` | Neon pooled URL，保留 TLS 参数 |
-| `MCP_SERVICE_TOKEN` | 至少24字符的随机令牌，仅后端及受信任 MCP 客户端使用 |
+| `MCP_AUTH_MODE` | 默认 `demo`，本地与线上演示均免 Token；可选 `token` 限制接入 |
+| `MCP_SERVICE_TOKEN` | 仅 `token` 模式必需，至少24字符的随机令牌；Demo 无需配置 |
 | `WEB_ORIGIN` | `https://agent-ready-store.vercel.app`；构建 MCP Apps 时也使用它 |
 | `MCP_ALLOWED_HOSTS` | `agent-ready-store-api.vercel.app` |
 | `CATALOG_PATH` | `apps/api/dist/catalog-data/products.json` |
@@ -54,11 +55,11 @@
 
 前端只配置 `API_INTERNAL_URL=https://agent-ready-store-api.vercel.app`。它用于服务端请求与 API rewrite，不加 `NEXT_PUBLIC_`，不向前端配置数据库连接串或 MCP 令牌。变更后端地址或 `WEB_ORIGIN` 后必须重新构建相应项目。
 
-演示需要公开可访问的 Production 域名；Vercel Authentication 不能挡住前端访问后端，MCP 自身仍检查 Token、Host 和 Origin。Preview 默认关闭，避免未经验证的分支接入同一 Demo 库。
+演示需要公开可访问的 Production 域名；Vercel Authentication 不能挡住前端访问后端，MCP 始终检查 Host 和 Origin，只有显式 `token` 模式检查共享令牌。Preview 默认关闭，避免未经验证的分支接入同一 Demo 库。
 
 ## 到期清理与限制
 
-云端采用 Human 2026-10-31 批准的请求模式：REST 业务请求与认证后的 MCP 工具调用先等待最多100单的一批清理，再执行请求；健康检查不触发。无访问时不运行后台任务，不保证截止后5秒物化，积压由后续请求继续处理。十五分钟支付截止、原子释放和保守可售量不变；失败显式返回，不静默放大库存。本地/Docker 默认仍每秒扫描。
+云端采用 Human 2026-10-31 批准的请求模式：REST 业务请求与通过当前入口模式校验的 MCP 工具调用先等待最多100单的一批清理，再执行请求；健康检查不触发。无访问时不运行后台任务，不保证截止后5秒物化，积压由后续请求继续处理。十五分钟支付截止、原子释放和保守可售量不变；失败显式返回，不静默放大库存。本地/Docker 默认仍每秒扫描。
 
 Hobby 超额可能暂停，冷启动与数据库唤醒可能增加首个请求延迟；这里不承诺生产 SLA。Demo 的 ID 接续、模拟支付和身份边界沿用 README，不用于真实交易。体验完毕后删除云端项目/数据库或停止继续使用，避免长期保留演示数据。
 
@@ -75,3 +76,9 @@ Hobby 超额可能暂停，冷启动与数据库唤醒可能增加首个请求�
 - [NestJS on Vercel](https://vercel.com/docs/frameworks/backend/nestjs)
 - [Vercel Hobby](https://vercel.com/docs/plans/hobby)
 - [Neon Free](https://neon.com/pricing)
+
+## MCP 认证模式
+
+本地与线上 Demo 均默认 `MCP_AUTH_MODE=demo`，不要求 Token，也不限制为回环域名。`MCP_ALLOWED_HOSTS` 与 `WEB_ORIGIN` 填写实际访问域名；Host/Origin、输入校验与交易约束保持有效。
+
+需要共享令牌接入门槛时，服务端显式设为 `token` 并配置有效的 `MCP_SERVICE_TOKEN`，Host 客户端使用同值的 Bearer Header；详见[MCP 接入指南](MCP_CONNECT.md#可选-token-接入门槛)。Token 不等于用户级授权。切换模式需同步服务端和客户端配置；本说明不表示本轮已修改远端配置或完成发布。

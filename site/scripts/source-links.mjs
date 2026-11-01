@@ -14,18 +14,26 @@ export function sourceLinks({
     if (/^\/(private\/tmp|tmp|Users)\//.test(url)) return null;
     const parsed = new URL(url, 'https://source/' + doc.source);
     const normalized = decodeURIComponent(parsed.pathname.slice(1));
+    const legacyPath = normalized.replace(
+      /^docs\/(delivery|presentation)\//,
+      '$1/',
+    );
     const fragment = parsed.hash,
       query = parsed.search;
     if (normalized.startsWith('references/')) return null;
-    if (legacyRoutes['/' + normalized]) {
-      const entry = legacyRoutes['/' + normalized];
+    if (legacyRoutes['/' + legacyPath]) {
+      const entry = legacyRoutes['/' + legacyPath];
       return (
         entry.hashes[decodeURIComponent(fragment.slice(1))] || entry.default
       );
     }
     if (mapping.has(normalized))
       return mapping.get(normalized) + query + fragment;
-    const local = path.resolve(root, normalized);
+    const sourcePath = normalized.replace(
+      /^(design|delivery|presentation)\//,
+      'docs/$1/',
+    );
+    const local = path.resolve(root, sourcePath);
     if (!local.startsWith(root + path.sep))
       throw Error('Escaped link ' + doc.source + ' -> ' + url);
     if (!existsSync(local)) {

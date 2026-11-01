@@ -37,3 +37,38 @@ test('source links distinguish omitted material from mistakes and preserve URL c
     await fs.rm(root, { recursive: true, force: true });
   }
 });
+
+test('moved documentation sources preserve legacy routes and historical source references', async () => {
+  const root = await fs.realpath(
+    await fs.mkdtemp(path.join(os.tmpdir(), 'docs-moved-')),
+  );
+  try {
+    await fs.mkdir(path.join(root, 'docs/design'), { recursive: true });
+    await fs.writeFile(path.join(root, 'docs/design/README.md'), 'design');
+    const resolve = sourceLinks({
+      root,
+      doc: { source: 'README.md', group: '交付' },
+      mapping: new Map(),
+      legacyRoutes: {
+        '/presentation/index.html': {
+          default: '/demo.html',
+          hashes: { architecture: '/presentation.html?slide=architecture' },
+        },
+      },
+      revision: 'abc',
+      retiredLink: () => null,
+    });
+    assert.equal(
+      resolve('docs/presentation/index.html#architecture'),
+      '/presentation.html?slide=architecture',
+    );
+    assert.equal(
+      resolve('presentation/index.html#architecture'),
+      '/presentation.html?slide=architecture',
+    );
+    assert.equal(resolve('design/README.md'), null);
+    assert.equal(resolve('docs/design/README.md'), null);
+  } finally {
+    await fs.rm(root, { recursive: true, force: true });
+  }
+});

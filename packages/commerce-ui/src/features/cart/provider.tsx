@@ -1,6 +1,6 @@
 'use client';
 import { useRuntime } from '../../runtime';
-import { CommerceActions } from '../../index';
+import { CartNotices } from './cart-notices';
 import {
   createContext,
   useContext,
@@ -9,15 +9,12 @@ import {
   useState,
   useCallback,
 } from 'react';
-import { Link } from '../../runtime';
 import { usePathname } from '../../runtime';
 import {
   cartIdInput,
   type ShoppingCartView,
   type CartOperation,
 } from '@store/contracts';
-import { Button } from '../../components/ui/button';
-import { CartFeedback } from './feedback';
 import {
   CartCommands,
   createCartOrder,
@@ -27,7 +24,6 @@ import {
   cartFailure,
   type Call,
 } from './lifecycle-commands';
-import type { EditResult, OperationIntent } from './commands';
 type Context = {
   canAcceptDelivery: () => boolean;
   toolInitialize: (
@@ -63,13 +59,6 @@ type Context = {
     operation: CartOperation;
   }) => Promise<Call<ShoppingCartView>>;
   retry: () => Promise<Call<ShoppingCartView>>;
-  // Retired callers remain blocked until the dedicated WebMCP/order migration tasks.
-  restart: () => void;
-  acquirePurchase: (
-    id: string,
-  ) => { code: string } | { current: () => boolean; release: () => void };
-  toolSave: (intent: OperationIntent) => Promise<EditResult>;
-  retryTool: (id?: string) => Promise<EditResult>;
 };
 const CartContext = createContext<Context | null>(null);
 export const useCartOperations = () => {
@@ -339,35 +328,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         add,
         save,
         retry,
-        restart: () => setMessage('購物車會持續保留，請繼續原車選購。'),
-        acquirePurchase: () => ({ code: 'CHECKOUT_FLOW_REPLACED' }),
-        toolSave: async () => failure('CHECKOUT_FLOW_REPLACED'),
-        retryTool: async () => failure('CHECKOUT_FLOW_REPLACED'),
       }}
     >
-      {!orderPage && message && (
-        <CartFeedback
-          success={message === '已儲存購物車'}
-          onDismiss={() => setMessage('')}
-        >
-          <p role="status">{message}</p>
-          {currentCartId && (
-            <Link href={`/cart/${currentCartId}`} prefetch={false}>
-              前往購物車
-            </Link>
-          )}
-        </CartFeedback>
-      )}
-      {!orderPage && pending && (
-        <section className="notice" aria-label="購物車恢復">
-          <p>上次購物車操作結果未確認，請使用原請求恢復。</p>
-          <CommerceActions>
-            <Button disabled={busy} onClick={() => void retry()}>
-              重試原購物車請求
-            </Button>
-          </CommerceActions>
-        </section>
-      )}
+      <CartNotices
+        orderPage={orderPage}
+        message={message}
+        currentCartId={currentCartId}
+        pending={pending}
+        busy={busy}
+        dismiss={() => setMessage('')}
+        retry={() => void retry()}
+      />
       {children}
     </CartContext.Provider>
   );

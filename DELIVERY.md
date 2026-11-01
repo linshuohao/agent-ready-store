@@ -2,7 +2,7 @@
 
 这是一份面向面试官与仓库读者的项目导览。你可以从这里了解产品、运行 Demo，并沿证据入口检查产品判断、前端架构与 AI 协作过程，无需先阅读完整设计文档。
 
-[打开在线文档与展示站](https://agent-ready-store-docs.vercel.app)：无需本地启动，可连续体验产品 Demo、章节讲解和设计正文。[旧版离线 HTML](delivery/index.html)仍保留。
+[打开在线文档与展示站](https://agent-ready-store-docs.vercel.app)：无需本地启动，可连续体验产品 Demo、章节讲解和设计正文。[旧版离线 HTML](docs/delivery/index.html)仍保留。
 
 ## 项目在做什么
 
@@ -33,7 +33,7 @@ HTML 展示用于现场按章节讲解与跳转；交付导览用于独立阅读
 
 直接打开[在线商店](https://agent-ready-store.vercel.app)，无需安装依赖或初始化数据库。线上使用 Vercel 前后端与 Neon 免费数据库；首次访问可能需要等待冷启动。
 
-Agent 客户端使用 MCP Streamable HTTP 连接 `https://agent-ready-store-api.vercel.app/mcp`，通过 `Authorization: Bearer <MCP_SERVICE_TOKEN>` 认证。请向项目维护者获取令牌，不要将令牌写入对话或仓库。具体配置见 [MCP 接入指南](docs/engineering/MCP_CONNECT.md)。
+Agent 客户端使用 MCP Streamable HTTP 连接 `https://agent-ready-store-api.vercel.app/mcp`，本版本默认 Demo 无需 Token。仅当维护者显式启用 `token` 接入门槛时，才配置 `Authorization: Bearer <MCP_SERVICE_TOKEN>`；不要将令牌写入对话或仓库。具体配置见 [MCP 接入指南](docs/engineering/MCP_CONNECT.md)。
 
 线上 Demo 在后续业务请求到来时清理到期订单，无访问时不运行独立清理任务；超过15分钟仍不可支付。
 

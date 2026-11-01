@@ -14,7 +14,7 @@
     <a class="skip" href="#content">跳至正文</a>
     <header>
       <a class="brand" href="#top">ARS<span>AGENT-READY STORE</span></a
-      ><a class="repo" href="../README.md">仓库 README ↗</a>
+      ><a class="repo" href="../../README.md">仓库 README ↗</a>
     </header>
     <main id="content">
       <div class="hero" id="top">
@@ -92,7 +92,7 @@
               <tbody>
                 <tr>
                   <td>快速了解产品与关键取舍</td>
-                  <td>阅读本文，再看<a href="../DECISIONS.md">产品决策</a></td>
+                  <td>阅读本文，再看<a href="../../DECISIONS.md">产品决策</a></td>
                 </tr>
                 <tr>
                   <td>实际运行与体验</td>
@@ -106,7 +106,7 @@
                   <td>在 Agent 中购物</td>
                   <td>
                     查看
-                    <a href="../docs/engineering/MCP_CONNECT.md"
+                    <a href="../engineering/MCP_CONNECT.md"
                       >MCP 接入指南</a
                     >
                   </td>
@@ -118,7 +118,7 @@
                 <tr>
                   <td>核对题目交付、CI 和缺口</td>
                   <td>
-                    查看<a href="../docs/engineering/DELIVERY_STATUS.md"
+                    查看<a href="../engineering/DELIVERY_STATUS.md"
                       >交付状态与证据</a
                     >
                   </td>
@@ -142,7 +142,7 @@
             <code>https://agent-ready-store-api.vercel.app/mcp</code>，通过
             <code>Authorization: Bearer &lt;MCP_SERVICE_TOKEN&gt;</code>
             认证。请向项目维护者获取令牌，不要将令牌写入对话或仓库。具体配置见<a
-              href="../docs/engineering/MCP_CONNECT.md"
+              href="../engineering/MCP_CONNECT.md"
               >MCP 接入指南</a
             >。
           </p>
@@ -151,8 +151,8 @@
             在后续业务请求到来时清理到期订单，无访问时不运行独立清理任务；超过15分钟仍不可支付。
           </p>
           <p>
-            如需本机开发，按<a href="../README.md#本机开发">README 本机开发</a
-            >配置；Docker 运行见<a href="../README.md#构建与运行"
+            如需本机开发，按<a href="../../README.md#本机开发">README 本机开发</a
+            >配置；Docker 运行见<a href="../../README.md#构建与运行"
               >README 构建与运行</a
             >。已有数据库不要重复清空或 seed。
           </p>
@@ -252,9 +252,9 @@
             </p>
             <p>
               到期释放、支付与关闭竞争、丢响应后的未知恢复，可进一步查看<a
-                href="../docs/engineering/CHECKOUT_CORE.md"
+                href="../engineering/CHECKOUT_CORE.md"
                 >交易核心</a
-              >和<a href="../apps/api/test/cart/lifecycle-db.test.ts"
+              >和<a href="../../apps/api/test/cart/lifecycle-db.test.ts"
                 >数据库生命周期测试</a
               >。不需要为了阅读 Demo
               等待15分钟，也不要把关闭浏览器当作取消成功。
@@ -264,7 +264,7 @@
             <h3>Demo 与录影的证据状态</h3>
             <p>
               <a
-                href="../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/tasks.md"
+                href="../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/tasks.md"
                 >结算验收记录</a
               >包含基础 MCP、WebMCP 与 Apps
               的真实购物验收摘要。<strong>可直接观看的完整对话导出或录影仍待补充</strong>；摘要、浏览器测试和真实录影各有不同用途。在线体验入口已提供；线上
@@ -287,8 +287,8 @@
                 准备订单，减少中间步骤；最后由用户核对固定内容并支付。这个选择保留一次确认成本，但使购买对象和最终操作明确。是否改善转化与误购，需要真实业务数据验证。
               </p>
               <p>
-                依据：<a href="../DECISIONS.md">产品决策 D-01、D-02</a>、<a
-                  href="../openspec/specs/agent-purchase-authorization/spec.md"
+                依据：<a href="../../DECISIONS.md">产品决策 D-01、D-02</a>、<a
+                  href="../../openspec/specs/agent-purchase-authorization/spec.md"
                   >购买授权 Spec</a
                 >。Demo 的 UI 边界不能替代生产身份与访问控制。
               </p>
@@ -301,8 +301,8 @@
                 购物车可以用于比较和暂存，长时间占库会影响其他顾客；用户已经准备付款时则需要短期确定性。因此生单固定明细并预留，支付消费预留，取消或到期释放。原单可继续查看，但重新购买需要按当前条件生成新单。15分钟是本次采用的默认值，不是经运营数据证明的最优时长。
               </p>
               <p>
-                依据：<a href="../DECISIONS.md">产品决策 D-04～D-06</a>、<a
-                  href="../openspec/specs/inventory-reservation/spec.md"
+                依据：<a href="../../DECISIONS.md">产品决策 D-04～D-06</a>、<a
+                  href="../../openspec/specs/inventory-reservation/spec.md"
                   >库存预留 Spec</a
                 >。
               </p>
@@ -322,11 +322,11 @@
                 各实例仍有独立的查询副本、输入草稿和未决请求；共享代码不意味着自动共享会话。服务端负责金额与库存事实，前端负责交互协调。
               </p>
               <p>
-                依据：<a href="../docs/engineering/FRONTEND_DESIGN.md"
+                依据：<a href="../engineering/FRONTEND_DESIGN.md"
                   >前端设计</a
-                >、<a href="../packages/commerce-ui/src/application.tsx"
+                >、<a href="../../packages/commerce-ui/src/application.tsx"
                   >共享应用入口</a
-                >、<a href="../packages/commerce-ui/src/runtime.tsx">环境接口</a
+                >、<a href="../../packages/commerce-ui/src/runtime.tsx">环境接口</a
                 >。
               </p>
             </div>
@@ -339,9 +339,9 @@
                 进入共享业务用例，计价集中在服务端。客户端不自行推算最终交易金额。交易使用原请求键与订单标识处理幂等和恢复；响应丢失时保留未知状态并查询事实，不能直接判断失败后换单重买。本地倒计时也不能替代数据库中的关闭事实。
               </p>
               <p>
-                依据：<a href="../apps/api/src/cart/pricing.ts">统一计价实现</a
-                >、<a href="../docs/engineering/CHECKOUT_CORE.md">交易核心</a
-                >、<a href="../apps/api/test/cart/lifecycle-db.test.ts"
+                依据：<a href="../../apps/api/src/cart/pricing.ts">统一计价实现</a
+                >、<a href="../engineering/CHECKOUT_CORE.md">交易核心</a
+                >、<a href="../../apps/api/test/cart/lifecycle-db.test.ts"
                   >生命周期数据库测试</a
                 >。
               </p>
@@ -357,9 +357,9 @@
                 兼容和分入口验收成本。它们属于项目的能力扩展，不能把入口数量本身当作质量证明。
               </p>
               <p>
-                依据：<a href="../docs/engineering/MCP_CONNECT.md"
+                依据：<a href="../engineering/MCP_CONNECT.md"
                   >接入与兼容边界</a
-                >、<a href="../docs/engineering/ENGINEERING_DECISIONS.md"
+                >、<a href="../engineering/ENGINEERING_DECISIONS.md"
                   >工程决策</a
                 >。
               </p>
@@ -375,10 +375,10 @@
                 在授权范围内实施、验证与修复。局部可逆修改可以轻量执行，不为每次修改建立完整规划流程。
               </p>
               <p>
-                <a href="../AI_NOTES.md">AI_NOTES</a
+                <a href="../../AI_NOTES.md">AI_NOTES</a
                 >精选四个真实协作时刻，包括上下文权威、Skill
                 职责收敛，以及审查发现数据库切换竞态后通过真实反例修复的过程。<a
-                  href="../docs/engineering/TOOLING.md"
+                  href="../engineering/TOOLING.md"
                   >工具记录</a
                 >给出 Skill
                 版本、限定使用次数和验证口径；不将记录下限冒充总调用量，也没有量化效率提升的结论。
@@ -392,7 +392,7 @@
             <h2 id="title-evidence">如何核验交付质量</h2>
           </div>
           <p>
-            建议从<a href="../docs/engineering/DELIVERY_STATUS.md"
+            建议从<a href="../engineering/DELIVERY_STATUS.md"
               >交付状态与证据</a
             >开始，它集中维护题目要求、对应结果、实际 CI
             版本、验收记录与剩余缺口。
@@ -414,13 +414,13 @@
               <tbody>
                 <tr>
                   <td>产品与取舍</td>
-                  <td><a href="../DECISIONS.md">DECISIONS</a></td>
+                  <td><a href="../../DECISIONS.md">DECISIONS</a></td>
                   <td>当前决定、代价与历史替代关系；PM回复是草案</td>
                 </tr>
                 <tr>
                   <td>架构与实现</td>
                   <td>
-                    <a href="../docs/engineering/TECHNICAL_DESIGN.md"
+                    <a href="../engineering/TECHNICAL_DESIGN.md"
                       >总体技术设计</a
                     >
                   </td>
@@ -429,8 +429,8 @@
                 <tr>
                   <td>正式行为</td>
                   <td>
-                    <a href="../openspec/specs/">OpenSpec specs</a>与<a
-                      href="../openspec/changes/archive/"
+                    <a href="../../openspec/specs">OpenSpec specs</a>与<a
+                      href="../../openspec/changes/archive"
                       >归档变更</a
                     >
                   </td>
@@ -439,8 +439,8 @@
                 <tr>
                   <td>测试与 CI</td>
                   <td>
-                    <a href="../README.md#测试与检查">运行测试说明</a>、<a
-                      href="../.github/workflows/ci.yml"
+                    <a href="../../README.md#测试与检查">运行测试说明</a>、<a
+                      href="../../.github/workflows/ci.yml"
                       >CI 配置</a
                     >
                   </td>
@@ -451,8 +451,8 @@
                 <tr>
                   <td>AI 协作</td>
                   <td>
-                    <a href="../AI_NOTES.md">AI_NOTES</a>、<a
-                      href="../.agents/skills/ai-native-workflow/SKILL.md"
+                    <a href="../../AI_NOTES.md">AI_NOTES</a>、<a
+                      href="../../.agents/skills/ai-native-workflow/SKILL.md"
                       >Workflow Skill</a
                     >
                   </td>
@@ -482,8 +482,8 @@
       <strong>Agent-Ready Store</strong>
       <p>交付导览 · 面向面试官与仓库读者</p>
       <div>
-        <a href="../DELIVERY.md">Markdown 原文</a
-        ><a href="../docs/engineering/DELIVERY_STATUS.md">交付状态与缺口</a
+        <a href="../../DELIVERY.md">Markdown 原文</a
+        ><a href="../engineering/DELIVERY_STATUS.md">交付状态与缺口</a
         ><a href="#top">返回顶部 ↑</a>
       </div>
     </footer>
