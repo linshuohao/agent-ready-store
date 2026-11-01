@@ -12,6 +12,33 @@ test.beforeEach(async ({ page }) => {
   page.on('pageerror', (error) => messages.push(error.message));
 });
 async function post(page: Page, path: string, body: unknown) {
+  if (
+    path === '/carts' &&
+    body &&
+    typeof body === 'object' &&
+    'initialItems' in body
+  ) {
+    const items = (
+      body as { initialItems: { productId: string; quantity: number }[] }
+    ).initialItems;
+    const initializationId = randomUUID();
+    let cart: any;
+    for (const item of items.length
+      ? items
+      : [{ productId: 'P001', quantity: 1 }])
+      cart = await post(page, '/carts/add', {
+        initializationId,
+        operationRequestId: randomUUID(),
+        ...item,
+      });
+    if (!items.length)
+      cart = await post(page, `/carts/${cart.cartId}/operations`, {
+        operationRequestId: randomUUID(),
+        expectedCartVersion: cart.cartVersion,
+        operation: { type: 'remove_item', productId: 'P001' },
+      });
+    return cart;
+  }
   const response = await page.request.post(root + path, {
     headers: { origin: new URL(process.env.WEB_BASE_URL!).origin },
     data: body,
@@ -31,8 +58,7 @@ async function create(page: Page) {
   });
   const result = await post(page, `/carts/${cart.cartId}/orders`, {
     requestId: randomUUID(),
-    expectedCartVersion: cart.cartVersion,
-    selectedItems: [{ productId: 'P001', expectedQuantity: 1 }],
+    selectedItems: [{ productId: 'P001', quantity: 1 }],
     constraints: { currency: 'TWD' },
   });
   await page.goto('/');
@@ -93,8 +119,7 @@ test('cancellation closes only the chosen order and keeps sibling navigation @ci
   expect(await available()).toBe(before - 1);
   const second = await post(page, `/carts/${cart.cartId}/orders`, {
     requestId: randomUUID(),
-    expectedCartVersion: cart.cartVersion,
-    selectedItems: [{ productId: 'P003', expectedQuantity: 1 }],
+    selectedItems: [{ productId: 'P003', quantity: 1 }],
     constraints: { currency: 'TWD' },
   });
   await page.goto(`/orders/${order.orderId}`);
@@ -366,8 +391,7 @@ test('late payment for A survives navigation to B and an older query cannot repl
   const { order, cart } = await create(page);
   const b = await post(page, `/carts/${cart.cartId}/orders`, {
     requestId: randomUUID(),
-    expectedCartVersion: cart.cartVersion,
-    selectedItems: [{ productId: 'P003', expectedQuantity: 1 }],
+    selectedItems: [{ productId: 'P003', quantity: 1 }],
     constraints: { currency: 'TWD' },
   });
   let release!: () => void;
@@ -399,7 +423,7 @@ test('late payment for A survives navigation to B and an older query cannot repl
   await page.route(`**/shopping/orders/${order.orderId}`, (route) =>
     route.fulfill({ json: { ok: true, data: order } }),
   );
-  await page.getByRole('button', { name: '重新查詢訂單', exact: true }).click();
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   await expect(
     page.getByRole('heading', { name: '支付成功', exact: true }),
   ).toBeVisible();
@@ -525,7 +549,7 @@ test('contradictory terminal response preserves confirmed payment and rereads au
       },
     });
   });
-  await page.getByRole('button', { name: '重新查詢訂單', exact: true }).click();
+  await page.evaluate(() => window.dispatchEvent(new Event('focus')));
   await expect(page.getByRole('main').getByRole('alert')).toContainText(
     '不一致',
   );
@@ -567,14 +591,14 @@ test('returning to cart before a delayed creation completes receives the origina
   await page.getByRole('link', { name: 'AGENT / STORE', exact: true }).click();
   await page.getByRole('link', { name: '購物車', exact: true }).click();
   await expect(
-    page.getByRole('button', { name: '恢復原建立訂單請求', exact: true }),
+    page.getByRole('button', { name: '繼續原購買', exact: true }),
   ).toBeVisible();
   release();
   await expect(
     page.getByRole('link', { name: '查看新訂單', exact: true }),
   ).toHaveAttribute('href', `/orders/${orderId}`);
   await expect(
-    page.getByRole('button', { name: '恢復原建立訂單請求', exact: true }),
+    page.getByRole('button', { name: '繼續原購買', exact: true }),
   ).toHaveCount(0);
   await post(page, `/orders/${orderId}/cancel`, {});
 });

@@ -68,7 +68,7 @@ async function connect(attach = attachMcp, mode: 'demo' | 'token' = 'demo') {
 }
 it('preserves every committed discovery contract', async () => {
   const migrated = await connect();
-  // Captured from committed pre-refactor adapter faeaeca, compared through real SDK.
+  // Captured from the v2 cart-command adapter through the real SDK.
   const expected = JSON.parse(
     readFileSync(new URL('./tool-discovery.json', import.meta.url), 'utf8'),
   );
@@ -185,7 +185,7 @@ it.each([false, true])(
     expect(calls).toEqual(['works']);
     const resources = (await client.listResources()).resources;
     expect(resources.map((resource) => resource.uri)).toEqual(
-      withResource ? ['ui://store/independent-example-v8.html'] : [],
+      withResource ? ['ui://store/independent-example-v9.html'] : [],
     );
   },
 );
@@ -222,8 +222,7 @@ it.each(['tool', 'maintenance', 'unknown'] as const)(
       arguments: {
         cartId: id,
         requestId: id,
-        expectedCartVersion: 1,
-        selectedItems: [{ productId: 'P001', expectedQuantity: 1 }],
+        selectedItems: [{ productId: 'P001', quantity: 1 }],
         constraints: { currency: 'TWD' },
       },
     });
@@ -270,6 +269,79 @@ it.each(['tool', 'maintenance', 'unknown'] as const)(
       expect(log).not.toHaveBeenCalled();
     }
     expect(createOrder).toHaveBeenCalledTimes(source === 'maintenance' ? 0 : 1);
+    log.mockRestore();
+  },
+);
+
+it.each(['demo', 'token'] as const)(
+  'request-result bypasses maintenance after %s authentication and preserves technical errors',
+  async (mode) => {
+    const beforeCall = vi.fn(async () => {
+      throw new Error('maintenance must not run');
+    });
+    const requestResult = vi
+      .fn()
+      .mockResolvedValueOnce({ status: 'not_found', kind: 'initialize' })
+      .mockRejectedValueOnce(new Error('private connection failure'));
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { client, host } = await connect(
+      (app, catalog) =>
+        attachMcp(
+          app,
+          catalog,
+          { requestResult } as unknown as CartService,
+          beforeCall,
+        ),
+      mode,
+    );
+    const args = {
+      kind: 'initialize',
+      requestId: '00000000-0000-4000-8000-000000000001',
+    };
+    expect(
+      await client.callTool({ name: 'get_request_result', arguments: args }),
+    ).toMatchObject({
+      structuredContent: {
+        ok: true,
+        data: { status: 'not_found', kind: 'initialize' },
+      },
+    });
+    expect(
+      await client.callTool({ name: 'get_request_result', arguments: args }),
+    ).toMatchObject({
+      isError: true,
+      structuredContent: {
+        ok: false,
+        error: { code: 'TEMPORARY_UNAVAILABLE' },
+      },
+    });
+    expect(
+      await client.callTool({
+        name: 'get_request_result',
+        arguments: { ...args, execute: true },
+      }),
+    ).toMatchObject({
+      isError: true,
+      structuredContent: { error: { code: 'VALIDATION_ERROR' } },
+    });
+    expect(beforeCall).not.toHaveBeenCalled();
+    expect(requestResult).toHaveBeenCalledTimes(2);
+    if (mode === 'token')
+      expect(
+        (
+          await fetch(`http://${host}/mcp`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              jsonrpc: '2.0',
+              id: 1,
+              method: 'tools/call',
+              params: { name: 'get_request_result', arguments: args },
+            }),
+          })
+        ).status,
+      ).toBe(401);
+    expect(requestResult).toHaveBeenCalledTimes(2);
     log.mockRestore();
   },
 );

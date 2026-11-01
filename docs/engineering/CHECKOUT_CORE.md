@@ -2,6 +2,8 @@
 
 **范围与状态：** 2026-10-31 从原 Technical Design 按职责迁移；沿用[总体设计的状态、依据与批准范围](TECHNICAL_DESIGN.md)，不因拆分新增业务批准或声称全局基线整体 Approved。当前行为以正式 Spec 为准，变更理由见工程决策；本文维护当前设计，不维护实施任务或逐轮验证记录。
 
+2026-11-01按已批准的[cart-command-state-isolation设计](../../openspec/changes/cart-command-state-isolation/design.md)及其Spec Delta更新下述契约；正式主Spec同步与验收仍按该Change执行。本文描述目标设计，不作为实现或验证通过的证据。
+
 <a id="domain-model"></a>
 <a id="2-领域与数据模型"></a>
 ## 领域与数据模型
@@ -9,7 +11,7 @@
 ```mermaid
 flowchart TB
     P[商品目录与当前定价] -. 生单时取值 .-> O
-    C[Cart：可变选购集合] -->|选中整行转出| O[Order：固定交易]
+    C[Cart：可变选购集合] -->|显式购买并清理同SKU| O[Order：固定交易]
     C -->|未选商品保留| R[继续选购与改量]
     O -->|包含固定明细| L[OrderLine：商品与数量]
     O -->|预留15分钟| I[Inventory：库存承诺]
@@ -22,15 +24,15 @@ flowchart TB
 | --- | --- | --- |
 | Cart | 持久购物上下文、可编辑商品与数量、version、来源归因；一车多单 | 用户身份、结算锁、订单付款状态；不另建Session |
 | Order | 全局唯一ID、来源cartId、固定金额和优惠资格、支付/关闭事实、预留截止、创建幂等 | 继续跟随购物车或目录价格变化 |
-| OrderLine | 生单时完整数量、商品摘要、单价和行金额的唯一权威 | 从当前商品目录重建历史交易内容 |
+| OrderLine | 生单时显式购买数量、商品摘要、单价和行金额的唯一权威 | 从当前商品目录重建历史交易内容 |
 | Inventory | 实际未售量quantity、预留量reservedQuantity；可售量为二者之差 | 客户端倒计时、页面是否仍打开 |
 | Product/定价规则 | 生单前的商品事实与当前计价依据 | 覆盖已生成订单快照 |
 
-Order.cartId是必填、非唯一的来源关联；OrderLine按orderId与productId唯一，保存从车转入的完整数量。OrderLine加订单支付/关闭事实构成最小预留归属账本，不另建Checkout或独立预留生命周期。
+Order.cartId是必填、非唯一的来源关联；OrderLine按orderId与productId唯一，保存请求清单中的购买数量，不从车行取量。OrderLine加订单支付/关闭事实构成最小预留归属账本，不另建Checkout或独立预留生命周期。
 
 Order与OrderLine共同组成不可变交易快照，不另存重复商品JSON或purchaseHash。Cart的JSON条目仍复用现有结构，首版不为减少偶发版本冲突新增逐行修订体系。读模型CartView/OrderView是权威数据投影，不是新的领域实体。
 
-必须保持：选择整行且数量一致；生单、移出车行与预留全有或全无；同键不重复生单；有效待支付默认每车最多10笔；同一预留只能消费或释放一次。这些约束如何通过数据库保证，见[用例与一致性边界](#61-用例与一致性边界)；本节只定义业务边界。
+必须保持：按显式商品数量购买，不要求车行存在或数量一致；生单、同SKU整行清理与预留全有或全无；同键不重复生单；有效待支付默认每车最多10笔；同一预留只能消费或释放一次。这些约束如何通过数据库保证，见[用例与一致性边界](#61-用例与一致性边界)；本节只定义业务边界。
 
 车和订单长期落库，ID用于demo接续，无业务TTL；库存预留才有固定15分钟期限。Demo不设计身份、凭证或服务端访问隔离，分享仅约束页面展示，不把这一简化描述成生产级授权方案。
 
@@ -42,7 +44,7 @@ Order与OrderLine共同组成不可变交易快照，不另存重复商品JSON�
 | --- | --- | --- |
 | productId | 区分商品，包括同名商品 | 不携带价格或库存承诺 |
 | cartId / currentCartId | 来源车关联 / 当前入口的购物指针 | 不证明身份，不因订单状态自动换车 |
-| Cart.version | 服务端车快照版本，保护JSON条目写入 | 不是订单支付版本，客户端不可自增后重放 |
+| Cart.version | 服务端车快照排序，保护set/remove绝对编辑；add与生单不提交版本 | 不是订单支付版本，客户端不可自增后重放 |
 | orderId | 从创建到支付/关闭持续定位同一订单 | 订单存在不等于已支付 |
 | 创建/车操作请求键及载荷校验 | 原意图重试去重、拒绝同键异内容 | 不证明用户授权，不允许续期或复活 |
 | createdByChannel / aiEligible | 固定本单生单通道与AI优惠资格 | 不从车来源继承，不因读单或支付者变化而升级 |
@@ -89,7 +91,7 @@ stateDiagram-v2
 
 订单创建后商品/数量固定；改量须取消后重新选购。取消或到期释放整单预留，但不自动回车、不修改后来加购的行或兄弟订单。关闭页面、结束Agent对话、Abort网络请求都不代表取消；已支付单不能取消或退款。此前普通停售/禁止销售设想保留为未来条件性设计；当前只有可购买原因，不能将售罄、零价或缺库存推定为禁售。
 
-异常按目标恢复：创建失败不移行、不占库；支付事务回滚保留此前已创建的订单、快照及原预留，仍受原截止约束。网络未知不能当成失败或已释放库存。创建未知按原车与创建请求键恢复，支付/取消未知按原orderId查事实，重试不换键、不续期。到期后原单只可查看；用户明确重新购买才重新选购、使用新请求键和当前价格创建新单，不复制旧锁价。
+异常按目标恢复：创建失败不移行、不占库；支付事务回滚保留此前已创建的订单、快照及原预留，仍受原截止约束。网络未知不能当成失败或已释放库存。创建未知先按原车与创建请求键只读查询；另行明确继续才按原键原载荷写入，支付/取消未知按原orderId查事实，重试不换键、不续期。到期后原单只可查看；用户明确重新购买才重新选购、使用新请求键和当前价格创建新单，不复制旧锁价。
 
 
 <a id="61-用例与一致性边界"></a>
@@ -97,12 +99,12 @@ stateDiagram-v2
 
 | 用例 | 同一短事务内的保障 | 恢复边界 |
 | --- | --- | --- |
-| 加购、改量、删除 | add累加或新增，set对已有行绝对设量；两者校验目标可购买性和正整数可售量。remove可删除问题行；set/remove不存在行报错、0不当删除。车变更、version递增与操作幂等记录一起提交 | 原键同载荷返回原结果；同键异载荷拒绝；去重先于旧版本校验 |
-| 创建订单 | 恢复原请求后，对新请求校验来源车版本、完整选中集合、预算/规格、配额及可售量；固定金额、写Order/OrderLine、增加reserved、删除选中车行和递增version一起提交 | 原键恢复同orderId及当前状态，即使车行已移出、价格已变、原单已关闭；不同键竞争同车旧版本不能都成功 |
+| 加购、改量、删除 | add累加或新增，set对已有行绝对设量；两者校验目标可购买性和正整数可售量。remove可删除问题行；set/remove不存在行报错、0不当删除。车变更、version递增与操作幂等记录一起提交 | 原键同载荷返回原结果；同键异载荷拒绝；去重先于set/remove旧版本校验；add无版本前置条件 |
+| 创建订单 | 恢复原请求后，对新请求校验显式购买集合、预算/规格、配额及可售量；固定金额、写Order/OrderLine、增加reserved、删除当前所购SKU整行和递增version一起提交 | 原键恢复同orderId及当前状态，即使车行已移出、价格已变、原单已关闭；同键恢复不再次清车；不同键在库存与配额允许时可各自成功 |
 | 支付 | 锁原Order及其库存，校验未关闭、锁后数据库截止、有效预留和原快照；quantity与reserved同时减本单数量，更新同单为PAID | 不重算价格、不插入第二笔订单、不比较当前车版本；重复支付返回原事实 |
 | 取消/到期 | 锁订单及库存，释放reserved并写关闭事实 | 已支付/已关闭先返回已有事实；未关闭单锁后达到截止则记EXPIRED，未到期才按请求原因关闭；不重复释放、不改写原因 |
 
-创建协调来源车与所选库存；支付/关闭只协调目标订单与库存，不锁来源车。库存按统一商品顺序取锁，关闭与支付共享协调边界；未来如引入可信禁止销售事实，须另行规划其更新与支付的协调。没有覆盖15分钟审阅期的数据库锁。具体锁序、参数和并发反例见[归档设计](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/design.md)；当前行为仍以[正式 Spec](../../openspec/specs/)为准。
+创建协调来源车与所选库存；支付/关闭只协调目标订单与库存，不锁来源车。库存按统一商品顺序取锁，关闭与支付共享协调边界；未来如引入可信禁止销售事实，须另行规划其更新与支付的协调。没有覆盖15分钟审阅期的数据库锁。具体锁序、参数和并发反例见[归档设计](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/design.md)；现行基础约束见[正式 Spec](../../openspec/specs/)，本次限定替代以[当前Change](../../openspec/changes/cart-command-state-isolation/design.md)为准。
 
 单车配额只计CHECKOUT、未关闭且未到期的订单，env默认10笔。新单在Cart短事务内完成计数与准入，避免并发超额；同键恢复先于配额检查。下调配置不取消已有单，只暂停新增；满额显示已有订单入口，不能自动换车绕过。该额度不提供自然人级防囤占。
 
@@ -112,7 +114,7 @@ stateDiagram-v2
 
 正常库存保持`0 <= reservedQuantity <= quantity`，reserved对应尚未消费或物化释放的订单预留。预留增加reserved、不减少quantity；支付同时减少二者；关闭只减少reserved。例如实际10件，预留3件和2件后可售5件；第一单支付后实际7、预留2、可售仍5；第二单取消后可售7。持有有效预留的订单不因公开可售为0而被拒付。异常库存不得新增预留。
 
-创建在完成锁等待和校验后记录服务端创建时刻，截止固定为其后15分钟；锁后数据库时间达到截止即拒绝新支付。后台释放尚未提交时，占用仍计入reserved，可能短暂少卖但不能超卖；公开查询不能自行扣除超时占用形成另一口径。到期单不占待支付笔数配额，与库存实际释放是两回事。默认每秒扫描、正常负载5秒内释放是待验证目标；故障后补扫，不能承诺故障期间时延。免费 Vercel Demo 经 Human 于2026-10-31批准采用 `ORDER_EXPIRY_MODE=request`：REST业务请求及认证后的MCP工具调用先等待一批最多100单清理，无流量不保证释放时限；健康检查不扫库。请求并发在实例内合并批次，跨实例仍由数据库行锁保证一次释放，失败不扩大可售量。
+创建在完成锁等待和校验后记录服务端创建时刻，截止固定为其后15分钟；锁后数据库时间达到截止即拒绝新支付。后台释放尚未提交时，占用仍计入reserved，可能短暂少卖但不能超卖；公开查询不能自行扣除超时占用形成另一口径。到期单不占待支付笔数配额，与库存实际释放是两回事。默认每秒扫描、正常负载5秒内释放是待验证目标；故障后补扫，不能承诺故障期间时延。免费 Vercel Demo 经 Human 于2026-10-31批准采用 `ORDER_EXPIRY_MODE=request`：REST业务请求及通过当前demo/token入口校验的MCP工具调用先等待一批最多100单清理，无流量不保证释放时限；健康检查、纯分类发现和专用请求结果查询不扫库。请求并发在实例内合并批次，跨实例仍由数据库行锁保证一次释放，失败不扩大可售量。
 
 计价仅使用本单所选商品，未选商品不贡献优惠门槛。沿用[D-09～D-13金额规则](../../DECISIONS.md#统一价格计算语义d-09d-13)：优惠前商品小计满NT$1,000减100一次；再对有AI资格的商品金额打95折，精确十进制计算并在订单级HALF_UP至两位；运费按优惠前小计满NT$990免运，否则100，最后加到商品应付金额。车报价是无占用预估，生单固定单价、优惠、运费、币种、总额与计价规则版本；支付不按后续涨跌价或活动调整重算，客户端不能覆盖金额。
 
@@ -124,9 +126,9 @@ AI资格由服务端生单入口确定，不接受客户端自报资格，也不
 
 | 操作/约束 | 当前事务、锁序及数据库保障 | 验证入口 |
 | --- | --- | --- |
-| 初始化车 | 初始化请求键事务级advisory lock → 同键指纹恢复/校验 → 写Cart；createRequestId全局唯一，初始条目及归因同事务保存 | [生命周期DB测试](../../apps/api/test/cart/lifecycle-db.test.ts)的跨实例初始化与恢复 |
-| 修改车 | 车操作键advisory lock → Cart行锁 → 查原操作指纹 → 校验版本/目标 → 写车与CartOperation；复合主键(cartId,requestId)去重，不预留库存 | 同文件的旧版本竞争、请求冲突及操作/幂等记录回滚 |
-| 创建订单 | 生单键advisory lock → Cart行锁 → 同键恢复 → 配额/版本检查 → 按productId排序的Inventory行锁 → 校验并写新Order/OrderLine、增加reserved、移出车行；新单尚不可被其他事务访问，无需先锁新Order | 同文件的同车竞争、末件库存、配额并发、创建回滚；Order的(cartId,createRequestId)唯一约束 |
+| 初始化车 | 共享initializationId事务级协调 → 解析唯一持久Cart映射 → 按独立操作键add；首个有效增量、Cart与归因原子提交，失败不留空车 | [生命周期DB测试](../../apps/api/test/cart/lifecycle-db.test.ts)的历史初始化与恢复；新身份并发见[命令隔离DB测试](../../apps/api/test/cart/command-isolation-db.test.ts) |
+| 修改车 | 车操作键advisory lock → Cart行锁 → 查原操作指纹 → 仅set/remove校验版本，所有操作校验目标 → 写车与CartOperation；复合主键(cartId,requestId)去重，不预留库存 | 同文件的旧版本竞争、请求冲突及操作/幂等记录回滚 |
+| 创建订单 | 生单键advisory lock → Cart行锁 → 同键恢复 → 配额检查 → 按productId排序的Inventory行锁 → 校验并写新Order/OrderLine、增加reserved、清理当前所购SKU整行；新单尚不可被其他事务访问，无需先锁新Order | 同文件的同车竞争、末件库存、配额并发、创建回滚；Order的(cartId,createRequestId)唯一约束 |
 | 支付/取消/到期 | 原Order行锁 → 已提交终态直接返回 → 排序Inventory行锁 → 锁后数据库clock_timestamp裁决 → 同事务更新库存与原单；不锁来源Cart。支付过期时不付款，按EXPIRED关闭释放 | 同文件的支付/关闭竞争、取锁跨截止、终态及回滚场景 |
 | 预留与状态一致 | Inventory_reservation_check约束非负预留及正常库存上界，历史负库存只允许零预留；Order_lifecycle_check约束支付时间与关闭字段一致。预留归属总量仍依赖事务与账实核对，不由单行CHECK独立保证 | [库存测试](../../apps/api/test/inventory/inventory.test.ts)、生命周期DB测试与运行段只读metrics |
 | 金额、来源与明细 | Order_amount_check校验金额汇总，Order_channel_check约束优惠资格与通道；OrderLine复合主键、正数量/单价及行小计CHECK，外键RESTRICT。固定快照由用例维护，不能把这些CHECK描述成禁止任意SQL修改快照 | [计价测试](../../apps/api/test/cart/pricing.test.ts)、生命周期DB测试的固定快照/约束反例 |
@@ -168,21 +170,29 @@ sequenceDiagram
 
 | 用例 | 输入及结果 |
 | --- | --- |
-| getOrCreate | `{cartId}` 只接续；或 `{requestId, initialItems:[{productId,quantity}]}` 原子初始化。Agent 通道不接受空条目；普通 Web 允许空车。浏览咨询不得调用创建分支 |
+| getOrCreate | 仅 `{cartId}` 接续已有车；旧requestId/initialItems和空车创建拒绝新写，历史结果只读核实 |
 | get | cartId → 车 ID、版本、行、问题、有效待支付订单；没有业务 TTL、单个完成订单字段或自动建车 |
-| operate | cartId + `{operationRequestId, expectedCartVersion, operation}`。operation 为 add_item / set_quantity（正数量）或 remove_item（无 quantity） |
+| operate | cartId + `{operationRequestId, operation}`；add_item不含版本，set_quantity（正数量）/remove_item（无quantity）必须另带expectedCartVersion |
+| add | `{cartId或initializationId, operationRequestId, productId, quantity}`，两种定位互斥；首次add可原子建车，无版本 |
+| getRequestResult | `{kind, requestId}`，order须cartId，cart须cartId或initializationId，历史initialize无需车ID；返回found及原order/cart，或not_found |
 | quoteSelection | cartId + `{selectedItems, constraints}` + 可信通道；只计算本次选中集合，不占库 |
-| createOrder | cartId + `{requestId, expectedCartVersion, selectedItems, constraints}` + 可信通道 → `{order,cart}`；每个 selectedItems 元素为 `{productId,expectedQuantity}`，只断言整行数量，不拆分 |
+| createOrder | cartId + `{requestId, selectedItems, constraints}` + 可信通道 → `{order,cart}`；每个 selectedItems 元素为 `{productId,quantity}`，为独立购买量，不要求车行存在或等量 |
 | getOrder | orderId，可选 cartId；同时传入时必须关联同一车 |
 | listOrders | cartId + `{offset?,limit?,pendingOnly?}`；默认20，最多100，稳定 createdAt/id 倒序，nextOffset 表示后页 |
 | payOrder / cancelOrder | orderId，可选 cartId；返回原单当前事实。支付只给 UI，不注册为模型工具；调用失败恢复原单 |
 
-`constraints` 必须含 `currency:'TWD'`，可含十进制两位金额 `maxTotal`；`items` 可逐项约束 `{productId,maxUnitPrice?,specs?}`，规格使用目录键和精确值。约束 ID 必须属于选中集合，重复/缺失/数量不符/预算或规格不符整笔拒绝。金额上限和规格不由最终支付兜底。
+`constraints` 必须含 `currency:'TWD'`，可含十进制两位金额 `maxTotal`；`items` 可逐项约束 `{productId,maxUnitPrice?,specs?}`，规格使用目录键和精确值。约束 ID 必须属于选中集合，重复ID、非法数量、目录商品缺失、库存不足、预算或规格不符整笔拒绝；车中无该行或数量不同不构成失败。金额上限和规格不由最终支付兜底。
 
+
+生单按显式清单锁库存并计价；车中A为5、1或不存在时买A×2均按2验证。成功删除当前A整行，不保留差额；add先提交则其同SKU增量一起清理，生单先提交则后来add保留。无匹配车行也成功并递增一次车版本；sourceCartVersion仅为事务观察值。客户端不得在迟到成功时再次按SKU删行。
+
+请求结果查询只读持久成功事实，not_found不等于失败或取消，技术错误不能转为空结果。查询不生单、改车、预留/释放、写幂等记录或触发到期扫描，仅派生effectiveStatus；原在途写和后台任务仍可独立提交。继续原操作是独立明确写动作，同键成功恢复不再次清车。
+
+新初始化映射为可空唯一字段，保留既有车和订单。切换先停止各实例/通道写入并确认旧请求排空，之后启用新契约；旧本地请求保留原键与载荷，仅核实历史事实，不执行旧载荷或静默转为新请求。无记录且排空已证实后，只有用户明确新意图才发新契约请求；未证实排空保持未知。实际发布及回退另需授权，不能清库或直接回退旧写服务。
 
 ## 数据库运行与隔离验证
 
-新迁移仅能在旧 Cart/Order/PurchaseReview 均为空时应用，否则明确中止；不会自动清空旧交易或重置库存。原切换的授权与执行证据见[归档 Tasks 8](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/tasks.md)；该记录不授予再次清理权限。新数据产生后不可再次清理或回退到旧写服务。迁移保留 P008 负库存原值：负库存必须零预留，不可用于新订单。
+历史checkout-lifecycle迁移仅能在旧 Cart/Order/PurchaseReview 均为空时应用，否则明确中止；不会自动清空旧交易或重置库存。原切换的授权与执行证据见[归档 Tasks 8](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/tasks.md)；该记录不授予再次清理权限。新数据产生后不可再次清理或回退到旧写服务。迁移保留 P008 负库存原值：负库存必须零预留，不可用于新订单。
 
 `MAX_PENDING_ORDERS_PER_CART=10` 必须为正安全整数；下调不取消旧单，同键恢复不受额度限制。到期不占笔数配额，但尚未物化释放仍占库存。默认 Worker 模式下，API 启动即补扫，每次扫描结束一秒后再扫，单批最多100笔，每单独立短事务；多实例按数据库行锁协调。单笔失败会记录日志并在后续扫描轮转后重试；非持久游标避免异常订单饿死后续批次，重启从头补扫，故障期间无5秒保证。
 

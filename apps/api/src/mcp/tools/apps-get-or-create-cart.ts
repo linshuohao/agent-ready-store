@@ -2,25 +2,19 @@ import { ToolError } from '../tool-error.js';
 import { AppError } from '../../shared/app-error.js';
 import type { ToolDefinition } from '../register-tools.js';
 import type { CartService } from '../../cart/cart.service.js';
-import { getOrCreateCartInput, cartItemsInput } from '@store/contracts';
-import { z } from 'zod';
+import { getOrCreateCartInput } from '@store/contracts';
 import { parseToolInput as parse } from '../tool-input.js';
 
-const agentCartInput = z.union([
-  getOrCreateCartInput.options[0],
-  getOrCreateCartInput.options[1].extend({
-    initialItems: cartItemsInput.min(1),
-  }),
-]);
+const agentCartInput = getOrCreateCartInput;
 
 export function createAppsGetOrCreateCart(carts: CartService): ToolDefinition {
   return {
     name: 'apps_get_or_create_cart',
     description:
-      'UI Bridge明确加购时初始化或恢复原车；未知沿原键，不自动另建。',
+      'Read an existing cart by cartId only. First explicit add uses add_cart_item with shared initializationId. Legacy initialization payloads are rejected; use get_request_result for read-only reconciliation.',
     inputSchema: agentCartInput,
     annotations: {
-      readOnlyHint: false,
+      readOnlyHint: true,
       destructiveHint: false,
       idempotentHint: true,
       openWorldHint: false,

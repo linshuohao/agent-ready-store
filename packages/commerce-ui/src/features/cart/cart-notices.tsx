@@ -1,26 +1,24 @@
 'use client';
 import { Link } from '../../runtime';
-import { CommerceActions } from '../../index';
 import { Button } from '../../components/ui/button';
 import { CartFeedback } from './feedback';
-
-// Presentation only; operation and recovery state remain owned by CartProvider.
+import type { RecoveryRequest } from './lifecycle-commands';
 export function CartNotices({
   orderPage,
   message,
   currentCartId,
-  pending,
-  busy,
+  requests,
   dismiss,
   retry,
+  query,
 }: {
   orderPage: boolean;
   message: string;
   currentCartId: string | null;
-  pending: boolean;
-  busy: boolean;
+  requests: RecoveryRequest[];
   dismiss: () => void;
-  retry: () => void;
+  retry: (requestId: string) => void;
+  query: (requestId: string) => void;
 }) {
   return (
     <>
@@ -34,16 +32,23 @@ export function CartNotices({
           )}
         </CartFeedback>
       )}
-      {!orderPage && pending && (
-        <section className="notice" aria-label="購物車恢復">
-          <p>上次購物車操作結果未確認，請使用原請求恢復。</p>
-          <CommerceActions>
-            <Button disabled={busy} onClick={retry}>
-              重試原購物車請求
-            </Button>
-          </CommerceActions>
-        </section>
-      )}
+      {!orderPage &&
+        requests.map((request) => (
+          <section
+            key={request.requestId}
+            className="notice"
+            aria-label="購物車恢復"
+          >
+            <p>操作 {request.requestId} 結果未確認。</p>
+            <Button onClick={() => query(request.requestId)}>查詢結果</Button>
+            {!request.legacy && (
+              <Button onClick={() => retry(request.requestId)}>
+                繼續原購物車操作
+              </Button>
+            )}
+            {request.legacy && <p>舊請求僅可查詢，不會重新執行。</p>}
+          </section>
+        ))}
     </>
   );
 }

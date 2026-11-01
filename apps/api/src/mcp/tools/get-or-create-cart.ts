@@ -2,25 +2,19 @@ import { ToolError } from '../tool-error.js';
 import { AppError } from '../../shared/app-error.js';
 import type { ToolDefinition } from '../register-tools.js';
 import type { CartService } from '../../cart/cart.service.js';
-import { getOrCreateCartInput, cartItemsInput } from '@store/contracts';
-import { z } from 'zod';
+import { getOrCreateCartInput } from '@store/contracts';
 import { parseToolInput as parse } from '../tool-input.js';
 
-const agentCartInput = z.union([
-  getOrCreateCartInput.options[0],
-  getOrCreateCartInput.options[1].extend({
-    initialItems: cartItemsInput.min(1),
-  }),
-]);
+const agentCartInput = getOrCreateCartInput;
 
 export function createGetOrCreateCart(carts: CartService): ToolDefinition {
   return {
     name: 'get_or_create_cart',
     description:
-      '仅首次明确加购/购买且无cartId时以新UUID requestId及完整非空initialItems原子建车；咨询零写。已有车仅传cartId恢复。购买准备属内部步骤，不展示购物车；购买准备遇到已有同SKU时先核对本次目标数量与整行数量，不自动累加或覆盖旧数量、不换车绕过限制，冲突先澄清。未知结果沿原键原载荷重试，不另建车，不覆盖后续编辑。',
+      'Read an existing cart by cartId only. First explicit add uses add_cart_item with shared initializationId. Legacy initialization payloads are rejected; use get_request_result for read-only reconciliation.',
     inputSchema: agentCartInput,
     annotations: {
-      readOnlyHint: false,
+      readOnlyHint: true,
       destructiveHint: false,
       idempotentHint: true,
       openWorldHint: false,

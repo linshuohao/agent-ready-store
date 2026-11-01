@@ -2,9 +2,9 @@
 
 ## Context
 
-状态：实施前审查，2026-11-01；尚未实施。Human本轮授权审查、修复，通过后实施；本次规划Checkpoint提交已获授权，Push/Merge/部署仍未授权。Human已明确以“按页面提交的商品和数量生单，不依赖购物车数量”作为设计方向；Human进一步确认本页主动移除立即取消购买选择、未知结果支持只读查询，并授权按审查建议简化其余边界。本稿本轮实施前审查状态见Tasks；当前已对齐main `db3f0e4`并创建`feat/cart-command-state-isolation`分支。
+状态：规划审查及Checkpoint 5fa7c6e通过，2026-11-01；业务实现及本地验证完成，Human已确认本地验证通过并授权实施提交，真实Host待验证。Human本轮授权审查、修复，通过后实施；本次规划Checkpoint提交已获授权，Push/Merge/部署仍未授权。Human已明确以“按页面提交的商品和数量生单，不依赖购物车数量”作为设计方向；Human进一步确认本页主动移除立即取消购买选择、未知结果支持只读查询，并授权按审查建议简化其余边界。本稿本轮实现与审查证据见Tasks；当前已对齐main `db3f0e4`并创建`feat/cart-command-state-isolation`分支。
 
-Observed：CartService.operate已在Cart行锁与短事务内累加，但统一校验版本；createOrder目前要求expectedCartVersion和selectedItems.expectedQuantity，并从车行取数量。订单、库存预留及删除选中SKU车行原子提交；同键恢复先返回原订单与当前车。共享Commands每车单pending槽及Provider全车active仍阻止并发按钮。不能把本稿目标说成当前实现。
+规划时Observed：CartService.operate已在Cart行锁与短事务内累加，但统一校验版本；createOrder目前要求expectedCartVersion和selectedItems.expectedQuantity，并从车行取数量。订单、库存预留及删除选中SKU车行原子提交；同键恢复先返回原订单与当前车。共享Commands每车单pending槽及Provider全车active仍阻止并发按钮。不能把本稿目标说成当前实现。
 
 权威与替代：保留D-23/D-24中服务端权威、草稿保护、完整购买意图，及T-08～T-11的固定订单、短事务、幂等、完整应用复用；本Change拟限定替代其中“生单必须整行数量匹配及整车版本校验”。审查期间仅修订本Change；业务代码在审查及规划Checkpoint通过后按授权实施，历史记录不覆盖。用户前文提出生单后删除该SKU整条记录，本稿采用此清理方式，并明确其并发后果；不采用助手上一轮提出的扣减数量替代方案。
 
@@ -41,6 +41,8 @@ createOrder推荐请求：`{ requestId, selectedItems: [{ productId, quantity }]
 报价与生单复用同一“显式商品数量 → 校验/计价”逻辑，不能只移除createOrder的checkVersion却继续从cart.items取数量。报价无预留、非强制前置，库存不足时保持既有估价及问题反馈，零价/异常库存/未知商品不给虚假报价。价格可在报价后变化，生单满足显式约束后固定金额，Human在订单页核对支付；不增加新价格批准协议。
 
 Agent购买N件不必先把已有车行改成N件或清空再加；已有有效cartId可直接提交明确购买清单。首次无车统一走携共享初始化身份的add建车，不能为了绕过配额主动创建新车。多目标准备失败仍保留完整目标，不自动只买成功部分。
+
+共享入口已固定于packages/contracts/src/lifecycle.ts：HTTP POST `/api/v1/shopping/carts/add`（WebMCP为`/api/v1/shopping/webmcp/carts/add`），MCP `add_cart_item`及仅Apps可调用的`apps_add_cart_item`分别固定可信来源；GET `/api/v1/shopping/request-result`与MCP `get_request_result`共用只读定位Schema。查询输入为`{kind:'order',cartId,requestId}`、`{kind:'cart',cartId或initializationId,requestId}`或历史`{kind:'initialize',requestId}`；仅返回`{status:'not_found',kind}`或`{status:'found',kind,order或cart}`。技术错误沿用错误响应，不降级为未找到。Apps资源更新为v9，旧已知资源URI指向当前应用，不继续旧写语义。
 
 ### 3. 生单事务与整条清理
 
@@ -104,7 +106,7 @@ Agent购买N件不必先把已有车行改成N件或清空再加；已有有效c
 
 “旧行已生单又加回同SKU同量”不再是行身份问题：购买清单表达独立新购买意图，而不是占有旧行。外部生单可能使本页的独立购买造成另一个订单；不通过车版本猜测取消该意图。必须显示完整清单并由用户明确点击；同一次尝试的重复点击/刷新/恢复不能生成新键。
 
-整批放弃本地草稿和清单须通过显式“刷新并放弃编辑”；逐项取消选择/主动移除按上述规则处理，普通后台刷新不放弃意图。新加商品不自动勾选。报价请求绑定cartId、规范化清单、约束、通道和purchaseRevision，并在同一清单代次内按单调查询序号接收最新一次请求；同代次的旧报价也不能覆盖较新报价。车版本变化本身不使相同购买清单的报价失效，价格与库存仍需适时重查。
+重新读取保留本地草稿和购买清单；使用现有逐项“恢复已保存数量”放弃该项编辑并同步购买量，逐项取消选择/主动移除按上述规则处理。当前不增加整批重置动作，普通后台刷新不放弃意图。新加商品不自动勾选。报价请求绑定cartId、规范化清单、约束、通道和purchaseRevision，并在同一清单代次内按单调查询序号接收最新一次请求；同代次的旧报价也不能覆盖较新报价。车版本变化本身不使相同购买清单的报价失效，价格与库存仍需适时重查。
 
 ### 6. 按请求状态隔离与生单恢复
 
@@ -177,7 +179,7 @@ Human要求接口契约、后端、前端分开实施，并明确使用前端Age
 
 ## Human Review
 
-- 已确认方向：按显式商品数量生单，不依赖车数量；add独立、无版本、无客户端队列。本轮已授权审查修复后实施，但不包含提交或发布。
+- 已确认方向：按显式商品数量生单，不依赖车数量；add独立、无版本、无客户端队列。本轮已授权审查修复后实施，并已授权规划提交；不包含Push/Merge/发布。
 - 本稿采用前文提出的SKU整行清理；需在整体审阅时重点核对其并发清理与不同键多单结果，而非再重复询问已确认的生单解耦方向。
 - 本轮明确确认：本页主动移除即取消选择，未知结果只读查询与继续原购买分开。按授权补齐统一add初始化入口、数量反馈及停写排空后旧请求只读核实；set/remove保留版本，无新增行模型或请求登记表。具体Host支持及最终部署排空能力实施前核实，不能假定已验证。
 - 原R3“车版本变化就强制重选”已撤回，不再增加行身份/行版本来证明购买清单属于旧车行。全文统一使用“生单”术语。

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import {
-  getOrCreateCartInput,
+  legacyCartInitializationInput,
   shoppingCartViewOutput,
   orderViewOutput,
   searchInput,
@@ -106,9 +106,20 @@ export function bridgeTransport(bridge: Bridge): Transport {
         };
         output = reviews.refine((p) => p.productId === parts[1]);
       } else throw Error('INVALID_PATH');
+    } else if (
+      parts[0] === 'shopping' &&
+      parts[1] === 'request-result' &&
+      parts.length === 2 &&
+      body === undefined
+    ) {
+      name = 'get_request_result';
+      input = query(url.searchParams);
     } else if (parts[0] === 'shopping' && parts[1] === 'carts') {
       const cartId = parts[2];
-      if (parts.length === 2 && body !== undefined) {
+      if (parts.length === 3 && cartId === 'add' && body !== undefined) {
+        name = 'apps_add_cart_item';
+        input = args;
+      } else if (parts.length === 2 && body !== undefined) {
         name = 'apps_get_or_create_cart';
         input = args;
       } else if (parts.length === 3 && body === undefined) {
@@ -135,7 +146,9 @@ export function bridgeTransport(bridge: Bridge): Transport {
         input = {
           cartId,
           operationRequestId: args.operationRequestId,
-          expectedCartVersion: args.expectedCartVersion,
+          ...(operation.type === 'add_item'
+            ? {}
+            : { expectedCartVersion: args.expectedCartVersion }),
           productId: operation.productId,
           ...(operation.type === 'remove_item'
             ? {}
@@ -285,6 +298,7 @@ export function toolRoute(name: string, input: unknown, raw: unknown): string {
       'get_or_create_cart',
       'apps_get_or_create_cart',
       'add_cart_item',
+      'apps_add_cart_item',
       'update_cart_item',
       'remove_cart_item',
     ].includes(name)
@@ -319,7 +333,7 @@ export function migrateRecovery(
   const a = p.args;
   let key: string, value: unknown;
   if (p.name === 'apps_get_or_create_cart') {
-    const input = getOrCreateCartInput.parse(a);
+    const input = legacyCartInitializationInput.parse(a);
     if ('cartId' in input) throw Error('LOCAL_RECOVERY_INVALID');
     key = 'store.cart.initialize';
     value = { kind: 'initialize', input };

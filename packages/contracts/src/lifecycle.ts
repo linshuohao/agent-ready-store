@@ -11,19 +11,46 @@ const specs = z.record(
 );
 export const shoppingChannel = z.enum(['WEB', 'MCP', 'WEBMCP', 'APPS']);
 export type ShoppingChannel = z.infer<typeof shoppingChannel>;
-export const getOrCreateCartInput = z.union([
-  z.object({ cartId: id }).strict(),
-  z.object({ requestId: id, initialItems: cartItemsInput }).strict(),
-]);
-export const persistentCartOperationInput = z
-  .object({
-    operationRequestId: id,
-    expectedCartVersion: version,
-    operation: cartOperationInput,
-  })
+// Historical payload schemas are only for recognizing persisted requests, never writes.
+export const legacyCartInitializationInput = z
+  .object({ requestId: id, initialItems: cartItemsInput })
   .strict();
+export const getOrCreateCartInput = z.object({ cartId: id }).strict();
+export const persistentCartOperationInput = z.union([
+  z
+    .object({
+      operationRequestId: id,
+      operation: cartOperationInput.options[0],
+    })
+    .strict(),
+  z
+    .object({
+      operationRequestId: id,
+      expectedCartVersion: version,
+      operation: z.union([
+        cartOperationInput.options[1],
+        cartOperationInput.options[2],
+      ]),
+    })
+    .strict(),
+]);
+const addFields = { operationRequestId: id, productId, quantity };
+export const addCartItemInput = z.union([
+  z.object({ cartId: id, ...addFields }).strict(),
+  z.object({ initializationId: id, ...addFields }).strict(),
+]);
+export type AddCartItemInput = z.infer<typeof addCartItemInput>;
+export const requestResultInput = z.union([
+  z.object({ kind: z.literal('order'), cartId: id, requestId: id }).strict(),
+  z.object({ kind: z.literal('cart'), cartId: id, requestId: id }).strict(),
+  z
+    .object({ kind: z.literal('cart'), initializationId: id, requestId: id })
+    .strict(),
+  z.object({ kind: z.literal('initialize'), requestId: id }).strict(),
+]);
+export type RequestResultInput = z.infer<typeof requestResultInput>;
 export const selectedItemsInput = z
-  .array(z.object({ productId, expectedQuantity: quantity }).strict())
+  .array(z.object({ productId, quantity }).strict())
   .min(1)
   .max(100)
   .refine(
@@ -74,7 +101,6 @@ export const quoteSelectionInput = z
 export const createOrderInput = z
   .object({
     requestId: id,
-    expectedCartVersion: version,
     selectedItems: selectedItemsInput,
     constraints: selectionConstraintsInput,
   })
@@ -221,6 +247,36 @@ export const shoppingCartViewOutput = z
     'Invalid pending order association',
   );
 export type ShoppingCartView = z.infer<typeof shoppingCartViewOutput>;
+export const requestResultOutput = z.union([
+  z
+    .object({
+      status: z.literal('not_found'),
+      kind: z.enum(['order', 'cart', 'initialize']),
+    })
+    .strict(),
+  z
+    .object({
+      status: z.literal('found'),
+      kind: z.literal('order'),
+      order: orderViewOutput,
+    })
+    .strict(),
+  z
+    .object({
+      status: z.literal('found'),
+      kind: z.literal('cart'),
+      cart: shoppingCartViewOutput,
+    })
+    .strict(),
+  z
+    .object({
+      status: z.literal('found'),
+      kind: z.literal('initialize'),
+      cart: shoppingCartViewOutput,
+    })
+    .strict(),
+]);
+export type RequestResult = z.infer<typeof requestResultOutput>;
 export const lifecycleErrorCode = z.enum([
   'VALIDATION_ERROR',
   'CART_NOT_FOUND',

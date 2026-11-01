@@ -2,6 +2,8 @@
 
 **范围与状态：** 2026-10-31 从原 Technical Design 按职责迁移；沿用[总体设计的状态、依据与批准范围](TECHNICAL_DESIGN.md)，不因拆分新增业务批准或声称全局基线整体 Approved。当前行为以正式 Spec 为准，变更理由见工程决策；本文维护当前设计，不维护实施任务或逐轮验证记录。
 
+2026-11-01按已批准的[cart-command-state-isolation设计](../../openspec/changes/cart-command-state-isolation/design.md)及其Spec Delta更新下述契约；正式主Spec同步与验收仍按该Change执行。本文描述目标设计，不作为实现或验证通过的证据。
+
 <a id="21-商品发现与运行数据"></a>
 ## 商品发现与运行数据
 
@@ -131,11 +133,11 @@ Catalog、Cart、Order、Inventory、Pricing是逻辑职责；当前并无独立
 | 结果类型 | UI与Agent应如何恢复 |
 | --- | --- |
 | 输入/商品/数量无效 | 指出具体问题，修正目标后才发新操作，不默默截断或少买 |
-| 版本/选择冲突 | 读取最新车、保护并核对输入；不能自动换版本重放 |
+| set/remove版本冲突 | 读取最新车、保护并核对输入；不能自动换版本重放；add及生单无车版本前置条件 |
 | 配额或库存不足 | 保留原车与已存在订单，展示原因；不换车绕过、不部分占库 |
 | 已支付/已关闭 | 返回原单事实，不再支付/释放，不把重复调用变成另一结果 |
 | 依赖或事务失败 | 返回明确技术失败，遵守原子回滚边界；不能伪装为空数据或幂等成功 |
-| 网络结果未知 | 客户端未知而非业务终态；保存原键/ID后查询或显式重试原请求 |
+| 网络结果未知 | 客户端未知而非业务终态；保存原键/ID后先只读查询，另行明确继续才写原请求；旧契约只查询不重放 |
 
 状态读取无写入副作用，不重新批准、计价、占库或续期。普通查询和渲染不会隐式生单；客户端错误展示不替代服务端状态。
 
@@ -157,9 +159,11 @@ HTTP与MCP继续校验适用的输入、网络来源和服务接入边界；Demo
 
 | HTTP（相对新前缀） | 输入 / 用例 |
 | --- | --- |
-| `POST /carts` | getOrCreate输入；新建或按cartId恢复 |
+| `POST /carts` | getOrCreate仅按cartId读取；旧initialItems及空车新建拒绝 |
+| `POST /carts/add` | addCartItemInput：cartId或initializationId互斥，独立操作键、productId/quantity，无版本；首个有效add原子建车 |
+| `GET /request-result` | requestResultInput：kind、requestId及对应定位身份；只读found/not_found，不触发到期维护 |
 | `GET /carts/:cartId` | get；不会隐式创建 |
-| `POST /carts/:cartId/operations` | operate输入，必须携原operationRequestId |
+| `POST /carts/:cartId/operations` | operate输入，必须携原operationRequestId；add无版本，set/remove带原expectedCartVersion |
 | `POST /carts/:cartId/quote` | quoteSelection输入，无预留 |
 | `POST /carts/:cartId/orders` | createOrder输入，返回原单和剩余车 |
 | `GET /carts/:cartId/orders` | 可选查询offset、limit、pendingOnly=true/false；严格解析、拒绝重复/未知参数，默认/上界见共享用例 |
@@ -170,3 +174,12 @@ HTTP与MCP继续校验适用的输入、网络来源和服务接入边界；Demo
 本组创建、报价与生单固定由适配器派生 `WEB`，不从body/车来源推导AI资格。所有POST要求JSON且Origin等于配置的WEB_ORIGIN；未知字段、旧x-cart-token和非预期查询参数拒绝。UI专用仅为产品交互边界，不证明自然人身份，不新增Agent支付工具。
 
 Next继续复用既有 `/api/v1/:path*` rewrite到服务端API_INTERNAL_URL，保留请求方法、JSON及Origin，无需新增代理业务代码。隔离验证Next端口3004 → API端口3003 → store_test；两端测试写请求的Origin均为API配置的 `http://localhost:3004`。`lifecycle-http.test.ts` 需要TEST_DATABASE_URL仅指向store_test、CHECKOUT_CORE_API_URL为本机3003或3004，且该API确实连接store_test。套件会重置测试库交易与库存，必须与其他破坏性DB套件串行运行；实际业务库不得作为代理目标。
+
+
+### 独立命令、结果核实与旧契约切换
+
+报价与生单共用selectedItems的productId/quantity及约束；quantity是独立购买量，不读取车行量、不要求车内存在该SKU，不接收expectedQuantity或生单expectedCartVersion。事务、SKU整行清理、幂等与不同键独立单的规则统一见[交易核心](CHECKOUT_CORE.md#61-用例与一致性边界)。初始化身份持久唯一，解析到cartId后按车及操作键去重，首个有效add决定创建归因。
+
+MCP保持每工具独立定义及当前demo/token模式。普通add_cart_item固定MCP来源，Apps使用apps_add_cart_item固定APPS；不信任客户端通道字段。get_or_create_cart仅接续已有车，get_request_result独立提供结果查询。该工具使用skipMaintenance，HTTP等价GET同样豁免请求到期扫描；仍检查适用Host/Origin及token模式凭证。查询只派生状态、不物化关闭或释放库存，不把数据库错误转成not_found。
+
+结果定位为order+cartId+requestId、cart+(cartId或initializationId)+requestId，或历史initialize+requestId；找到返回原订单或当前车，未找到只表示尚未观察到提交。明确继续新契约原操作才调用写用例；旧格式只识别与查询，不能剥离版本后按新语义执行。停写、各实例旧在途排空、旧本地请求迁移与回退的授权和证据按[当前Change迁移计划](../../openspec/changes/cart-command-state-isolation/design.md#migration-plan)处理，不能用查无记录替代排空证明。

@@ -290,11 +290,11 @@
       },
       "_meta": {
         "ui": {
-          "resourceUri": "ui://store/search-products-v8.html",
+          "resourceUri": "ui://store/search-products-v9.html",
           "visibility": ["model", "app"]
         },
-        "ui/resourceUri": "ui://store/search-products-v8.html",
-        "openai/outputTemplate": "ui://store/search-products-v8.html"
+        "ui/resourceUri": "ui://store/search-products-v9.html",
+        "openai/outputTemplate": "ui://store/search-products-v9.html"
       }
     },
     {
@@ -519,61 +519,22 @@
     },
     {
       "name": "get_or_create_cart",
-      "description": "仅首次明确加购/购买且无cartId时以新UUID requestId及完整非空initialItems原子建车；咨询零写。已有车仅传cartId恢复。购买准备属内部步骤，不展示购物车；购买准备遇到已有同SKU时先核对本次目标数量与整行数量，不自动累加或覆盖旧数量、不换车绕过限制，冲突先澄清。未知结果沿原键原载荷重试，不另建车，不覆盖后续编辑。",
+      "description": "Read an existing cart by cartId only. First explicit add uses add_cart_item with shared initializationId. Legacy initialization payloads are rejected; use get_request_result for read-only reconciliation.",
       "inputSchema": {
         "type": "object",
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "anyOf": [
-          {
-            "type": "object",
-            "properties": {
-              "cartId": {
-                "type": "string",
-                "format": "uuid",
-                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-              }
-            },
-            "required": ["cartId"],
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "properties": {
-              "requestId": {
-                "type": "string",
-                "format": "uuid",
-                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-              },
-              "initialItems": {
-                "minItems": 1,
-                "maxItems": 100,
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "productId": {
-                      "type": "string",
-                      "minLength": 1,
-                      "maxLength": 64
-                    },
-                    "quantity": {
-                      "type": "integer",
-                      "exclusiveMinimum": 0,
-                      "maximum": 2147483647
-                    }
-                  },
-                  "required": ["productId", "quantity"],
-                  "additionalProperties": false
-                }
-              }
-            },
-            "required": ["requestId", "initialItems"],
-            "additionalProperties": false
+        "properties": {
+          "cartId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
           }
-        ]
+        },
+        "required": ["cartId"],
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false
       },
       "annotations": {
-        "readOnlyHint": false,
+        "readOnlyHint": true,
         "destructiveHint": false,
         "idempotentHint": true,
         "openWorldHint": false
@@ -604,48 +565,259 @@
     },
     {
       "name": "add_cart_item",
-      "description": "明确加购时增加指定数量，不生单；传cartId、操作UUID及已读版本，同键原载荷恢复不重复加量。购买准备先核对已有同SKU整行数量与本次目标，冲突先澄清，不擅自扩大数量。购买A+B时B准备失败须停止生单并说明A已在车，不能缩成A。",
+      "description": "Add an explicit increment without creating an order. Pass exactly one of cartId or shared initializationId, plus an independent operationRequestId; no cart version. Concurrent first adds sharing initializationId resolve to one cart. Unknown results use get_request_result first; only explicitly continue with the original key and payload. Purchase quantity is independently specified in quote_selection/create_order.",
       "inputSchema": {
         "type": "object",
-        "properties": {
-          "operationRequestId": {
-            "type": "string",
-            "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-          },
-          "expectedCartVersion": {
-            "type": "integer",
-            "exclusiveMinimum": 0,
-            "maximum": 2147483646
-          },
-          "cartId": {
-            "type": "string",
-            "format": "uuid",
-            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-          },
-          "productId": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 64
-          },
-          "quantity": {
-            "type": "integer",
-            "exclusiveMinimum": 0,
-            "maximum": 2147483647
-          }
-        },
-        "required": [
-          "operationRequestId",
-          "expectedCartVersion",
-          "cartId",
-          "productId",
-          "quantity"
-        ],
         "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "additionalProperties": false
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "cartId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "operationRequestId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "productId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              },
+              "quantity": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 2147483647
+              }
+            },
+            "required": [
+              "cartId",
+              "operationRequestId",
+              "productId",
+              "quantity"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "initializationId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "operationRequestId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "productId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              },
+              "quantity": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 2147483647
+              }
+            },
+            "required": [
+              "initializationId",
+              "operationRequestId",
+              "productId",
+              "quantity"
+            ],
+            "additionalProperties": false
+          }
+        ]
       },
       "annotations": {
         "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      }
+    },
+    {
+      "name": "apps_add_cart_item",
+      "description": "Add an explicit increment without creating an order. Pass exactly one of cartId or shared initializationId, plus an independent operationRequestId; no cart version. Concurrent first adds sharing initializationId resolve to one cart. Unknown results use get_request_result first; only explicitly continue with the original key and payload. Purchase quantity is independently specified in quote_selection/create_order.",
+      "inputSchema": {
+        "type": "object",
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "cartId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "operationRequestId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "productId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              },
+              "quantity": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 2147483647
+              }
+            },
+            "required": [
+              "cartId",
+              "operationRequestId",
+              "productId",
+              "quantity"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "initializationId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "operationRequestId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "productId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              },
+              "quantity": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 2147483647
+              }
+            },
+            "required": [
+              "initializationId",
+              "operationRequestId",
+              "productId",
+              "quantity"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "_meta": {
+        "ui": {
+          "visibility": ["app"]
+        }
+      }
+    },
+    {
+      "name": "get_request_result",
+      "description": "只读核实原请求成功事实，不生单、改车或释放库存。order按原cartId+requestId；cart按原cartId或initializationId+操作请求键；initialize仅查询旧建车requestId。found返回原订单或当前车；not_found仅表示暂未观察到成功，不能当失败或自动继续/换键。明确继续新契约原操作须另行提交原键原载荷，旧载荷仅可查询。",
+      "inputSchema": {
+        "type": "object",
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "order"
+              },
+              "cartId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "requestId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              }
+            },
+            "required": ["kind", "cartId", "requestId"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "cart"
+              },
+              "cartId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "requestId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              }
+            },
+            "required": ["kind", "cartId", "requestId"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "cart"
+              },
+              "initializationId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "requestId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              }
+            },
+            "required": ["kind", "initializationId", "requestId"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "initialize"
+              },
+              "requestId": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              }
+            },
+            "required": ["kind", "requestId"],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "annotations": {
+        "readOnlyHint": true,
         "destructiveHint": false,
         "idempotentHint": true,
         "openWorldHint": false
@@ -761,13 +933,13 @@
                   "minLength": 1,
                   "maxLength": 64
                 },
-                "expectedQuantity": {
+                "quantity": {
                   "type": "integer",
                   "exclusiveMinimum": 0,
                   "maximum": 2147483647
                 }
               },
-              "required": ["productId", "expectedQuantity"],
+              "required": ["productId", "quantity"],
               "additionalProperties": false
             }
           },
@@ -849,7 +1021,7 @@
     },
     {
       "name": "create_order",
-      "description": "模拟商店，无真实扣款或物流；订单结果应明确告知用户。仅Human明确购买意图并遵守Host审批后，为本次完整目标创建待支付订单、固定摘要并预留库存；selectedItems断言整行数量，显式传TWD及所有预算/规格约束，maxTotal为优惠后含运总额上限；specs须原样引用目录，仅传用户硬条件。准备任一目标失败不可缩单；默认仅本次目标行。未知沿原requestId和原载荷恢复。同一次购买多个商品须一次包含完整目标，仅生成一笔订单及一张最终结算卡片，不能逐商品生单；用户明确拆单除外。每轮对话最多调用一次有UI关联的工具（search_products或create_order），购买只展示最终订单。预算/规格明确时优先quote_selection无UI预检；本工具失败或结果未知时也不在同轮重新调用展示工具，说明状态并保留原请求以便后续恢复。成功后本轮购物工具调用结束，不再补搜索或购物车展示；后续仅用户新意图或未知结果恢复才能继续。支持Apps时仅本工具展示最终结算卡片并在同卡片由Human点击支付；无Apps返回网页orderUrl/shareUrl供Human亲自打开核对并点击支付；不得代开UI点击、代付或宣称已支付。",
+      "description": "模拟商店，无真实扣款或物流；订单结果应明确告知用户。仅Human明确购买意图并遵守Host审批后，为本次完整目标创建待支付订单、固定摘要并预留库存；selectedItems明确商品和购买quantity，不依赖车数量或版本，成功按SKU移除当前购物车整行。显式传TWD及所有预算/规格约束，maxTotal为优惠后含运总额上限；specs须原样引用目录，仅传用户硬条件。任一目标失败不可缩单。未知先用get_request_result只读查询，明确继续原购买才沿原requestId和冻结载荷提交；继续可能完成生单及清理。同一次购买多个商品须一次包含完整目标，仅生成一笔订单及一张最终结算卡片，不能逐商品生单；用户明确拆单除外。每轮对话最多调用一次有UI关联的工具（search_products或create_order），购买只展示最终订单。预算/规格明确时优先quote_selection无UI预检；本工具失败或结果未知时也不在同轮重新调用展示工具，说明状态并保留原请求以便后续恢复。成功后本轮购物工具调用结束，不再补搜索或购物车展示；后续仅用户新意图或明确继续原购买才能继续。支持Apps时仅本工具展示最终结算卡片并在同卡片由Human点击支付；无Apps返回网页orderUrl/shareUrl供Human亲自打开核对并点击支付；不得代开UI点击、代付或宣称已支付。",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -857,11 +1029,6 @@
             "type": "string",
             "format": "uuid",
             "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-          },
-          "expectedCartVersion": {
-            "type": "integer",
-            "exclusiveMinimum": 0,
-            "maximum": 2147483646
           },
           "selectedItems": {
             "minItems": 1,
@@ -875,13 +1042,13 @@
                   "minLength": 1,
                   "maxLength": 64
                 },
-                "expectedQuantity": {
+                "quantity": {
                   "type": "integer",
                   "exclusiveMinimum": 0,
                   "maximum": 2147483647
                 }
               },
-              "required": ["productId", "expectedQuantity"],
+              "required": ["productId", "quantity"],
               "additionalProperties": false
             }
           },
@@ -950,13 +1117,7 @@
             "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
           }
         },
-        "required": [
-          "requestId",
-          "expectedCartVersion",
-          "selectedItems",
-          "constraints",
-          "cartId"
-        ],
+        "required": ["requestId", "selectedItems", "constraints", "cartId"],
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false
       },
@@ -968,11 +1129,11 @@
       },
       "_meta": {
         "ui": {
-          "resourceUri": "ui://store/create-order-v8.html",
+          "resourceUri": "ui://store/create-order-v9.html",
           "visibility": ["model", "app"]
         },
-        "ui/resourceUri": "ui://store/create-order-v8.html",
-        "openai/outputTemplate": "ui://store/create-order-v8.html"
+        "ui/resourceUri": "ui://store/create-order-v9.html",
+        "openai/outputTemplate": "ui://store/create-order-v9.html"
       }
     },
     {
@@ -1072,61 +1233,22 @@
     },
     {
       "name": "apps_get_or_create_cart",
-      "description": "UI Bridge明确加购时初始化或恢复原车；未知沿原键，不自动另建。",
+      "description": "Read an existing cart by cartId only. First explicit add uses add_cart_item with shared initializationId. Legacy initialization payloads are rejected; use get_request_result for read-only reconciliation.",
       "inputSchema": {
         "type": "object",
-        "$schema": "https://json-schema.org/draft/2020-12/schema",
-        "anyOf": [
-          {
-            "type": "object",
-            "properties": {
-              "cartId": {
-                "type": "string",
-                "format": "uuid",
-                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-              }
-            },
-            "required": ["cartId"],
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "properties": {
-              "requestId": {
-                "type": "string",
-                "format": "uuid",
-                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-              },
-              "initialItems": {
-                "minItems": 1,
-                "maxItems": 100,
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "productId": {
-                      "type": "string",
-                      "minLength": 1,
-                      "maxLength": 64
-                    },
-                    "quantity": {
-                      "type": "integer",
-                      "exclusiveMinimum": 0,
-                      "maximum": 2147483647
-                    }
-                  },
-                  "required": ["productId", "quantity"],
-                  "additionalProperties": false
-                }
-              }
-            },
-            "required": ["requestId", "initialItems"],
-            "additionalProperties": false
+        "properties": {
+          "cartId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
           }
-        ]
+        },
+        "required": ["cartId"],
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "additionalProperties": false
       },
       "annotations": {
-        "readOnlyHint": false,
+        "readOnlyHint": true,
         "destructiveHint": false,
         "idempotentHint": true,
         "openWorldHint": false
@@ -1139,7 +1261,7 @@
     },
     {
       "name": "apps_create_order",
-      "description": "UI Bridge整行生单，完整选择及限制，不支付。",
+      "description": "UI Bridge按显式商品和quantity生单，完整选择及限制，不依赖车数量或版本；成功按SKU移除当前车整行，不支付。未知先get_request_result只读核实；明确继续原购买才提交原键和冻结载荷。",
       "inputSchema": {
         "type": "object",
         "properties": {
@@ -1147,11 +1269,6 @@
             "type": "string",
             "format": "uuid",
             "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
-          },
-          "expectedCartVersion": {
-            "type": "integer",
-            "exclusiveMinimum": 0,
-            "maximum": 2147483646
           },
           "selectedItems": {
             "minItems": 1,
@@ -1165,13 +1282,13 @@
                   "minLength": 1,
                   "maxLength": 64
                 },
-                "expectedQuantity": {
+                "quantity": {
                   "type": "integer",
                   "exclusiveMinimum": 0,
                   "maximum": 2147483647
                 }
               },
-              "required": ["productId", "expectedQuantity"],
+              "required": ["productId", "quantity"],
               "additionalProperties": false
             }
           },
@@ -1240,13 +1357,7 @@
             "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
           }
         },
-        "required": [
-          "requestId",
-          "expectedCartVersion",
-          "selectedItems",
-          "constraints",
-          "cartId"
-        ],
+        "required": ["requestId", "selectedItems", "constraints", "cartId"],
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "additionalProperties": false
       },

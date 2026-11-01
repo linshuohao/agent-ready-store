@@ -52,17 +52,18 @@ const url = process.env.TEST_DATABASE_URL;
       return { status: response.status, payload: await response.json() };
     }
     const initialization = () => ({
-      requestId: randomUUID(),
-      initialItems: [{ productId: 'P001', quantity: 1 }],
+      initializationId: randomUUID(),
+      operationRequestId: randomUUID(),
+      productId: 'P001',
+      quantity: 1,
     });
     const creation = (cart: any) => ({
       requestId: randomUUID(),
-      expectedCartVersion: cart.cartVersion,
-      selectedItems: [{ productId: 'P001', expectedQuantity: 1 }],
+      selectedItems: [{ productId: 'P001', quantity: 1 }],
       constraints: { currency: 'TWD' },
     });
     async function setup() {
-      const initialized = await call('/carts', initialization());
+      const initialized = await call('/carts/add', initialization());
       expect(initialized).toMatchObject({ status: 200, payload: { ok: true } });
       const cart = initialized.payload.data;
       const input = creation(cart);
@@ -70,6 +71,78 @@ const url = process.env.TEST_DATABASE_URL;
       expect(created).toMatchObject({ status: 200, payload: { ok: true } });
       return { cart, input, order: created.payload.data.order };
     }
+    it('request-result remains read-only even when a reservation is expired', async () => {
+      const { cart, input, order } = await setup();
+      await db.order.update({
+        where: { id: order.orderId },
+        data: { reservationExpiresAt: new Date(0) },
+      });
+      const before = await Promise.all([
+        db.cart.findMany(),
+        db.order.findMany(),
+        db.orderLine.findMany(),
+        db.cartOperation.findMany(),
+        db.inventory.findMany(),
+      ]);
+      expect(
+        await call(
+          `/request-result?kind=order&cartId=${cart.cartId}&requestId=${input.requestId}`,
+        ),
+      ).toMatchObject({
+        status: 200,
+        payload: {
+          data: {
+            status: 'found',
+            kind: 'order',
+            order: {
+              orderId: order.orderId,
+              effectiveStatus: 'EXPIRED',
+              closedAt: null,
+            },
+          },
+        },
+      });
+      expect(
+        await call(
+          `/request-result?kind=cart&initializationId=${randomUUID()}&requestId=${randomUUID()}`,
+        ),
+      ).toMatchObject({
+        status: 200,
+        payload: { data: { status: 'not_found', kind: 'cart' } },
+      });
+      expect(
+        await call(
+          `/request-result?kind=order&cartId=${cart.cartId}&requestId=${input.requestId}&execute=true`,
+        ),
+      ).toMatchObject({ status: 400 });
+      expect(
+        await Promise.all([
+          db.cart.findMany(),
+          db.order.findMany(),
+          db.orderLine.findMany(),
+          db.cartOperation.findMany(),
+          db.inventory.findMany(),
+        ]),
+      ).toEqual(before);
+    });
+    it('rejects legacy writes and never silently converts order quantities', async () => {
+      expect(
+        await call('/carts', {
+          requestId: randomUUID(),
+          initialItems: [{ productId: 'P001', quantity: 1 }],
+        }),
+      ).toMatchObject({ status: 400 });
+      const cart = (await call('/carts/add', initialization())).payload.data;
+      expect(
+        await call(`/carts/${cart.cartId}/orders`, {
+          requestId: randomUUID(),
+          expectedCartVersion: 1,
+          selectedItems: [{ productId: 'P001', expectedQuantity: 1 }],
+          constraints: { currency: 'TWD' },
+        }),
+      ).toMatchObject({ status: 400 });
+      expect(await db.order.count()).toBe(0);
+    });
     it('releases an expired reservation before serving the next product request', async () => {
       const { order } = await setup();
       await db.order.update({
@@ -94,26 +167,26 @@ const url = process.env.TEST_DATABASE_URL;
     it('uses protected WebMCP initialization and order creation with server-derived attribution', async () => {
       const init = initialization();
       expect(
-        await call('/webmcp/carts', { ...init, initialItems: [] }),
+        await call('/webmcp/carts/add', { ...init, initialItems: [] }),
       ).toMatchObject({ status: 400 });
       const unsafeHeaders: Record<string, string>[] = [
         { origin: 'https://other.example' },
         { 'content-type': 'text/plain' },
       ];
       for (const headers of unsafeHeaders)
-        expect(await call('/webmcp/carts', init, headers)).toMatchObject({
+        expect(await call('/webmcp/carts/add', init, headers)).toMatchObject({
           status: 403,
         });
       expect(
-        await call('/webmcp/carts', { ...init, createdByChannel: 'WEB' }),
+        await call('/webmcp/carts/add', { ...init, createdByChannel: 'WEB' }),
       ).toMatchObject({ status: 400 });
-      const initialized = await call('/webmcp/carts', init);
+      const initialized = await call('/webmcp/carts/add', init);
       expect(initialized).toMatchObject({
         status: 200,
         payload: { ok: true, data: { agentCreated: true } },
       });
       const cart = initialized.payload.data;
-      expect((await call('/webmcp/carts', init)).payload.data.cartId).toBe(
+      expect((await call('/webmcp/carts/add', init)).payload.data.cartId).toBe(
         cart.cartId,
       );
       const input = creation(cart);
@@ -176,7 +249,7 @@ const url = process.env.TEST_DATABASE_URL;
       expect(await db.order.count()).toBe(0);
     });
     it('protects each operation and preserves valid set/remove behavior without old capabilities', async () => {
-      const cart = (await call('/carts', initialization())).payload.data;
+      const cart = (await call('/carts/add', initialization())).payload.data;
       const path = `/carts/${cart.cartId}/operations`;
       const operation = {
         operationRequestId: randomUUID(),
@@ -239,8 +312,8 @@ const url = process.env.TEST_DATABASE_URL;
     });
     it('continues one Web cart across entrances without changing creation attribution or reusing a key across channels', async () => {
       const input = initialization();
-      const cart = (await call('/carts', input)).payload.data;
-      expect(await call('/webmcp/carts', input)).toMatchObject({
+      const cart = (await call('/carts/add', input)).payload.data;
+      expect(await call('/webmcp/carts/add', input)).toMatchObject({
         status: 409,
         payload: { error: { code: 'REQUEST_CONFLICT' } },
       });
@@ -261,12 +334,11 @@ const url = process.env.TEST_DATABASE_URL;
     });
     it('recovers initialization and operations without duplicating rows, rejects stale/changed payloads', async () => {
       const input = initialization();
-      const first = await call('/carts', input);
+      const first = await call('/carts/add', input);
       expect(first).toMatchObject({ status: 200, payload: { ok: true } });
       const cart = first.payload.data;
       const operation = {
         operationRequestId: randomUUID(),
-        expectedCartVersion: 1,
         operation: { type: 'add_item', productId: 'P001', quantity: 1 },
       };
       const path = `/carts/${cart.cartId}/operations`;
@@ -279,7 +351,7 @@ const url = process.env.TEST_DATABASE_URL;
           cartVersion: 2,
           items: [{ quantity: 2 }],
         });
-      expect((await call('/carts', input)).payload.data).toMatchObject({
+      expect((await call('/carts/add', input)).payload.data).toMatchObject({
         cartId: cart.cartId,
         cartVersion: 2,
         items: [{ quantity: 2 }],
@@ -299,15 +371,13 @@ const url = process.env.TEST_DATABASE_URL;
       expect(
         await call(path, { ...operation, operationRequestId: randomUUID() }),
       ).toMatchObject({
-        status: 409,
-        payload: {
-          error: { code: 'CART_VERSION_CONFLICT', currentCartVersion: 2 },
-        },
+        status: 200,
+        payload: { data: { cartVersion: 3, items: [{ quantity: 3 }] } },
       });
       expect(await db.cart.count()).toBe(1);
     });
     it('quotes without reserving, creates once, pays the original order and lists it from an empty cart', async () => {
-      const initialized = await call('/carts', initialization());
+      const initialized = await call('/carts/add', initialization());
       expect(initialized.payload.ok).toBe(true);
       const cart = initialized.payload.data;
       const input = creation(cart);
@@ -398,7 +468,7 @@ const url = process.env.TEST_DATABASE_URL;
       ).toBe(0);
     });
     it('maps selection and budget failures without moving rows or reserving inventory', async () => {
-      const initialized = await call('/carts', initialization());
+      const initialized = await call('/carts/add', initialization());
       const cart = initialized.payload.data;
       const input = creation(cart);
       const path = `/carts/${cart.cartId}/orders`;
@@ -409,11 +479,11 @@ const url = process.env.TEST_DATABASE_URL;
       expect(
         await call(path, {
           ...input,
-          selectedItems: [{ productId: 'P001', expectedQuantity: 2 }],
+          selectedItems: [{ productId: 'P001', quantity: 0 }],
         }),
       ).toMatchObject({
-        status: 409,
-        payload: { error: { code: 'SELECTION_CHANGED' } },
+        status: 400,
+        payload: { error: { code: 'VALIDATION_ERROR' } },
       });
       expect(
         await call(path, {
@@ -448,7 +518,7 @@ const url = process.env.TEST_DATABASE_URL;
         { cartToken: 'old' },
       ])
         expect(
-          await call('/carts', { ...initialization(), ...fields }),
+          await call('/carts/add', { ...initialization(), ...fields }),
         ).toMatchObject({
           status: 400,
           payload: { error: { code: 'VALIDATION_ERROR' } },
@@ -459,12 +529,14 @@ const url = process.env.TEST_DATABASE_URL;
         { 'content-type': 'text/plain' },
       ];
       for (const headers of unsafeHeaders)
-        expect(await call('/carts', initialization(), headers)).toMatchObject({
+        expect(
+          await call('/carts/add', initialization(), headers),
+        ).toMatchObject({
           status: 403,
           payload: { error: { code: 'FORBIDDEN' } },
         });
       expect(
-        await call('/carts', initialization(), { 'x-cart-token': 'old' }),
+        await call('/carts/add', initialization(), { 'x-cart-token': 'old' }),
       ).toMatchObject({
         status: 400,
         payload: { error: { code: 'VALIDATION_ERROR' } },
@@ -478,7 +550,7 @@ const url = process.env.TEST_DATABASE_URL;
         payload: { error: { code: 'ORDER_NOT_FOUND' } },
       });
       expect(
-        await call('/carts', {
+        await call('/carts/add', {
           ...initialization(),
           initialItems: [{ productId: 'P001', quantity: 1, price: '0.01' }],
         }),

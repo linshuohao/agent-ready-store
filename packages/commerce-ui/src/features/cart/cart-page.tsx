@@ -19,22 +19,27 @@ export function CartPage({ id }: { id?: string }) {
     selected,
     setSelected,
     quote,
+    quoteError,
+    quoteLoading,
+    refreshQuote,
+    validPurchase,
     error,
     loading,
     reload,
     working,
     unknownOrder,
+    orderRequests,
+    queryOrder,
+    selection,
+    rowErrors,
+    rows,
     createdId,
     change,
     perform,
     create,
     load,
   } = page;
-  const dirtyProduct = view?.items.find(
-    (item) => draft[item.productId] !== String(item.quantity),
-  )?.productId;
-  const busy =
-    working || operations.busy || operations.pending || !operations.ready;
+  const busy = !operations.ready;
   if (!id)
     return (
       <main id="main" tabIndex={-1} className="commerce-page">
@@ -75,7 +80,7 @@ export function CartPage({ id }: { id?: string }) {
       {(reload || (!view && !loading)) && (
         <CommerceActions>
           <Button disabled={busy} onClick={() => void load(true)}>
-            {reload ? '重新載入購物車（放棄未儲存修改）' : '重新讀取'}
+            {reload ? '重新讀取購物車（保留購買量與草稿）' : '重新讀取'}
           </Button>
         </CommerceActions>
       )}
@@ -86,14 +91,17 @@ export function CartPage({ id }: { id?: string }) {
             <section className="purchase-products" aria-label="編輯購物車">
               <h2>商品明細</h2>
               {!!view.items.length && (
-                <label className="cart-selection cart-select-all">
+                <label
+                  className="cart-selection cart-select-all"
+                  onMouseDown={(event) => event.preventDefault()}
+                >
                   <Checkbox
                     indeterminate={
                       selected.length > 0 && selected.length < view.items.length
                     }
                     aria-label="全選商品"
                     checked={selected.length === view.items.length}
-                    disabled={busy || dirty || reload || conflict}
+                    disabled={busy || conflict}
                     onCheckedChange={(checked) =>
                       setSelected(
                         checked ? view.items.map((i) => i.productId) : [],
@@ -109,11 +117,14 @@ export function CartPage({ id }: { id?: string }) {
                   className="purchase-product cart-line"
                 >
                   <h3>
-                    <label className="cart-selection">
+                    <label
+                      className="cart-selection"
+                      onMouseDown={(event) => event.preventDefault()}
+                    >
                       <Checkbox
                         aria-label={`選取 ${item.productId}`}
                         checked={selected.includes(item.productId)}
-                        disabled={busy || dirty || reload || conflict}
+                        disabled={busy || conflict}
                         onCheckedChange={(checked) =>
                           setSelected(
                             checked
@@ -140,6 +151,16 @@ export function CartPage({ id }: { id?: string }) {
                         {i.code}：請調整或移除此商品
                       </p>
                     ))}
+                  <p>
+                    車內已儲存數量：{item.quantity}；本次購買量：
+                    {selection[item.productId]?.quantity ?? '未選取'}
+                  </p>
+                  {rowErrors[item.productId] && (
+                    <p role="alert">{rowErrors[item.productId]}</p>
+                  )}
+                  {rows.includes(item.productId) && (
+                    <p role="status">正在保存此商品…</p>
+                  )}
                   <div className="cart-line-controls">
                     <label htmlFor={`qty-${item.productId}`}>
                       數量 {item.productId}
@@ -150,12 +171,7 @@ export function CartPage({ id }: { id?: string }) {
                       min="1"
                       step="1"
                       value={draft[item.productId] ?? ''}
-                      disabled={
-                        busy ||
-                        reload ||
-                        conflict ||
-                        Boolean(dirtyProduct && dirtyProduct !== item.productId)
-                      }
+                      disabled={busy || conflict}
                       onChange={(e) => change(item.productId, e.target.value)}
                       onBlur={() => {
                         if (draft[item.productId] !== String(item.quantity))
@@ -182,19 +198,20 @@ export function CartPage({ id }: { id?: string }) {
                     {draft[item.productId] !== String(item.quantity) && (
                       <Button
                         variant="outline"
-                        disabled={busy || reload || conflict}
+                        disabled={busy || conflict}
                         onMouseDown={(event) => event.preventDefault()}
                         onClick={() =>
                           change(item.productId, String(item.quantity))
                         }
                       >
-                        還原數量 {item.productId}
+                        恢復已儲存數量 {item.productId}
                       </Button>
                     )}
                     <Button
                       variant="outline"
                       aria-label={`移除 ${item.productId}`}
-                      disabled={busy || dirty || reload || conflict}
+                      onMouseDown={(event) => event.preventDefault()}
+                      disabled={busy || conflict}
                       onClick={() =>
                         void perform({
                           type: 'remove_item',
@@ -214,7 +231,44 @@ export function CartPage({ id }: { id?: string }) {
             </section>
             <aside className="purchase-aside" aria-label="所選商品預估">
               <h2>所選商品預估</h2>
-              {quote && !dirty && !reload ? (
+              <p>
+                按所列數量建立訂單，完成後從購物車移除這些商品（包含車內額外數量）。
+              </p>
+              {Object.values(selection).map((item) => (
+                <div key={item.productId}>
+                  <p>
+                    {item.productId} 本次購買量 {item.quantity}
+                    {!view.items.some(
+                      (line) => line.productId === item.productId,
+                    ) && '（目前不在購物車，購買選擇仍保留）'}
+                  </p>
+                  {!view.items.some(
+                    (line) => line.productId === item.productId,
+                  ) && (
+                    <>
+                      <Input
+                        aria-label={`本次購買量 ${item.productId}`}
+                        type="number"
+                        min="1"
+                        value={item.quantity}
+                        onChange={(event) =>
+                          change(item.productId, event.target.value)
+                        }
+                      />
+                      <Button
+                        onClick={() =>
+                          setSelected(
+                            selected.filter((id) => id !== item.productId),
+                          )
+                        }
+                      >
+                        取消購買 {item.productId}
+                      </Button>
+                    </>
+                  )}
+                </div>
+              ))}
+              {quote ? (
                 <>
                   <MoneyBreakdown quote={quote} />
                   {quote.issues?.map((issue) => (
@@ -225,39 +279,72 @@ export function CartPage({ id }: { id?: string }) {
                 </>
               ) : (
                 <p>
-                  {selected.length
-                    ? error
-                      ? '目前無法提供所選商品預估。'
-                      : '正在更新所選商品預估。'
-                    : '請勾選要購買的整行商品。'}
+                  {quoteError ||
+                    (quoteLoading
+                      ? '正在更新所選商品預估。'
+                      : '請勾選要購買的商品。')}
+                </p>
+              )}
+              {quoteError && validPurchase && (
+                <Button variant="outline" onClick={refreshQuote}>
+                  重新查詢預估
+                </Button>
+              )}
+              {unknownOrder && (
+                <p role="status">
+                  原購買仍可能成功。若只是確認或繼續原購買，請使用下方恢復操作；另建新訂單代表獨立的第二次購買。
                 </p>
               )}
               <CommerceActions>
                 <Button
                   disabled={
                     busy ||
-                    dirty ||
-                    reload ||
+                    working ||
                     conflict ||
                     !selected.length ||
-                    Boolean(quote?.issues?.length) ||
-                    unknownOrder
+                    !validPurchase ||
+                    Boolean(quote?.issues?.length)
                   }
+                  onMouseDown={(event) => event.preventDefault()}
                   onClick={() => void create()}
                 >
-                  {working ? '正在建立…' : '建立待支付訂單'}
+                  {working
+                    ? '正在建立…'
+                    : unknownOrder
+                      ? '另建新的待支付訂單'
+                      : '建立待支付訂單'}
                 </Button>
-                {unknownOrder && (
-                  <div role="status">
-                    <p>原建立結果尚待確認。</p>
+                {orderRequests.map((request) => (
+                  <div role="status" key={request.requestId}>
+                    <p>原購買 {request.requestId} 結果尚待確認。</p>
+                    <p>
+                      凍結清單：
+                      {JSON.stringify(
+                        (request.body as { selectedItems?: unknown })
+                          ?.selectedItems ?? '歷史請求',
+                      )}
+                    </p>
                     <Button
                       disabled={busy || conflict}
-                      onClick={() => void create(true)}
+                      onClick={() => void queryOrder(request)}
                     >
-                      恢復原建立訂單請求
+                      查詢結果
                     </Button>
+                    {!request.legacy && (
+                      <p>
+                        繼續可能現在執行原購買，並移除目前購物車內同商品的整行數量。
+                      </p>
+                    )}
+                    {!request.legacy && (
+                      <Button
+                        disabled={working || busy || conflict}
+                        onClick={() => void create(request)}
+                      >
+                        繼續原購買
+                      </Button>
+                    )}
                   </div>
-                )}
+                ))}
                 {createdId && (
                   <p role="status">
                     訂單已建立，請查看最新狀態。

@@ -60,15 +60,79 @@ const url = process.env.TEST_DATABASE_URL;
       return payload;
     }
     const initialize = () => ({
-      requestId: randomUUID(),
-      initialItems: [{ productId: 'P001', quantity: 1 }],
+      initializationId: randomUUID(),
+      operationRequestId: randomUUID(),
+      productId: 'P001',
+      quantity: 1,
     });
     const creation = (cart: any) => ({
       cartId: cart.cartId,
       requestId: randomUUID(),
-      expectedCartVersion: cart.cartVersion,
-      selectedItems: [{ productId: 'P001', expectedQuantity: 1 }],
+      selectedItems: [{ productId: 'P001', quantity: 1 }],
       constraints: { currency: 'TWD' },
+    });
+    it('queries unknown and expired requests without invoking request-triggered maintenance', async () => {
+      const added = initialize();
+      const cart = (await call('apps_add_cart_item', added)).data;
+      const input = creation(cart);
+      const order = (await call('apps_create_order', input)).data.order;
+      await db.order.update({
+        where: { id: order.orderId },
+        data: { reservationExpiresAt: new Date(0) },
+      });
+      const before = await Promise.all([
+        db.cart.findMany(),
+        db.order.findMany(),
+        db.orderLine.findMany(),
+        db.cartOperation.findMany(),
+        db.inventory.findMany(),
+      ]);
+      expect(
+        await call('get_request_result', {
+          kind: 'order',
+          cartId: cart.cartId,
+          requestId: input.requestId,
+        }),
+      ).toMatchObject({
+        ok: true,
+        data: {
+          status: 'found',
+          kind: 'order',
+          order: {
+            orderId: order.orderId,
+            effectiveStatus: 'EXPIRED',
+            closedAt: null,
+          },
+        },
+      });
+      expect(
+        await call('get_request_result', {
+          kind: 'cart',
+          initializationId: added.initializationId,
+          requestId: added.operationRequestId,
+        }),
+      ).toMatchObject({
+        ok: true,
+        data: { status: 'found', kind: 'cart', cart: { cartId: cart.cartId } },
+      });
+      expect(
+        await call('get_request_result', {
+          kind: 'initialize',
+          requestId: added.operationRequestId,
+        }),
+      ).toMatchObject({
+        ok: true,
+        data: { status: 'not_found', kind: 'initialize' },
+      });
+      expect(
+        await Promise.all([
+          db.cart.findMany(),
+          db.order.findMany(),
+          db.orderLine.findMany(),
+          db.cartOperation.findMany(),
+          db.inventory.findMany(),
+        ]),
+      ).toEqual(before);
     });
     it('keeps consultation read-only and initializes atomically only for nonempty valid write intent', async () => {
       expect((await call('search_products', { limit: 1 })).ok).toBe(true);
@@ -97,13 +161,12 @@ const url = process.env.TEST_DATABASE_URL;
       ).toBe(false);
       expect(await db.cart.count()).toBe(0);
       const input = initialize();
-      const cart = (await call('get_or_create_cart', input)).data;
+      const cart = (await call('add_cart_item', input)).data;
       expect(cart.agentCreated).toBe(true);
       expect(cart.pendingOrders).toEqual([]);
       const op = {
         cartId: cart.cartId,
         operationRequestId: randomUUID(),
-        expectedCartVersion: 1,
         productId: 'P001',
         quantity: 1,
       };
@@ -113,9 +176,7 @@ const url = process.env.TEST_DATABASE_URL;
         items: [{ quantity: 2 }],
       });
       expect((await call('add_cart_item', op)).data).toEqual(updated.data);
-      expect((await call('get_or_create_cart', input)).data).toEqual(
-        updated.data,
-      );
+      expect((await call('add_cart_item', input)).data).toEqual(updated.data);
       expect(
         (await call('get_or_create_cart', { cartId: cart.cartId })).data.cartId,
       ).toBe(cart.cartId);
@@ -128,19 +189,19 @@ const url = process.env.TEST_DATABASE_URL;
           operationRequestId: randomUUID(),
         }),
       ).toMatchObject({
-        error: { code: 'CART_VERSION_CONFLICT', currentCartVersion: 2 },
+        ok: true,
+        data: { cartVersion: 3, items: [{ quantity: 3 }] },
       });
       expect(await db.cart.count()).toBe(1);
       expect(await db.order.count()).toBe(0);
     });
     it('preserves A after B fails and rejects a complete target with missing B without shrinking the order', async () => {
-      const cart = (await call('get_or_create_cart', initialize())).data;
+      const cart = (await call('add_cart_item', initialize())).data;
       expect(
         (
           await call('add_cart_item', {
             cartId: cart.cartId,
             operationRequestId: randomUUID(),
-            expectedCartVersion: 1,
             productId: 'missing',
             quantity: 1,
           })
@@ -150,11 +211,11 @@ const url = process.env.TEST_DATABASE_URL;
         await call('create_order', {
           ...creation(cart),
           selectedItems: [
-            { productId: 'P001', expectedQuantity: 1 },
-            { productId: 'missing', expectedQuantity: 1 },
+            { productId: 'P001', quantity: 1 },
+            { productId: 'missing', quantity: 1 },
           ],
         }),
-      ).toMatchObject({ error: { code: 'SELECTION_CHANGED' } });
+      ).toMatchObject({ error: { code: 'CART_ITEMS_INVALID' } });
       expect(
         (await call('get_cart', { cartId: cart.cartId })).data.items,
       ).toMatchObject([{ productId: 'P001', quantity: 1 }]);
@@ -165,7 +226,7 @@ const url = process.env.TEST_DATABASE_URL;
       ).toBe(0);
     });
     it('enforces selection, budget, specs and trusted attribution then recovers one fixed pending order and webpage entry', async () => {
-      const cart = (await call('get_or_create_cart', initialize())).data;
+      const cart = (await call('add_cart_item', initialize())).data;
       const input = creation(cart);
       for (const [constraints, code] of [
         [{ currency: 'TWD', maxTotal: '0.00' }, 'BUDGET_EXCEEDED'],
@@ -192,9 +253,9 @@ const url = process.env.TEST_DATABASE_URL;
       expect(
         await call('create_order', {
           ...input,
-          selectedItems: [{ productId: 'P001', expectedQuantity: 2 }],
+          selectedItems: [{ productId: 'P001', quantity: 0 }],
         }),
-      ).toMatchObject({ error: { code: 'SELECTION_CHANGED' } });
+      ).toMatchObject({ error: { code: 'VALIDATION_ERROR' } });
       expect(await db.order.count()).toBe(0);
       expect(
         (
@@ -243,13 +304,12 @@ const url = process.env.TEST_DATABASE_URL;
       );
     });
     it('lists multiple candidates and only cancels an explicit matching order, leaving another pending order intact', async () => {
-      const cart = (await call('get_or_create_cart', initialize())).data;
+      const cart = (await call('add_cart_item', initialize())).data;
       const first = (await call('create_order', creation(cart))).data.order;
       const added = (
         await call('add_cart_item', {
           cartId: cart.cartId,
           operationRequestId: randomUUID(),
-          expectedCartVersion: 2,
           productId: 'P001',
           quantity: 1,
         })
@@ -296,9 +356,9 @@ const url = process.env.TEST_DATABASE_URL;
     });
     it('uses APPS attribution for UI Bridge creation and pays only the original order once', async () => {
       const init = initialize();
-      const cart = (await call('apps_get_or_create_cart', init)).data;
+      const cart = (await call('apps_add_cart_item', init)).data;
       expect(cart.agentCreated).toBe(true);
-      expect((await call('apps_get_or_create_cart', init)).data.cartId).toBe(
+      expect((await call('apps_add_cart_item', init)).data.cartId).toBe(
         cart.cartId,
       );
       const input = creation(cart);
@@ -343,7 +403,7 @@ const url = process.env.TEST_DATABASE_URL;
       ).toMatchObject({ ok: false, error: { code: 'VALIDATION_ERROR' } });
     });
     it('maps named updates/removals and refuses schema bypass or invented payment calls', async () => {
-      const cart = (await call('get_or_create_cart', initialize())).data;
+      const cart = (await call('add_cart_item', initialize())).data;
       const context = {
         cartId: cart.cartId,
         operationRequestId: randomUUID(),

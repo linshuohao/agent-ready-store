@@ -17,8 +17,9 @@ model Cart {
  items Json
  version Int @default(1)
  createdAt DateTime @db.Timestamptz(3)
- createRequestId String @unique @db.Uuid
- createPayloadHash String
+ initializationId String? @unique @db.Uuid
+ createRequestId String? @unique @db.Uuid
+ createPayloadHash String?
  orders Order[]
  operations CartOperation[]
 }

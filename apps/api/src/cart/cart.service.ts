@@ -3,6 +3,9 @@ import { createHash, randomUUID } from 'node:crypto';
 import { Decimal } from 'decimal.js';
 import { z } from 'zod';
 import {
+  addCartItemInput,
+  requestResultInput,
+  type RequestResult,
   cartIdInput,
   cartItemsInput,
   getOrCreateCartInput,
@@ -179,108 +182,196 @@ export class CartService {
   ): Promise<ShoppingCartView> {
     const body = parse(getOrCreateCartInput, input);
     parse(shoppingChannel, channel);
-    if ('cartId' in body) return this.get(body.cartId);
-    const items = [...body.initialItems].sort((a, b) =>
-      a.productId.localeCompare(b.productId),
-    );
-    if (channel !== 'WEB' && !items.length)
-      throw new AppError('VALIDATION_ERROR', 400);
-    const fingerprint = hash({ items, channel });
+    return this.get(body.cartId);
+  }
+  async add(
+    input: unknown,
+    channel: ShoppingChannel,
+  ): Promise<ShoppingCartView> {
+    const body = parse(addCartItemInput, input);
+    parse(shoppingChannel, channel);
+    const fingerprint = hash({ contract: 'cart-command-v2', ...body, channel });
     return this.transaction(async (tx) => {
-      await this.keyLock(tx, `cart-init:${body.requestId}`);
-      const prior = await tx.cart.findUnique({
-        where: { createRequestId: body.requestId },
-      });
-      if (prior) {
-        if (prior.createPayloadHash !== fingerprint)
-          throw new AppError('REQUEST_CONFLICT', 409);
-        return this.view(tx, prior);
+      let id: string;
+      if ('initializationId' in body) {
+        await this.keyLock(tx, `cart-init:${body.initializationId}`);
+        const existing = await tx.cart.findUnique({
+          where: { initializationId: body.initializationId },
+        });
+        if (!existing) {
+          const items = [
+            { productId: body.productId, quantity: body.quantity },
+          ];
+          await this.validItems(tx, items);
+          const row = await tx.cart.create({
+            data: {
+              id: randomUUID(),
+              initializationId: body.initializationId,
+              items,
+              createdAt: await this.now(tx),
+              agentCreated: channel !== 'WEB',
+            },
+          });
+          await tx.cartOperation.create({
+            data: {
+              cartId: row.id,
+              requestId: body.operationRequestId,
+              payloadHash: fingerprint,
+              createdAt: await this.now(tx),
+            },
+          });
+          return this.view(tx, row);
+        }
+        id = existing.id;
+      } else id = body.cartId;
+      return this.applyOperation(
+        tx,
+        id,
+        {
+          operationRequestId: body.operationRequestId,
+          operation: {
+            type: 'add_item',
+            productId: body.productId,
+            quantity: body.quantity,
+          },
+        },
+        fingerprint,
+      );
+    });
+  }
+  async requestResult(input: unknown): Promise<RequestResult> {
+    const body = parse(requestResultInput, input);
+    return this.transaction(async (tx) => {
+      if (body.kind === 'order') {
+        const order = await tx.order.findUnique({
+          where: {
+            cartId_createRequestId: {
+              cartId: body.cartId,
+              createRequestId: body.requestId,
+            },
+          },
+          include,
+        });
+        return order
+          ? {
+              status: 'found',
+              kind: 'order',
+              order: orderView(order, await this.now(tx)),
+            }
+          : { status: 'not_found', kind: body.kind };
       }
-      await this.validItems(tx, items);
-      const row = await tx.cart.create({
-        data: {
-          id: randomUUID(),
-          items,
-          createdAt: await this.now(tx),
-          createRequestId: body.requestId,
-          createPayloadHash: fingerprint,
-          agentCreated: channel !== 'WEB' && items.length > 0,
+      if (body.kind === 'initialize') {
+        const row = await tx.cart.findUnique({
+          where: { createRequestId: body.requestId },
+        });
+        return row
+          ? {
+              status: 'found',
+              kind: 'initialize',
+              cart: await this.view(tx, row),
+            }
+          : { status: 'not_found', kind: body.kind };
+      }
+      const row = await tx.cart.findUnique({
+        where:
+          'cartId' in body
+            ? { id: body.cartId }
+            : { initializationId: body.initializationId },
+      });
+      if (!row) return { status: 'not_found', kind: 'cart' };
+      const operation = await tx.cartOperation.findUnique({
+        where: {
+          cartId_requestId: { cartId: row.id, requestId: body.requestId },
         },
       });
-      return this.view(tx, row);
+      return operation
+        ? { status: 'found', kind: 'cart', cart: await this.view(tx, row) }
+        : { status: 'not_found', kind: 'cart' };
     });
   }
   async operate(id: string, input: unknown): Promise<ShoppingCartView> {
     parse(cartIdInput, id);
-    const body = parse(persistentCartOperationInput, input),
-      fingerprint = hash(body);
-    return this.transaction(async (tx) => {
-      await this.keyLock(tx, `cart-op:${id}:${body.operationRequestId}`);
-      const row = await this.cart(tx, id, true),
-        prior = await tx.cartOperation.findUnique({
-          where: {
-            cartId_requestId: {
-              cartId: id,
-              requestId: body.operationRequestId,
-            },
-          },
-        });
-      if (prior) {
-        if (prior.payloadHash !== fingerprint)
-          throw new AppError('REQUEST_CONFLICT', 409);
-        return this.view(tx, row);
-      }
-      this.checkVersion(row, body.expectedCartVersion);
-      const items = (row.items as CartItem[]).map((i) => ({ ...i })),
-        op = body.operation,
-        index = items.findIndex((i) => i.productId === op.productId);
-      if (op.type !== 'add_item' && index < 0)
-        throw new AppError('CART_ITEM_NOT_FOUND', 409);
-      if (op.type === 'remove_item') items.splice(index, 1);
-      else {
-        const quantity =
-          op.type === 'add_item' && index >= 0
-            ? items[index].quantity + op.quantity
-            : op.quantity;
-        const item = { productId: op.productId, quantity };
-        if (index >= 0) items[index] = item;
-        else items.push(item);
-        parse(cartItemsInput, items);
-        await this.validItems(tx, [item]);
-      }
-      const updated = await tx.cart.update({
-        where: { id },
-        data: { items, version: { increment: 1 } },
-      });
-      await tx.cartOperation.create({
-        data: {
+    const body = parse(persistentCartOperationInput, input);
+    if (body.operation.type === 'add_item')
+      return this.add(
+        {
           cartId: id,
-          requestId: body.operationRequestId,
-          payloadHash: fingerprint,
-          createdAt: await this.now(tx),
+          operationRequestId: body.operationRequestId,
+          productId: body.operation.productId,
+          quantity: body.operation.quantity,
+        },
+        'WEB',
+      );
+    return this.transaction((tx) =>
+      this.applyOperation(
+        tx,
+        id,
+        body,
+        hash({ contract: 'cart-command-v2', ...body }),
+      ),
+    );
+  }
+  private async applyOperation(
+    tx: Tx,
+    id: string,
+    body: z.infer<typeof persistentCartOperationInput>,
+    fingerprint: string,
+  ): Promise<ShoppingCartView> {
+    await this.keyLock(tx, `cart-op:${id}:${body.operationRequestId}`);
+    const row = await this.cart(tx, id, true),
+      prior = await tx.cartOperation.findUnique({
+        where: {
+          cartId_requestId: {
+            cartId: id,
+            requestId: body.operationRequestId,
+          },
         },
       });
-      return this.view(tx, updated);
+    if (prior) {
+      if (prior.payloadHash !== fingerprint)
+        throw new AppError('REQUEST_CONFLICT', 409);
+      return this.view(tx, row);
+    }
+    if ('expectedCartVersion' in body)
+      this.checkVersion(row, body.expectedCartVersion);
+    const items = (row.items as CartItem[]).map((i) => ({ ...i })),
+      op = body.operation,
+      index = items.findIndex((i) => i.productId === op.productId);
+    if (op.type !== 'add_item' && index < 0)
+      throw new AppError('CART_ITEM_NOT_FOUND', 409);
+    if (op.type === 'remove_item') items.splice(index, 1);
+    else {
+      const quantity =
+        op.type === 'add_item' && index >= 0
+          ? items[index].quantity + op.quantity
+          : op.quantity;
+      const item = { productId: op.productId, quantity };
+      if (index >= 0) items[index] = item;
+      else items.push(item);
+      parse(cartItemsInput, items);
+      await this.validItems(tx, [item]);
+    }
+    const updated = await tx.cart.update({
+      where: { id },
+      data: { items, version: { increment: 1 } },
     });
+    await tx.cartOperation.create({
+      data: {
+        cartId: id,
+        requestId: body.operationRequestId,
+        payloadHash: fingerprint,
+        createdAt: await this.now(tx),
+      },
+    });
+    return this.view(tx, updated);
   }
   private async selection(
     tx: Tx,
-    row: Cart,
     body: z.infer<typeof quoteSelectionInput>,
     channel: ShoppingChannel,
     quoteOnly = false,
   ) {
-    const current = row.items as CartItem[];
-    const selected = body.selectedItems.map((selected) => {
-      const item = current.find((i) => i.productId === selected.productId);
-      if (!item || item.quantity !== selected.expectedQuantity)
-        throw new AppError('SELECTION_CHANGED', 409, {
-          issues: [
-            { productId: selected.productId, code: 'QUANTITY_OR_ITEM_CHANGED' },
-          ],
-        });
-      return item;
-    });
+    const selected = body.selectedItems;
     const { stock, issues } = await this.contents(tx, selected);
     if (
       issues.some(
@@ -364,13 +455,8 @@ export class CartService {
     const body = parse(quoteSelectionInput, input);
     parse(shoppingChannel, channel);
     return this.transaction(async (tx) => {
-      const { summary, issues } = await this.selection(
-        tx,
-        await this.cart(tx, id),
-        body,
-        channel,
-        true,
-      );
+      await this.cart(tx, id);
+      const { summary, issues } = await this.selection(tx, body, channel, true);
       return { ...summary, ...(issues.length ? { issues } : {}) };
     });
   }
@@ -379,6 +465,7 @@ export class CartService {
     const body = parse(createOrderInput, input);
     parse(shoppingChannel, channel);
     const fingerprint = hash({
+      contract: 'cart-command-v2',
       ...body,
       selectedItems: [...body.selectedItems].sort((a, b) =>
         a.productId.localeCompare(b.productId),
@@ -445,14 +532,13 @@ export class CartService {
           })),
         });
       }
-      this.checkVersion(row, body.expectedCartVersion);
       // A new, uncommitted order cannot be contended by another transaction; inventory locks precede its INSERT.
       await this.inventory(
         tx,
         body.selectedItems.map((i) => i.productId),
         true,
       );
-      const { summary } = await this.selection(tx, row, body, channel),
+      const { summary } = await this.selection(tx, body, channel),
         createdAt = await this.now(tx),
         { items, ...amounts } = summary;
       const order = await tx.order.create({
