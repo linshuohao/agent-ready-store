@@ -1,6 +1,8 @@
 import type { NextConfig } from 'next';
 const config: NextConfig = {
   allowedDevOrigins: ['127.0.0.1'],
+  // Restoring the pre-refactor Turbopack build cache can stall compilation.
+  experimental: { turbopackFileSystemCacheForBuild: false },
   async rewrites() {
     return [
       {
