@@ -79,7 +79,9 @@ const productDetail = {
   availability: { canPurchase: true, reasons: [], currentQuantity: 8 },
   description: '商品詳情',
   specs: { 連線: '藍牙' },
-  reviewOverview: { count: 0 },
+  reviewOverview: {
+    count: new URL(location.href).searchParams.has('reviews') ? 3 : 0,
+  },
 };
 const {
   description: _description,
@@ -87,13 +89,21 @@ const {
   reviewOverview: _reviews,
   ...productSummary
 } = productDetail;
-const catalogItems = new URL(location.href).searchParams.has('multiple')
-  ? [productSummary, { ...productSummary, id: 'P002', name: '另一款耳機' }]
-  : [productSummary];
+const serverPages = new URL(location.href).searchParams.has('serverPages');
+const catalogItems =
+  serverPages || new URL(location.href).searchParams.has('many')
+    ? Array.from({ length: serverPages ? 24 : 9 }, (_, index) => ({
+        ...productSummary,
+        id: `P${String(index + 1).padStart(3, '0')}`,
+        name: `商品 ${index + 1}`,
+      }))
+    : new URL(location.href).searchParams.has('multiple')
+      ? [productSummary, { ...productSummary, id: 'P002', name: '另一款耳機' }]
+      : [productSummary];
 const catalogData = {
-  items: catalogItems,
+  items: serverPages ? catalogItems.slice(0, 12) : catalogItems,
   total: catalogItems.length,
-  nextOffset: null,
+  nextOffset: serverPages ? 12 : null,
   catalogRevision: 'fixture',
 };
 const checkoutMode = new URL(location.href).searchParams.has('checkout');
@@ -228,16 +238,39 @@ bridge.oncalltool = async ({ name, arguments: args }) => {
       },
     };
   }
-  if (name === 'query_products')
-    return ok('queries' in args ? groupedData(args) : catalogData);
-  if (name === 'list_product_reviews')
+  if (name === 'query_products') {
+    if ('queries' in args) return ok(groupedData(args));
+    const offset = Number(args.offset ?? 0);
+    return ok(
+      serverPages
+        ? {
+            ...catalogData,
+            items: catalogItems.slice(offset, offset + 12),
+            nextOffset: offset + 12 < catalogItems.length ? offset + 12 : null,
+          }
+        : catalogData,
+    );
+  }
+  if (name === 'list_product_reviews') {
+    const offset = Number(args.offset ?? 0);
+    const reviews = Array.from(
+      { length: productDetail.reviewOverview.count },
+      (_, index) => ({
+        reviewId: `30000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+        user: 'User',
+        rating: 5,
+        content: `評論內容 ${index + 1}`,
+        createdAt: '2026-01-01T00:00:00.000Z',
+      }),
+    );
     return ok({
       productId: 'P001',
-      items: [],
-      total: 0,
-      nextOffset: null,
+      items: reviews.slice(offset, offset + 2),
+      total: reviews.length,
+      nextOffset: offset + 2 < reviews.length ? offset + 2 : null,
       catalogRevision: 'fixture',
     });
+  }
   if (name === 'quote_selection')
     return ok(
       summary(
@@ -288,8 +321,22 @@ bridge.oncalltool = async ({ name, arguments: args }) => {
     return createFixtureOrder(selected);
   }
   if (name === 'get_order') return ok(order);
-  if (name === 'list_orders')
-    return ok({ items: order ? [order] : [], nextOffset: null });
+  if (name === 'list_orders') {
+    const orders = order
+      ? new URL(location.href).searchParams.has('manyOrders')
+        ? Array.from({ length: 9 }, (_, index) => ({
+            ...order!,
+            orderId: `20000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+          }))
+        : [order]
+      : [];
+    const offset = Number(args?.offset ?? 0),
+      limit = Number(args?.limit ?? 20);
+    return ok({
+      items: orders.slice(offset, offset + limit),
+      nextOffset: offset + limit < orders.length ? offset + limit : null,
+    });
+  }
   if (name === 'apps_pay_order' && order) {
     if (controls.failPayOnce) {
       controls.failPayOnce = false;

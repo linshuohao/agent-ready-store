@@ -171,17 +171,27 @@ test('shared product details and reviews use the same artwork, controls and layo
     await f
       .locator('.detail')
       .evaluate((el) => getComputedStyle(el).gridTemplateColumns),
-  ).toMatch(/^\d+(?:\.\d+)?px$/);
+  ).toMatch(/^80px \d+(?:\.\d+)?px$/);
   await expect(
     f.getByRole('img', { name: 'P001 商品示意，非實物照片' }),
   ).toBeVisible();
+  await expect(
+    f.getByRole('heading', { name: '商品規格', exact: true }),
+  ).not.toBeVisible();
+  await f.getByRole('button', { name: '規格', exact: true }).click();
   await expect(
     f.getByRole('heading', { name: '商品規格', exact: true }),
   ).toBeVisible();
   await expect(
     f.getByRole('button', { name: '加入購物車', exact: true }),
   ).toBeVisible();
+  await f.getByRole('button', { name: '評論（0）', exact: true }).click();
   await expect(f.getByText('尚無評論。', { exact: true })).toBeVisible();
+  await f.getByRole('button', { name: '概覽', exact: true }).click();
+  await page.screenshot({
+    path: `test-results/compact-product-${test.info().project.name}.png`,
+  });
+  await expect(f.getByText('尚無評論。', { exact: true })).not.toBeVisible();
 });
 test('shared cart keeps the quantity draft after conflict until explicit reload', async ({
   page,
@@ -486,3 +496,95 @@ for (const checkout of [false, true]) {
     expect(layout.scrollRegions).toBe(0);
   });
 }
+
+test('embedded catalog batches replace items and order history bounds each page and preview', async ({
+  page,
+}) => {
+  const f = await openFixture(page, '?search&many');
+  await expect(f.locator('.product-card')).toHaveCount(4);
+  await f.getByRole('button', { name: '下一批商品', exact: true }).click();
+  await expect(f.locator('.product-card')).toHaveCount(4);
+  await expect(f.locator('.product-card').first()).toContainText('P005');
+  await f.getByRole('button', { name: '下一批商品', exact: true }).click();
+  await expect(f.locator('.product-card')).toHaveCount(1);
+  await expect(f.locator('.product-card').first()).toContainText('P009');
+  await f.getByRole('button', { name: '上一批商品', exact: true }).click();
+  await expect(f.locator('.product-card').first()).toContainText('P005');
+  await expect(
+    f
+      .locator('.product-card')
+      .first()
+      .getByRole('button', { name: '加入購物車', exact: true }),
+  ).toBeEnabled();
+  await page.screenshot({
+    path: `test-results/compact-catalog-${test.info().project.name}.png`,
+  });
+  await page.goto('http://localhost:3999/?checkout&manyOrders&long');
+  await f
+    .getByRole('banner')
+    .getByRole('link', { name: '訂單列表', exact: true })
+    .click();
+  await expect(f.locator('.order-list-item')).toHaveCount(4);
+  await expect(f.locator('.order-list-products > li')).toHaveCount(8);
+  const firstOrder = f.locator('.order-list-item').first();
+  const total = await firstOrder
+    .locator('.order-list-total strong')
+    .innerText();
+  await firstOrder
+    .getByRole('button', { name: '展開其餘 11 項商品', exact: true })
+    .click();
+  await expect(firstOrder.locator('.order-list-products > li')).toHaveCount(13);
+  await expect(
+    f.locator('.order-list-item').nth(1).locator('.order-list-products > li'),
+  ).toHaveCount(2);
+  await expect(firstOrder.locator('.order-list-total strong')).toHaveText(
+    total,
+  );
+  await firstOrder
+    .getByRole('button', { name: '收起商品', exact: true })
+    .click();
+  await expect(firstOrder.locator('.order-list-products > li')).toHaveCount(2);
+  await page.screenshot({
+    path: `test-results/compact-orders-${test.info().project.name}.png`,
+    animations: 'disabled',
+  });
+  await expect(f.locator('.order-list-item').first()).toContainText(
+    '共 13 項商品',
+  );
+  await f.getByRole('button', { name: '下一頁訂單', exact: true }).click();
+  await expect(f.locator('.order-list-item').first()).toContainText(
+    '20000000-0000-4000-8000-000000000005',
+  );
+  await f.getByRole('button', { name: '下一頁訂單', exact: true }).click();
+  await expect(f.locator('.order-list-item')).toHaveCount(1);
+  await f.getByRole('button', { name: '上一頁訂單', exact: true }).click();
+  await expect(f.locator('.order-list-item')).toHaveCount(4);
+  expect(
+    await f.locator('main').evaluate((el) => el.scrollWidth <= el.clientWidth),
+  ).toBe(true);
+});
+
+test('embedded catalog reaches server pages and comments retain their page across tabs', async ({
+  page,
+}) => {
+  const f = await openFixture(page, '?search&serverPages');
+  await expect(f.locator('.product-card')).toHaveCount(4);
+  await f.getByRole('button', { name: '下一批商品', exact: true }).click();
+  await f.getByRole('button', { name: '下一批商品', exact: true }).click();
+  await f.getByRole('link', { name: '下一頁', exact: true }).click();
+  await expect(f.locator('.product-card').first()).toContainText('P013');
+  await f.getByRole('link', { name: '上一頁', exact: true }).click();
+  await expect(f.locator('.product-card').first()).toContainText('P001');
+  await page.goto('http://localhost:3999/?product&reviews');
+  await f.getByRole('button', { name: '評論（3）', exact: true }).click();
+  await expect(f.getByText('評論內容 1', { exact: true })).toBeVisible();
+  await f.getByRole('button', { name: '下一頁評論', exact: true }).click();
+  await expect(f.getByText('評論內容 3', { exact: true })).toBeVisible();
+  await f.getByRole('button', { name: '規格', exact: true }).click();
+  await expect(f.getByText('評論內容 3', { exact: true })).not.toBeVisible();
+  await f.getByRole('button', { name: '評論（3）', exact: true }).click();
+  await expect(f.getByText('評論內容 3', { exact: true })).toBeVisible();
+  expect(
+    await f.locator('main').evaluate((el) => el.scrollWidth <= el.clientWidth),
+  ).toBe(true);
+});

@@ -727,3 +727,61 @@ test('order header opens the displayed source order list without switching the c
     await page.evaluate(() => localStorage.getItem('store.currentCartId')),
   ).toBe(cartId);
 });
+
+test('order product previews expand independently without changing full totals', async ({
+  page,
+}) => {
+  const base = fixtureOrders.get(page)!;
+  const order = {
+    ...base,
+    summary: {
+      ...base.summary,
+      items: Array.from({ length: 7 }, (_, index) => ({
+        ...base.summary.items[0],
+        productId: `P${String(index + 1).padStart(3, '0')}`,
+        name: `商品 ${index + 1}`,
+      })),
+    },
+  };
+  const sibling = {
+    ...structuredClone(order),
+    orderId: '10000000-0000-4000-8000-000000000003',
+  };
+  await page.route('**/api/v1/shopping/carts/*/orders*', (route) =>
+    route.fulfill({
+      json: { ok: true, data: { items: [order, sibling], nextOffset: null } },
+    }),
+  );
+  await page.goto(`/orders?cartId=${cartId}`);
+  const cards = page.locator('.order-list-item');
+  await expect(cards).toHaveCount(2);
+  await expect(cards.first().locator('.order-list-products > li')).toHaveCount(
+    2,
+  );
+  const total = await cards
+    .first()
+    .locator('.order-list-total strong')
+    .innerText();
+  const expand = cards
+    .first()
+    .getByRole('button', { name: '展開其餘 5 項商品', exact: true });
+  await expect(expand).toHaveAttribute('aria-expanded', 'false');
+  await expand.click();
+  await expect(cards.first().locator('.order-list-products > li')).toHaveCount(
+    7,
+  );
+  await expect(cards.nth(1).locator('.order-list-products > li')).toHaveCount(
+    2,
+  );
+  await expect(cards.first().locator('.order-list-total strong')).toHaveText(
+    total,
+  );
+  const collapse = cards
+    .first()
+    .getByRole('button', { name: '收起商品', exact: true });
+  await expect(collapse).toHaveAttribute('aria-expanded', 'true');
+  await collapse.click();
+  await expect(cards.first().locator('.order-list-products > li')).toHaveCount(
+    2,
+  );
+});
