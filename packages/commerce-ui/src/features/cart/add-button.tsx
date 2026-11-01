@@ -42,7 +42,7 @@ export function AddButton({
           }
         }}
       >
-        加入購物車
+        {adding ? '處理中…' : '加入購物車'}
       </Button>
       {error && <p role="status">{error}</p>}
     </>

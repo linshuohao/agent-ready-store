@@ -198,7 +198,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     },
     [],
   );
-  async function run(work: () => Promise<Call<ShoppingCartView>>) {
+  async function run(
+    work: () => Promise<Call<ShoppingCartView>>,
+    successMessage = '',
+  ) {
     if (!commands.current || !ready) return failure('CART_BUSY');
     active.current++;
     setBusy(true);
@@ -214,7 +217,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         setMessage(
           result.recoveryWarning
             ? '購物車已儲存，但本機恢復資料保存失敗；原請求仍保留供查詢。'
-            : '',
+            : successMessage,
         );
       } else
         setMessage(
@@ -247,7 +250,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
           error instanceof Error ? error.message : 'LOCAL_STORAGE_UNAVAILABLE',
         );
       }
-    });
+    }, '已加入購物車');
   }
   async function save(intent: {
     cartId: string;

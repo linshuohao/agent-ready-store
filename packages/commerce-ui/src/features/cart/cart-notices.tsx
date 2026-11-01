@@ -23,7 +23,7 @@ export function CartNotices({
   return (
     <>
       {!orderPage && message && (
-        <CartFeedback success={false} onDismiss={dismiss}>
+        <CartFeedback success={message === '已加入購物車'} onDismiss={dismiss}>
           <p role="status">{message}</p>
           {currentCartId && (
             <Link href={`/cart/${currentCartId}`} prefetch={false}>
