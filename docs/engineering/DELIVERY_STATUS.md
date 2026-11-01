@@ -56,6 +56,8 @@ Requirements / Product Design表达产品与体验结果，Technical Design表�
 
 `feat/cart-command-state-isolation`的规划提交`5fa7c6e`、实施提交`6efb4d6`保留完整历史，实施Checkpoint Guard已通过；Human确认本地新服务验证通过并授权提交。当前3000/3002已切换至此分支配套前后端，原本地数据保留；修复前3000仍运行旧工作树，因此不能用旧地址行为判断本分支是否生效。
 
-独立加购、共享初始化身份、显式数量生单、SKU整行清理及只读结果查询已实现；正式Spec在本分支同步。真实PostgreSQL/HTTP/MCP、桌面与移动端生产构建及独立Review证据集中在[Change Tasks](../../openspec/changes/cart-command-state-isolation/tasks.md)，不把本地通过写成远程CI通过。
+独立加购、共享初始化身份、显式数量生单、SKU整行清理及只读结果查询已实现；正式Spec在本分支同步。真实PostgreSQL/HTTP/MCP、桌面与移动端生产构建及独立Review证据集中在[Change Tasks](../../openspec/changes/archive/2026-11-01-cart-command-state-isolation/tasks.md)，不把本地通过写成远程CI通过。
 
-仍未Push/Merge/远程部署。任务5.1的外部真实Apps Host验收未完成，目前只有SDK Host替身与后端工具集成；Change暂不归档，待补验收或Human明确接受保留此缺口后归档。当前会话连接器发现仍展示旧购物契约，需要刷新工具发现后再验收新Host路径；不能用旧工具调用宣称新契约通过。
+仍未Push/Merge/远程部署。Human明确真实Apps Host应在部署后验收，因此部署前验证已通过，本Change可归档；这不等于真实Host已通过。SDK Host替身和后端工具集成证据保持原有范围。
+
+**部署后验收：** 部署匹配的API/Web/Apps资源后刷新Host连接与工具发现，验证新quantity/无版本add契约、Apps呈现与重挂载恢复、首次加购身份以及只读结果查询；记录实际版本与结果。当前会话连接器发现仍展示旧购物契约，不能以旧工具调用证明新版本通过。该验收不再阻塞本轮开发归档，远程部署仍需对应授权。

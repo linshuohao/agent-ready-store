@@ -2,7 +2,7 @@
 
 **范围与状态：** 2026-10-31 从原 Technical Design 按职责迁移；沿用[总体设计的状态、依据与批准范围](TECHNICAL_DESIGN.md)，不因拆分新增业务批准或声称全局基线整体 Approved。当前行为以正式 Spec 为准，变更理由见工程决策；本文维护当前设计，不维护实施任务或逐轮验证记录。
 
-2026-11-01按已批准的[cart-command-state-isolation设计](../../openspec/changes/cart-command-state-isolation/design.md)及其Spec Delta更新下述契约；正式主Spec同步与验收仍按该Change执行。本文描述目标设计，不作为实现或验证通过的证据。
+2026-11-01按已批准的[cart-command-state-isolation设计](../../openspec/changes/archive/2026-11-01-cart-command-state-isolation/design.md)及其Spec Delta更新下述契约；正式主Spec同步与验收仍按该Change执行。本文描述目标设计，不作为实现或验证通过的证据。
 
 <a id="shopping-journeys"></a>
 <a id="3-完整用户流程与各端差异"></a>

@@ -1,6 +1,6 @@
 # Cart command cutover operations
 
-This is an operational companion to the approved [Change design](../../../openspec/changes/cart-command-state-isolation/design.md), not a second contract. No production cutover or rollback has been performed by this implementation.
+This is an operational companion to the approved [Change design](../../../openspec/changes/archive/2026-11-01-cart-command-state-isolation/design.md), not a second contract. No production cutover or rollback has been performed by this implementation.
 
 ## Implementation map
 

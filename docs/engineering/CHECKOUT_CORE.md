@@ -2,7 +2,7 @@
 
 **范围与状态：** 2026-10-31 从原 Technical Design 按职责迁移；沿用[总体设计的状态、依据与批准范围](TECHNICAL_DESIGN.md)，不因拆分新增业务批准或声称全局基线整体 Approved。当前行为以正式 Spec 为准，变更理由见工程决策；本文维护当前设计，不维护实施任务或逐轮验证记录。
 
-2026-11-01按已批准的[cart-command-state-isolation设计](../../openspec/changes/cart-command-state-isolation/design.md)及其Spec Delta更新下述契约；正式主Spec同步与验收仍按该Change执行。本文描述目标设计，不作为实现或验证通过的证据。
+2026-11-01按已批准的[cart-command-state-isolation设计](../../openspec/changes/archive/2026-11-01-cart-command-state-isolation/design.md)及其Spec Delta更新下述契约；正式主Spec同步与验收仍按该Change执行。本文描述目标设计，不作为实现或验证通过的证据。
 
 <a id="domain-model"></a>
 <a id="2-领域与数据模型"></a>
@@ -104,7 +104,7 @@ stateDiagram-v2
 | 支付 | 锁原Order及其库存，校验未关闭、锁后数据库截止、有效预留和原快照；quantity与reserved同时减本单数量，更新同单为PAID | 不重算价格、不插入第二笔订单、不比较当前车版本；重复支付返回原事实 |
 | 取消/到期 | 锁订单及库存，释放reserved并写关闭事实 | 已支付/已关闭先返回已有事实；未关闭单锁后达到截止则记EXPIRED，未到期才按请求原因关闭；不重复释放、不改写原因 |
 
-创建协调来源车与所选库存；支付/关闭只协调目标订单与库存，不锁来源车。库存按统一商品顺序取锁，关闭与支付共享协调边界；未来如引入可信禁止销售事实，须另行规划其更新与支付的协调。没有覆盖15分钟审阅期的数据库锁。具体锁序、参数和并发反例见[归档设计](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/design.md)；现行基础约束见[正式 Spec](../../openspec/specs/)，本次限定替代以[当前Change](../../openspec/changes/cart-command-state-isolation/design.md)为准。
+创建协调来源车与所选库存；支付/关闭只协调目标订单与库存，不锁来源车。库存按统一商品顺序取锁，关闭与支付共享协调边界；未来如引入可信禁止销售事实，须另行规划其更新与支付的协调。没有覆盖15分钟审阅期的数据库锁。具体锁序、参数和并发反例见[归档设计](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/design.md)；现行基础约束见[正式 Spec](../../openspec/specs/)，本次限定替代以[当前Change](../../openspec/changes/archive/2026-11-01-cart-command-state-isolation/design.md)为准。
 
 单车配额只计CHECKOUT、未关闭且未到期的订单，env默认10笔。新单在Cart短事务内完成计数与准入，避免并发超额；同键恢复先于配额检查。下调配置不取消已有单，只暂停新增；满额显示已有订单入口，不能自动换车绕过。该额度不提供自然人级防囤占。
 

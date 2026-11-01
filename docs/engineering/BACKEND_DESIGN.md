@@ -2,7 +2,7 @@
 
 **范围与状态：** 2026-10-31 从原 Technical Design 按职责迁移；沿用[总体设计的状态、依据与批准范围](TECHNICAL_DESIGN.md)，不因拆分新增业务批准或声称全局基线整体 Approved。当前行为以正式 Spec 为准，变更理由见工程决策；本文维护当前设计，不维护实施任务或逐轮验证记录。
 
-2026-11-01按已批准的[cart-command-state-isolation设计](../../openspec/changes/cart-command-state-isolation/design.md)及其Spec Delta更新下述契约；正式主Spec同步与验收仍按该Change执行。本文描述目标设计，不作为实现或验证通过的证据。
+2026-11-01按已批准的[cart-command-state-isolation设计](../../openspec/changes/archive/2026-11-01-cart-command-state-isolation/design.md)及其Spec Delta更新下述契约；正式主Spec同步与验收仍按该Change执行。本文描述目标设计，不作为实现或验证通过的证据。
 
 <a id="21-商品发现与运行数据"></a>
 ## 商品发现与运行数据
@@ -182,4 +182,4 @@ Next继续复用既有 `/api/v1/:path*` rewrite到服务端API_INTERNAL_URL，�
 
 MCP保持每工具独立定义及当前demo/token模式。普通add_cart_item固定MCP来源，Apps使用apps_add_cart_item固定APPS；不信任客户端通道字段。get_or_create_cart仅接续已有车，get_request_result独立提供结果查询。该工具使用skipMaintenance，HTTP等价GET同样豁免请求到期扫描；仍检查适用Host/Origin及token模式凭证。查询只派生状态、不物化关闭或释放库存，不把数据库错误转成not_found。
 
-结果定位为order+cartId+requestId、cart+(cartId或initializationId)+requestId，或历史initialize+requestId；找到返回原订单或当前车，未找到只表示尚未观察到提交。明确继续新契约原操作才调用写用例；旧格式只识别与查询，不能剥离版本后按新语义执行。停写、各实例旧在途排空、旧本地请求迁移与回退的授权和证据按[当前Change迁移计划](../../openspec/changes/cart-command-state-isolation/design.md#migration-plan)处理，不能用查无记录替代排空证明。
+结果定位为order+cartId+requestId、cart+(cartId或initializationId)+requestId，或历史initialize+requestId；找到返回原订单或当前车，未找到只表示尚未观察到提交。明确继续新契约原操作才调用写用例；旧格式只识别与查询，不能剥离版本后按新语义执行。停写、各实例旧在途排空、旧本地请求迁移与回退的授权和证据按[当前Change迁移计划](../../openspec/changes/archive/2026-11-01-cart-command-state-isolation/design.md#migration-plan)处理，不能用查无记录替代排空证明。

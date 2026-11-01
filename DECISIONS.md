@@ -276,7 +276,7 @@ Human 已确认按“共享分类发现、Web分类下拉框、MCP目录探索�
 
 **Status：Accepted；Human已授权实施。** 本轮Human明确生单不依赖车数量，本页主动移除取消选择，未知结果必须只读核实；随后授权审查修复、按前后端和接口分工实施，并授权规划提交。原D-23/D-24及历史结算决定保留其批准时点，本节仅替代“全车变化要求重新选择、先改车量才能购买、全车写入互斥”的部分。
 
-当前行为以[CART-01/06/08](docs/product/REQUIREMENTS.md#cart-01)及[本轮Change](openspec/changes/cart-command-state-isolation/design.md)为准：add独立，购买量明确，按SKU整行清理，查询与继续分离。接受先提交的同SKU追加量被生单清理、不同请求键可能生成多单的取舍；不引入行版本或新请求状态表。其余价格、库存、整笔成功、Human支付、Demo权限及set/remove冲突保护继续适用。此授权不等于最终验收、Push、Merge或部署批准。
+当前行为以[CART-01/06/08](docs/product/REQUIREMENTS.md#cart-01)及[本轮Change](openspec/changes/archive/2026-11-01-cart-command-state-isolation/design.md)为准：add独立，购买量明确，按SKU整行清理，查询与继续分离。接受先提交的同SKU追加量被生单清理、不同请求键可能生成多单的取舍；不引入行版本或新请求状态表。其余价格、库存、整笔成功、Human支付、Demo权限及set/remove冲突保护继续适用。此授权不等于最终验收、Push、Merge或部署批准。
 
 <a id="统一价格计算语义d-09d-13"></a>
 <a id="价格规则验收示例与边界"></a>
