@@ -38,6 +38,21 @@ afterEach(() => {
   vi.clearAllMocks();
   vi.resetModules();
 });
+it('rejects a background tool result delivered to the final search card', async () => {
+  vi.stubGlobal('document', {
+    getElementById: () => ({}),
+    body: { dataset: { entryTool: 'search_products' } },
+  });
+  vi.stubGlobal('window', { addEventListener: vi.fn() });
+  await import('../src/main');
+  mocks.app.getHostContext = () => ({
+    toolInfo: { id: 'background-call', tool: { name: 'query_products' } },
+  });
+  mocks.app.ontoolinput({ arguments: { q: 'different-target' } });
+  await mocks.app.ontoolresult({ structuredContent: { ok: true } });
+  expect(mocks.delivery).not.toHaveBeenCalled();
+  expect(mocks.render).toHaveBeenCalledOnce();
+});
 it.each(['teardown', 'pagehide'])(
   'ignores Host deliveries after %s',
   async (end) => {

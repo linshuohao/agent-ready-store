@@ -48,6 +48,8 @@ describe('MCP guidance wire compatibility', () => {
     vi.unstubAllEnvs();
   });
   it('keeps UI association limited to the two final entry tools and exposes filter semantics', async () => {
+    expect(client.getInstructions()).toContain('支付由Human亲自');
+    expect(client.getInstructions()).toContain('query_products');
     const { tools } = await client.listTools();
     expect(
       tools
@@ -58,6 +60,8 @@ describe('MCP guidance wire compatibility', () => {
     const schema = tools.find((t) => t.name === 'query_products')!.inputSchema;
     const encoded = JSON.stringify(schema);
     expect(encoded).toContain('精确匹配');
+    expect(encoded).toContain('不是自然语言语义搜索');
+    expect(encoded).toContain('TWD商品单价上限');
     expect(
       tools.find((t) => t.name === 'query_products')?._meta?.['ui/resourceUri'],
     ).toBeUndefined();

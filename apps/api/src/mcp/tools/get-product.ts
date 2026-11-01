@@ -9,7 +9,7 @@ export function createGetProduct(catalog: CatalogService): ToolDefinition {
   return {
     name: 'get_product',
     description:
-      '按ID读取商品规格与可购状态，不含完整评论；模拟商品，无真实物流。约束specs为目录原文键值的精确断言，只传用户明确硬条件，不翻译键值或把推荐特性额外写成硬约束。',
+      '需要核对本店某款商品的规格、用途适配、价格或可购状态时，按已查询到的productId读取详情；比较多款可分别读取。完整评论用list_product_reviews；未知商品ID先搜索。只读、无UI；模拟商品，无真实物流。约束specs为目录原文键值的精确断言，只传用户明确硬条件，不翻译键值或把推荐特性额外写成硬约束。',
     inputSchema: productInput,
     annotations: {
       readOnlyHint: true,

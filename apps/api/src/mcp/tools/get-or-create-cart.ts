@@ -11,7 +11,7 @@ export function createGetOrCreateCart(carts: CartService): ToolDefinition {
   return {
     name: 'get_or_create_cart',
     description:
-      'Read an existing cart by cartId only. First explicit add uses add_cart_item with shared initializationId. Legacy initialization payloads are rejected; use get_request_result for read-only reconciliation.',
+      '兼容旧工具名，仅按cartId读取已有购物车；查看购物车优先get_cart。本工具不创建购物车。首次明确加购使用add_cart_item并传共享initializationId；旧初始化载荷被拒绝，原请求结果用get_request_result只读核实。',
     inputSchema: agentCartInput,
     annotations: {
       readOnlyHint: true,
