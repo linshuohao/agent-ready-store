@@ -15,11 +15,11 @@ Human explicitly accepted a simplified release for this Demo, superseding the st
 
 1. Preserve business data in a Neon backup branch without compute and a restricted local pg_dump backup.
 2. Run `pnpm --filter @store/api db:migrate` against the existing database. The initialization migration completed without reset, seed or deletion of historical facts.
-3. Merge PR #9 as `78e3d76`; Vercel Git integration builds the API, Web and documentation projects independently. All three Production deployments reached READY before the remote acceptance probes.
+3. Merge PR #9 as `78e3d76`; Vercel Git integration builds the API, Web and documentation projects independently. All three Production deployments reached READY.
 4. Verify the new MCP schemas/v9 resources, shared-identity concurrent adds, explicit-quantity orders, legacy payload rejection, read-only lookup and replay preserving later additions. Cancel the test order to release its reservation.
-5. Keep unresolved historical attempts query-only. Real Host schema refresh, Apps presentation and recovery remain pending; SDK/HTTP checks do not satisfy that acceptance.
+5. Keep unresolved historical attempts query-only and refresh MCP schema discovery when reconnecting clients.
 
-Deployment IDs, CI, test identities and results are maintained in the [deployment record](../../../docs/engineering/DEPLOYMENT.md#本次发布与验证2026-11-01); outstanding Host acceptance is maintained in [delivery status](../../../docs/engineering/DELIVERY_STATUS.md#购物车命令隔离已部署2026-11-01).
+Release version and configuration are maintained in the [deployment record](../../../docs/engineering/DEPLOYMENT.md#本次发布2026-11-01). Environment acceptance logs and temporary follow-ups stay in the release PR or collaboration conversation.
 
 ## Original strict cutover procedure (not executed in this release)
 

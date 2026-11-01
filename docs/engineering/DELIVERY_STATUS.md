@@ -22,7 +22,7 @@
 - 持续Cart、按明确购买量生单并清理所购SKU整行、固定金额、15分钟预留、同单支付/取消/到期、多单额度与统计已实现。真实PostgreSQL事务、并发、幂等、回滚和释放记录见结算Tasks。
 - Web与Apps共用commerce-ui完整购物应用；MCP无Apps时由网页承接Human支付，WebMCP导航原单，Apps内嵌支付。型号选择不是购买或支付批准。
 - 多目标搜索最多5组、默认每组4项；简繁规范化及受控中英文别名，保留预算、品牌与规格约束。支持能力不足时对话兜底，不承诺任意翻译。
-- SDK v2与新协议增量已实现；线上搜索/结算两份v9资源已由MCP SDK发现，精确保留v4～v8最终资源别名。协议、Host与浏览器验证分别举证。
+- SDK v2与新协议增量已实现；搜索/结算采用两份v9资源，精确保留v4～v8最终资源别名。协议、Host与浏览器验证分别举证。
 
 ## 验收与版本边界
 
@@ -40,17 +40,15 @@ Requirements / Product Design表达产品与体验结果，Technical Design表�
 
 ## 在线文档与展示
 
-[统一文档与展示站](https://agent-ready-store-docs.vercel.app)已上线，可从[产品 Demo](https://agent-ready-store-docs.vercel.app/demo.html)进入章节讲解及完整正文。当前文档站已部署 `78e3d76`；2026-10-31 历史发布收尾版本 `c8075a1` 的 [CI](https://github.com/linshuohao/agent-ready-store/actions/runs/41188565691) 已通过；线上检查覆盖 109 份正文、16 屏展示、旧入口、刷新返回及四种屏宽。当前发布机制见[部署说明](DEPLOYMENT.md#当前发布与自动更新)，首次部署与各业务阶段记录继续保留其版本边界。
+[统一文档与展示站](https://agent-ready-store-docs.vercel.app)已上线，可从[产品 Demo](https://agent-ready-store-docs.vercel.app/demo.html)进入章节讲解及完整正文。当前文档站已部署 `78e3d76`；2026-10-31 历史发布收尾版本 `c8075a1` 的 [CI](https://github.com/linshuohao/agent-ready-store/actions/runs/41188565691) 已通过。当前发布机制见[部署说明](DEPLOYMENT.md#当前发布与自动更新)，首次部署与各业务阶段记录继续保留其版本边界。
 
 ## 云端 Demo
 
-2026-11-01：商城、API、文档站 Production 均运行 `78e3d76`，Neon 第8个迁移成功，main CI通过。Human接受本次Demo先兼容迁移、再自动部署的简化方式及短暂失败/旧页刷新，不要求严格停写排空。备份、实际部署、线上验收与历史首次部署证据统一见[部署说明](DEPLOYMENT.md#本次发布与验证2026-11-01)。
+2026-11-01：商城、API、文档站 Production 均运行 `78e3d76`，Neon 第8个迁移成功，main CI通过。Human接受本次Demo先兼容迁移、再自动部署的简化方式及短暂失败/旧页刷新，不要求严格停写排空。备份与发布方式统一见[部署说明](DEPLOYMENT.md#本次发布2026-11-01)。
 
-## 分类发现增量（历史过程，2026-10-31）
+## 分类发现增量
 
-当时`feat/catalog-discovery`已实现共享分类API/MCP及Web分类下拉框，尚未Push、Merge或部署。Human已批准分类入口限定豁免到期扫描；其他入口维持现有行为。实际命令、审查和Host验收进度集中在[Change Tasks](../../openspec/changes/archive/2026-10-31-catalog-discovery/tasks.md)。真实Codex CLI已执行四类只读场景，但CLI不提供Apps卡片渲染证据；支持Apps的真实Host视觉验收及最终Human验收仍待完成，不据此宣称线上已更新。向量／混合搜索仅保留为[后续评估方向](../../openspec/changes/archive/2026-10-31-catalog-discovery/design.md#future-evolution)。
-
-2026-10-31后续：真实Codex Apps Host已通过同卡分组、空结果、预算保留、售罄按钮禁用、隐藏表单及卡片内重查验收，补齐上段CLI的视觉限制；详情见上述Change Tasks最新验收节。Human已授权验收通过后归档、合并与推送，线上部署状态需另核对，不能仅由本地验收推定。
+共享分类API/MCP及Web分类下拉框已实现；分类入口不触发到期扫描。正式变更与历史证据见[Change Tasks](../../openspec/changes/archive/2026-10-31-catalog-discovery/tasks.md)。向量／混合搜索仅保留为[后续评估方向](../../openspec/changes/archive/2026-10-31-catalog-discovery/design.md#future-evolution)。
 
 ## 购物车命令隔离（已部署，2026-11-01）
 
@@ -58,6 +56,4 @@ Requirements / Product Design表达产品与体验结果，Technical Design表�
 
 独立加购、共享初始化身份、显式数量生单、SKU整行清理及只读结果查询已上线；正式Spec已同步，Change已归档。真实PostgreSQL/HTTP/MCP、桌面与移动端生产构建及独立Review证据集中在[Change Tasks](../../openspec/changes/archive/2026-11-01-cart-command-state-isolation/tasks.md)。合并后的CI与部署记录见上文。
 
-线上定向验收通过：新MCP契约及v9资源可用；首次并发2+3只建一车；车量5显式买2；只读未知查询不生单；旧载荷拒绝；原键重放保留后来加购。测试订单已取消释放预留。完整发布方式、测试标识与验证范围统一见[部署说明](DEPLOYMENT.md#本次发布与验证2026-11-01)，不复制为第二份操作记录。
-
-**真实 Host 验收待完成：** Human将该项移至部署后，不作为开发归档前置条件。当前会话连接器仍展示旧契约且未出现可操作Apps侧边面板，已请Human刷新连接与工具发现、展开卡片；待验证新quantity/无版本add契约、Apps呈现与重挂载恢复、首次加购身份及只读结果查询，并记录Host版本与结果。线上HTTP/MCP SDK、WebMCP工具发现及SDK Host替身均不替代真实Host交互验收；历史其他版本的Host验收不算本版本通过。
+发布方式见[部署说明](DEPLOYMENT.md#本次发布2026-11-01)。环境验收过程与临时待办留在对应PR或协作对话，不作为本页的交付清单。

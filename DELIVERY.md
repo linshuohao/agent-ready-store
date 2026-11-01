@@ -90,7 +90,7 @@ Agent 客户端使用 MCP Streamable HTTP 连接 `https://agent-ready-store-api.
 
 ### Demo 与录影的证据状态
 
-[结算验收记录](openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/tasks.md)包含基础 MCP、WebMCP 与 Apps 的真实购物验收摘要。**可直接观看的完整对话导出或录影仍待补充**；摘要、浏览器测试和真实录影各有不同用途。在线体验入口已提供；线上 Demo 不替代完整购物对话或录影。购物车命令隔离版本已部署并通过远端HTTP/MCP SDK验证，但其真实Apps Host交互验收仍待完成；当前发布与待办见[交付状态](docs/engineering/DELIVERY_STATUS.md#购物车命令隔离已部署2026-11-01)。
+[结算验收记录](openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/tasks.md)包含基础 MCP、WebMCP 与 Apps 的真实购物验收摘要。**可直接观看的完整对话导出或录影仍待补充**；摘要、浏览器测试和真实录影各有不同用途。在线体验入口已提供；线上 Demo 不替代完整购物对话或录影。当前发布版本见[交付状态](docs/engineering/DELIVERY_STATUS.md#购物车命令隔离已部署2026-11-01)。
 
 ## 设计解答：为什么这样做
 
