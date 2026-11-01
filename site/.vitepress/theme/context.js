@@ -1,8 +1,10 @@
 import { ref } from 'vue';
 import { slides } from './presentation-nav';
+import demos from './demo-data.json';
 export const origin = ref('');
 export function validOrigin(value) {
-  if (/^(web|quick)-[0-3]$/.test(value || '')) return true;
+  const demo = /^(web|explore|quick)-(\d+)$/.exec(value || '');
+  if (demo) return Number(demo[2]) < demos[demo[1]].steps.length;
   const m = /^show-([a-z]+)-(\d{1,6})$/.exec(value || '');
   return !!m && Number(m[2]) <= 100000 && slides.some((s) => s.id === m[1]);
 }

@@ -1,10 +1,14 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { useRoute } from 'vitepress';
+import CopyText from './CopyText.vue';
 import data from './demo-data.json';
 const mode = ref('web'),
   step = ref(0);
-const route = useRoute();
+const labels = {
+  web: '网页购物',
+  explore: 'Agent 先比较再购买',
+  quick: 'Agent 按约束直接生单',
+};
 const track = computed(() => data[mode.value]);
 const item = computed(() => track.value.steps[step.value]);
 const evidence = computed(
@@ -12,7 +16,7 @@ const evidence = computed(
 );
 function read() {
   const q = new URL(location.href).searchParams;
-  mode.value = q.get('route') === 'quick' ? 'quick' : 'web';
+  mode.value = Object.hasOwn(data, q.get('route')) ? q.get('route') : 'web';
   const n = Number(q.get('step'));
   step.value =
     Number.isInteger(n) && n >= 0 && n < data[mode.value].steps.length ? n : 0;
@@ -44,7 +48,7 @@ onUnmounted(() => window.removeEventListener('popstate', read));
         :aria-pressed="mode === key"
         @click="move(key, 0)"
       >
-        {{ key === 'web' ? '网页购物' : 'Agent 按约束直接生单' }}
+        {{ labels[key] }}
       </button>
     </div>
     <h1>{{ track.title }}</h1>
@@ -69,7 +73,12 @@ onUnmounted(() => window.removeEventListener('popstate', read));
         </figure>
         <div v-else-if="item.prompt" class="prompt">
           <p>示例指令 · 非真实对话记录</p>
-          <blockquote>{{ item.prompt }}</blockquote>
+          <CopyText
+            :key="mode + step"
+            :text="item.prompt"
+            label="复制这段指令"
+            :rows="4"
+          />
           <hr />
           <p>预期工具路径</p>
           <code>{{ item.tools }}</code>
@@ -137,8 +146,10 @@ onUnmounted(() => window.removeEventListener('popstate', read));
             @click="move(mode, step + 1)"
           >
             下一步</button
-          ><button v-else-if="mode === 'web'" @click="move('quick', 0)">
+          ><button v-else-if="mode === 'web'" @click="move('explore', 0)">
             继续：Agent 购物 →</button
+          ><button v-else-if="mode === 'explore'" @click="move('quick', 0)">
+            继续：直接生单 →</button
           ><a v-else href="/presentation.html?slide=authorization"
             >继续：需求与演进 →</a
           >
