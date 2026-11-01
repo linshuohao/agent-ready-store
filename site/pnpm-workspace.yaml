@@ -1,3 +1,7 @@
 packages: []
 allowBuilds:
   esbuild: true
+# Remove once the stable upstream packages include these security fixes.
+overrides:
+  'vitepress@1.6.4>vite': 6.4.5
+  'mermaid@11.16.1>katex': 0.18.2
