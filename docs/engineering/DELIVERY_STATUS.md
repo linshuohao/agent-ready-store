@@ -1,21 +1,42 @@
 # 题目交付与当前证据
 
-核对日期：2026-11-01（Asia/Shanghai）；购物车命令隔离已通过[PR #9](https://github.com/linshuohao/agent-ready-store/pull/9)以 Merge Commit `78e3d76` 合入 main 并部署。本页集中维护交付结果与缺口；业务契约见[正式Spec](../../openspec/specs/)，方案见[Technical Design](TECHNICAL_DESIGN.md)。不将文件存在、局部测试通过、Human接受和可直接查看的交付证据混为一谈。
+**项目状态：待交付。** 当前Demo的需求与设计基线已定稿；交付材料的可访问性及证据覆盖按下表核对。
+
+本页汇总已交付能力、可访问入口、验证证据和现有缺口。业务契约见[正式Spec](../../openspec/specs/)，总体方案见[Technical Design](TECHNICAL_DESIGN.md)；变更过程与阶段记录维护于OpenSpec及关联PR。
 
 ## 题目要求与证据
 
 | 要求 | 当前结果及证据 | 剩余缺口／限制 |
 | --- | --- | --- |
 | 可运行网页与Agent结构化接口 | [在线商店](https://agent-ready-store.vercel.app)可直接体验；MCP 地址为 `https://agent-ready-store-api.vercel.app/mcp`（当前线上Demo无需令牌）；Web、MCP、WebMCP及MCP Apps已实现；[README](../../README.md)提供本机及Docker启动；[结算Tasks](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/tasks.md)记录交易与入口验证 | CI已覆盖生产服务冒烟与真实浏览器购物；浏览器测试不替代真实Agent对话或Host验收 |
-| 每条调整／存疑需求的决策与PM回复 | [DECISIONS](../../DECISIONS.md)当前摘要覆盖D-01～D-24，保留假设、取舍、沟通草案及历史 | 回复未向PM实际发送；Demo边界与生产能力分开 |
-| Agent context与实现前spec/plan/tasks | [AGENTS](../../AGENTS.md)、项目Skills及[OpenSpec归档](../../openspec/changes/archive/)；例如搜索规划`09e014f`先于实现`9fda258` | 不把事后整理当作事前规划，不重写归档时间线 |
+| 每条调整／存疑需求的决策与PM回复 | [DECISIONS](../../DECISIONS.md)当前摘要覆盖D-01～D-25，保留假设、取舍、沟通草案及历史 | 回复未向PM实际发送；Demo边界与生产能力分开 |
+| Agent context与实现前spec/plan/tasks | [AGENTS](../../AGENTS.md)、项目Skills及[OpenSpec归档](../../openspec/changes/archive/)，提供实现前规格、设计与任务依据 | 不把事后整理当作事前规划，不重写归档时间线 |
 | 至少一个自写Skill、使用次数及版本 | Workflow v0.1～v0.6、Review v0.1～v0.4；可复核的限定应用次数与统计口径见[TOOLING](TOOLING.md#自写skill使用与版本口径) | 有记录的使用下限不等于全部业务调用次数；无可靠总量不编造 |
-| GitHub Actions实际测试 | 发布提交 `78e3d76` 的[run 41275113495](https://github.com/linshuohao/agent-ready-store/actions/runs/41275113495)中 Verify 与 Delivery image 均通过，包含真实数据库、token兼容、关键桌面/移动购物、生产镜像冒烟及免凭据demo MCP；[PR CI](https://github.com/linshuohao/agent-ready-store/actions/runs/41274607908)亦通过 | 历史测试计数见各Change；跳过用例不计通过，CI不替代真实Host验收 |
+| GitHub Actions实际测试 | 已记录发布提交 `78e3d76` 的[run 41275113495](https://github.com/linshuohao/agent-ready-store/actions/runs/41275113495)中 Verify 与 Delivery image 均通过，包含真实数据库、token兼容、关键桌面/移动购物、生产镜像冒烟及免凭据demo MCP；[PR CI](https://github.com/linshuohao/agent-ready-store/actions/runs/41274607908)亦通过 | 历史测试计数见各Change；跳过用例不计通过，CI不替代真实Host验收 |
 | 唯一计价实现，Web与Agent共用 | [priceSelection](../../apps/api/src/cart/pricing.ts)由共享CartService调用，HTTP/MCP进入同一服务；[计价测试](../../apps/api/test/cart/pricing.test.ts)保留门槛、叠加、舍入验证 | CI计价与交易测试已通过；历史真实Host记录仍按其版本与环境解释 |
-| 真实AI Agent购物对话或录影 | 结算Tasks的真实验收段记录基础MCP、WebMCP、Apps三笔订单、Human支付与只读确认；不是仅有Mock | 本轮仓库检索未定位可直接观看的完整对话导出或录影。需补可访问材料入口，不能把订单摘要等同题目要求的完整购物记录 |
-| GitHub repo与完整commit历史 | [仓库](https://github.com/linshuohao/agent-ready-store)已配置为origin；本地历史保留规划、实现、修复和merge commit，未因本次整理squash | 面试方访问权限另需确认；本轮不修改远程或发布原件 |
+| 真实AI Agent购物对话或录影 | 结算Tasks的真实验收段记录基础MCP、WebMCP、Apps三笔订单、Human支付与只读确认；不是仅有Mock | 尚缺可直接观看的完整对话导出或录影。需补可访问材料入口，不能把订单摘要等同题目要求的完整购物记录 |
+| GitHub repo与完整commit历史 | [仓库](https://github.com/linshuohao/agent-ready-store)已配置为origin；保留完整规划、实现、修复与合并历史 | 仓库当前公开；`main` 保护与安全配置见[仓库配置](#repository-settings) |
 | AI_NOTES 3～5个关键时刻 | [AI_NOTES](../../AI_NOTES.md)精选4例，聚焦风险分级自治、上下文权威与Spec传播、Skill职责收敛、独立行为审查与真实竞态验证 | 外部摘要不是完整原始对话；没有量化效率收益证据 |
-| 现场演示及增量开发 | README提供开发/测试入口，既有切片可追溯协作路径 | 尚无本轮现场加小功能的演练证据；不能仅凭文档声称已准备充分 |
+| 现场演示及增量开发 | README提供开发/测试入口，既有切片可追溯协作路径 | 尚缺现场增量开发的演练证据；不能仅凭文档声称已准备充分 |
+
+<a id="repository-settings"></a>
+
+## 仓库配置
+
+2026-11-01 通过 GitHub API 回读确认以下设置已生效。仓库公开，默认分支为 `main`；[仓库主页](https://github.com/linshuohao/agent-ready-store)优先提供[在线商店](https://agent-ready-store.vercel.app)与 MCP 接入，文档与交付入口见 README。
+
+| 配置 | 当前生效状态 |
+| --- | --- |
+| `main` 分支保护 | 必须经 PR 合并，管理员同样受限；禁止强推和删除 |
+| 必需 CI | GitHub Actions 的 `Verify`、`Delivery image` 均须通过，待合并分支须包含最新 `main` |
+| 审查讨论 | 必须解决全部审查讨论；新提交使已有批准失效 |
+| 审批人数 | 0；目前仅一位维护者，不要求另一位 GitHub 审批人。Human 的审查、合并授权仍按 AGENTS 执行，平台不代为判断 |
+| 合并与历史 | 仅允许 Merge Commit，禁用 Squash / Rebase Merge；合并后自动删除来源分支 |
+| 依赖安全 | Dependabot 漏洞告警、安全修复 PR 已开启；修复仍经 PR 与 CI 门禁 |
+| 密钥保护 | Secret Scanning 与 Secret Scanning Push Protection 已开启 |
+| Actions 权限 | 默认 `GITHUB_TOKEN` 只读，禁止 Actions 创建或批准 PR |
+
+[分支保护设置](https://github.com/linshuohao/agent-ready-store/settings/branches)与[仓库通用设置](https://github.com/linshuohao/agent-ready-store/settings)可供管理员复核。以上是核查日期的实际配置；后续变更须同步本节，GitHub 门禁不替代 Commit、Push、Merge 或发布的 Human 授权。
 
 ## 当前产品结果
 
@@ -24,36 +45,39 @@
 - 多目标搜索最多5组、默认每组4项；简繁规范化及受控中英文别名，保留预算、品牌与规格约束。支持能力不足时对话兜底，不承诺任意翻译。
 - SDK v2与新协议增量已实现；搜索/结算采用两份v9资源，精确保留v4～v8最终资源别名。协议、Host与浏览器验证分别举证。
 
-## 验收与版本边界
+## 验证覆盖与限制
 
-[搜索Tasks](../../openspec/changes/archive/2026-10-31-grouped-multilingual-search/tasks.md)记录61项技术边界与10项桌面/移动浏览器检查通过且无跳过；只读搜索/选型前后五表摘要不变。Human明确确认人工部分通过，结算和搜索两个Change已同步Spec、归档，并通过`bf955af`合入main。本轮未重跑这些测试，不把记录当作当前CI全部通过。
+商品发现、交易不变量和跨入口行为的证据分别见[搜索验证](../../openspec/changes/archive/2026-10-31-grouped-multilingual-search/tasks.md)、[结算验证](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/tasks.md)及[购物命令验证](../../openspec/changes/archive/2026-11-01-cart-command-state-isolation/tasks.md)。真实Host、SDK替身、浏览器、数据库与CI证据按各自覆盖范围解释；自动化通过不替代真实Host验收，历史结果不证明后续版本全部通过。
 
-未采集的Host逐项版本、原生表单拒绝/取消/断连轨迹不补造。真实验收记录、官方SDK替身、浏览器夹具、构建和CI各自说明覆盖范围，不能互相替代。默认Turbopack曾受环境端口权限阻断、后续其他环境成功等历史结果按各Tasks保留，不推导所有构建路径一直通过。
-
-Demo的ID接续和分享页不提供生产级身份/访问隔离；Host存储、工具调用ID及能力影响恢复与呈现。真实支付、账户隐私、生产级运行保障及十万商品性能承诺不在当前范围。人工接受不自动将全局Draft改为整体Approved。`local-dev-delivery-build`仍保持原Change状态，不随文档整理归档。
+Demo按ID接续购物车与订单，分享页仅限制展示，不提供生产级身份或访问隔离。真实支付、账户隐私、生产运行保障及十万商品性能承诺不在当前交付范围。完整购物对话或录影仍缺可直接观看的材料；购物命令隔离的外部真实Host验收未在其证据中记录为通过。
 
 ## 文档与证据职责
 
 Requirements / Product Design表达产品与体验结果，Technical Design表达当前架构，DECISIONS / ENGINEERING_DECISIONS解释取舍，OpenSpec保存具体变更及其实施验收，AI_NOTES精选协作事件。设计原型和Workflow讲解页不是实际产品证据；Showcase HTML不是题目硬性要求，但项目既有最终展示约定仍有效；现已提供[展示与答辩入口](../presentation/index.html)，保留离线讲解与备查；它是摘要与证据导航，不替代产品、CI或真实Agent证据。
 
-面试阅读顺序：运行README → 业务决策 → 技术方案 → AI_NOTES → 按追问查看Spec、测试与历史。CI已有当前发布版本的通过证据；仍需补充真实购物可观看材料。
+面试阅读顺序：运行README → 业务决策 → 技术方案 → AI_NOTES → 按追问查看Spec、测试与历史。已有CI证据覆盖所记录的发布版本；仍需补充真实购物可观看材料。
 
 ## 在线文档与展示
 
-[统一文档与展示站](https://agent-ready-store-docs.vercel.app)已上线，可从[产品 Demo](https://agent-ready-store-docs.vercel.app/demo.html)进入章节讲解及完整正文。当前文档站已部署 `78e3d76`；2026-10-31 历史发布收尾版本 `c8075a1` 的 [CI](https://github.com/linshuohao/agent-ready-store/actions/runs/41188565691) 已通过。当前发布机制见[部署说明](DEPLOYMENT.md#当前发布与自动更新)，首次部署与各业务阶段记录继续保留其版本边界。
+[统一文档与展示站](https://agent-ready-store-docs.vercel.app)提供[产品Demo](https://agent-ready-store-docs.vercel.app/demo.html)、章节讲解和设计正文；[离线展示](../presentation/index.html)提供本地阅读入口。发布机制与运行配置见[部署说明](DEPLOYMENT.md#当前发布与自动更新)。
 
 ## 云端 Demo
 
-2026-11-01：商城、API、文档站 Production 均运行 `78e3d76`，Neon 第8个迁移成功，main CI通过。Human接受本次Demo先兼容迁移、再自动部署的简化方式及短暂失败/旧页刷新，不要求严格停写排空。备份与发布方式统一见[部署说明](DEPLOYMENT.md#本次发布2026-11-01)。
+商城与API运行于Vercel，交易数据使用Neon PostgreSQL；本地开发和Docker交付入口见README。线上采用请求触发的有界到期清理，无访问时不保证库存释放时限；十五分钟支付截止仍由服务端执行。配置及运行限制见[部署说明](DEPLOYMENT.md#到期清理与限制)。
 
 ## 分类发现增量
 
-共享分类API/MCP及Web分类下拉框已实现；分类入口不触发到期扫描。正式变更与历史证据见[Change Tasks](../../openspec/changes/archive/2026-10-31-catalog-discovery/tasks.md)。向量／混合搜索仅保留为[后续评估方向](../../openspec/changes/archive/2026-10-31-catalog-discovery/design.md#future-evolution)。
+共享分类API/MCP及Web分类下拉框提供目录分类发现，分类入口不触发到期扫描。搜索采用确定性文字匹配、简繁规范化和受控别名；当前不提供向量或混合搜索。设计见[商品发现](BACKEND_DESIGN.md#商品发现与运行数据)。
 
-## 购物车命令隔离（已部署，2026-11-01）
+<a id="购物车命令隔离已部署2026-11-01"></a>
+## 购物车与明确购买
 
-规划 `5fa7c6e`、实施 `6efb4d6`、Spec同步 `6b181c2`、归档 `0f74606` 与合并 `78e3d76` 保留完整历史。Human已接受本地新服务验证，并授权提交、合并与部署。此前本地3000运行旧工作树的问题已通过替换配套服务解决，原本地数据保留；该本地验收与后续云端发布分别记录。
+各次加购独立发送，首次加购共享初始化身份以接续同车；购买使用明确的商品数量，无须等待车内数量保存。生单固定金额并清理所购SKU整行，同键重放不会再次清理后加商品。未知结果提供只读查询，继续原请求需要明确操作。完整规则见[交易核心](CHECKOUT_CORE.md)。
 
-独立加购、共享初始化身份、显式数量生单、SKU整行清理及只读结果查询已上线；正式Spec已同步，Change已归档。真实PostgreSQL/HTTP/MCP、桌面与移动端生产构建及独立Review证据集中在[Change Tasks](../../openspec/changes/archive/2026-11-01-cart-command-state-isolation/tasks.md)。合并后的CI与部署记录见上文。
+## 共享购物界面
 
-发布方式见[部署说明](DEPLOYMENT.md#本次发布2026-11-01)。环境验收过程与临时待办留在对应PR或协作对话，不作为本页的交付清单。
+Web与Apps共用页面、交互协调、控件及样式。购物车与订单分别呈现商品、金额和操作；内嵌界面通过概览、商品及费用明细切换和分页控制长度，订单列表支持商品预览与展开。常规加购和改量采用安静的局部反馈，报价更新保留金额区域，评论翻页等待时保留原内容与控件。设计见[前端呈现](FRONTEND_DESIGN.md#购物车订单与内嵌呈现)及[布局稳定原则](../product/PRODUCT_DESIGN.md#stable-local-updates)。
+
+## Agent接入与服务组织
+
+MCP默认demo免Token，显式token提供可选服务接入门槛；两种模式均保留Host/Origin和输入校验。工具按职责独立定义并注册，共用后端交易用例；Apps通过Host Bridge承接Human支付。具体组织见[后端设计](BACKEND_DESIGN.md#mcp工具组织与维护边界)，接入配置见[MCP指南](MCP_CONNECT.md)。

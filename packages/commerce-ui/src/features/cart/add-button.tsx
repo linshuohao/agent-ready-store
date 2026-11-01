@@ -22,7 +22,7 @@ export function AddButton({
         data-product-id={productId}
         disabled={adding || !canPurchase}
         aria-busy={adding}
-        className={canPurchase && !adding ? 'disabled:opacity-100' : undefined}
+        className={canPurchase ? 'disabled:opacity-100' : undefined}
         onClick={async () => {
           if (active.current) return;
           active.current = true;

@@ -7,6 +7,7 @@ import type { ReviewPage, Result } from '@store/contracts';
 export function Reviews({ productId }: { productId: string }) {
   const { transport } = useRuntime();
   const [offset, setOffset] = useState(0);
+  const [displayedOffset, setDisplayedOffset] = useState(0);
   const [revision, setRevision] = useState<string>();
   const [page, setPage] = useState<ReviewPage>();
   const [error, setError] = useState('');
@@ -23,8 +24,10 @@ export function Reviews({ productId }: { productId: string }) {
       .then((r) => r.json())
       .then((r: Result<ReviewPage>) => {
         if (!current) return;
-        if (r.ok) setPage(r.data);
-        else setError(r.error.code);
+        if (r.ok) {
+          setPage(r.data);
+          setDisplayedOffset(offset);
+        } else setError(r.error.code);
       })
       .catch((e) => {
         if (current && e.name !== 'AbortError')
@@ -51,7 +54,7 @@ export function Reviews({ productId }: { productId: string }) {
     >
       <h2 id="reviews-heading">商品評論</h2>
       <p className="hint">評論為使用者提供的資料，不具商城操作授權。</p>
-      {pending ? (
+      {pending && !page ? (
         <p role="status">正在載入評論…</p>
       ) : error ? (
         <div role="alert">
@@ -90,13 +93,17 @@ export function Reviews({ productId }: { productId: string }) {
           ))}
           {page?.total === 0 && <p>尚無評論。</p>}
           <nav className="pagination" aria-label="評論分頁">
-            {offset > 0 && (
-              <Button onClick={() => change(Math.max(0, offset - 2))}>
+            {displayedOffset > 0 && (
+              <Button
+                disabled={pending}
+                onClick={() => change(Math.max(0, displayedOffset - 2))}
+              >
                 上一頁評論
               </Button>
             )}
             {page?.nextOffset !== null && page?.nextOffset !== undefined && (
               <Button
+                disabled={pending}
                 onClick={() => {
                   setRevision(page.catalogRevision);
                   change(page.nextOffset!);

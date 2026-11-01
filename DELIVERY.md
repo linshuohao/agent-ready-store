@@ -2,7 +2,9 @@
 
 这是一份面向面试官与仓库读者的项目导览。你可以从这里了解产品、运行 Demo，并沿证据入口检查产品判断、前端架构与 AI 协作过程，无需先阅读完整设计文档。
 
-[打开在线文档与展示站](https://agent-ready-store-docs.vercel.app)：无需本地启动，可连续体验产品 Demo、章节讲解和设计正文。[旧版离线 HTML](docs/delivery/index.html)仍保留。
+先打开[在线商店](https://agent-ready-store.vercel.app)实际购物；Agent 通过 MCP Streamable HTTP 连接 `https://agent-ready-store-api.vercel.app/mcp`，当前 Demo 无需 Token，详见 [MCP 接入指南](docs/engineering/MCP_CONNECT.md)。
+
+随后可打开[在线文档与展示站](https://agent-ready-store-docs.vercel.app)，查看产品流程演示、章节讲解和设计正文。[旧版离线 HTML](docs/delivery/index.html)仍保留。
 
 ## 项目在做什么
 
@@ -20,9 +22,9 @@ Agent-Ready Store 是一个同时服务人类与 AI Agent 的商店。用户可�
 
 | 你想做什么 | 建议入口 |
 | --- | --- |
-| 快速了解产品与关键取舍 | 阅读本文，再看[产品决策](DECISIONS.md) |
 | 实际运行与体验 | 直接打开[在线商店](https://agent-ready-store.vercel.app)，再走下方 Demo |
 | 在 Agent 中购物 | 查看 [MCP 接入指南](docs/engineering/MCP_CONNECT.md) |
+| 快速了解产品与关键取舍 | 阅读本文，再看[产品决策](DECISIONS.md) |
 | 查看图解展示 | 打开[在线章节展示](https://agent-ready-store-docs.vercel.app/presentation.html?slide=authorization)，或先看[产品 Demo](https://agent-ready-store-docs.vercel.app/demo.html) |
 | 检查架构和源码 | 从下方“设计解答”进入对应设计、实现与测试 |
 | 核对题目交付、CI 和缺口 | 查看[交付状态与证据](docs/engineering/DELIVERY_STATUS.md) |
@@ -46,7 +48,7 @@ Agent 客户端使用 MCP Streamable HTTP 连接 `https://agent-ready-store-api.
 ### 1. 网页购物：从选购到支付
 
 1. 打开商品列表，搜索并查看一件当前可购买商品的详情、规格与评论。
-2. 加入购物车，修改并保存车内数量，再勾选商品、填写本次购买数量，核对选中金额。购买数量可以与车内数量不同。
+2. 加入购物车，按需修改车内数量，勾选商品并填写本次购买数量，核对选中金额；有效购买量可以与车内已保存数量不同，无须先等保存完成。
 3. 生成待支付订单，查看固定的商品、数量、优惠、运费、总额与付款期限。
 4. 亲自点击模拟支付，查看原订单的支付结果；返回继续购物。
 
@@ -88,9 +90,15 @@ Agent 客户端使用 MCP Streamable HTTP 连接 `https://agent-ready-store-api.
 
 若网络异常出现未知状态，先选择只读查询；查不到不等于失败，也不会自动继续生单。只有明确继续原请求才沿原键执行。此路线说明可观察行为，不要求人为破坏线上网络；竞态与故障反例见[购物车隔离测试](apps/api/test/cart/command-isolation-db.test.ts)。
 
+### 5. 共享界面与局部更新
+
+购物车与订单分别呈现商品、金额和操作；费用商品明细可展开查看。Apps在共享页面中提供「概覽／商品／費用明細」切换与分页；订单列表先预览每单2项商品，再按需展开。
+
+常规加购、改量或移除只更新相关内容；同一商品评论翻页等待时保留原评论与分页控件，返回后再替换。错误或未知结果仍会明确提示。设计依据见[局部更新原则](docs/product/PRODUCT_DESIGN.md#stable-local-updates)，实现说明见[前端呈现设计](docs/engineering/FRONTEND_DESIGN.md#购物车订单与内嵌呈现)。
+
 ### Demo 与录影的证据状态
 
-[结算验收记录](openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/tasks.md)包含基础 MCP、WebMCP 与 Apps 的真实购物验收摘要。**可直接观看的完整对话导出或录影仍待补充**；摘要、浏览器测试和真实录影各有不同用途。在线体验入口已提供；线上 Demo 不替代完整购物对话或录影。当前发布版本见[交付状态](docs/engineering/DELIVERY_STATUS.md#购物车命令隔离已部署2026-11-01)。
+[结算验收记录](openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/tasks.md)包含基础 MCP、WebMCP 与 Apps 的真实购物验收摘要。**可直接观看的完整对话导出或录影仍待补充**；摘要、浏览器测试和真实录影各有不同用途。在线体验入口已提供；线上 Demo 不替代完整购物对话或录影。交付能力及证据缺口见[交付状态](docs/engineering/DELIVERY_STATUS.md)。
 
 ## 设计解答：为什么这样做
 
