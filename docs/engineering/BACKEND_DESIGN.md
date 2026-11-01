@@ -1,8 +1,6 @@
 # 后端与运行详细设计
 
-**范围与状态：** 2026-10-31 从原 Technical Design 按职责迁移；沿用[总体设计的状态、依据与批准范围](TECHNICAL_DESIGN.md)，不因拆分新增业务批准或声称全局基线整体 Approved。当前行为以正式 Spec 为准，变更理由见工程决策；本文维护当前设计，不维护实施任务或逐轮验证记录。
-
-2026-11-01按已批准的[cart-command-state-isolation设计](../../openspec/changes/archive/2026-11-01-cart-command-state-isolation/design.md)及其Spec Delta更新下述契约；正式主Spec同步与验收仍按该Change执行。本文描述目标设计，不作为实现或验证通过的证据。
+**状态：已定稿，待交付。** 本文维护当前Demo的详细设计，适用范围沿用[总体设计](TECHNICAL_DESIGN.md)。业务行为以正式Spec为准，取舍见工程决策，变更过程及验证记录见OpenSpec。
 
 <a id="21-商品发现与运行数据"></a>
 ## 商品发现与运行数据
@@ -81,6 +79,12 @@ Apps UI动作与Agent工具是不同调用角色，即使复用Host传输，也�
 
 持久化沿用[领域模型](CHECKOUT_CORE.md#2-领域与数据模型)实体，另保留必要的车操作幂等记录。交易不变量由[交易核心](CHECKOUT_CORE.md)维护；物理字段、完整锁序和验证反例的设计依据见[归档设计 §3、§5～6、§12](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/design.md)。
 
+
+### MCP工具组织与维护边界
+
+沿用[维护性升级设计](../../openspec/changes/archive/2026-11-01-maintainability-modernization/design.md)：`mcp/tools/` 中每个工具独立声明名称、Schema、描述、annotations、UI资源元数据和handler，适配入口使用 `McpServer.registerTool` 逐个注册。工具只接收所需服务，已知业务错误与恢复提示由该工具处理；公共层负责输入/协议封装、维护钩子及未知异常，不按工具名集中分派业务。
+
+Apps资源从工具携带的descriptor收集，构建清单与资源版本共用定义；Apps保留独立单文件HTML构建，Web与Apps仍共用commerce-ui。工具调用按需执行到期维护，分类发现和专用请求结果查询使用明确豁免；豁免不跳过Host/Origin及适用的token校验。默认demo、显式token的运行配置集中解析，非法值启动失败，不因存在Token就自动切换模式。未知异常记录经过筛选的操作与请求关联，不记录凭证、连接串或完整业务载荷。
 
 ### 实际模块与源码映射
 
