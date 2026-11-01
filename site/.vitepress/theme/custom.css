@@ -921,3 +921,40 @@ button,
   margin: 0;
   line-height: 1.5;
 }
+
+.agent-connect {
+  margin: 32px 0;
+  padding: 24px 0;
+  border-top: 1px solid #ddd;
+  border-bottom: 1px solid #ddd;
+}
+.agent-connect h2 {
+  font-size: 24px;
+  margin-bottom: 16px;
+}
+.agent-connect p {
+  line-height: 1.8;
+  margin: 12px 0;
+}
+.copy-text textarea {
+  display: block;
+  width: 100%;
+  resize: vertical;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 12px;
+  margin: 12px 0;
+  font: inherit;
+  line-height: 1.8;
+  background: #f5f5f3;
+}
+.copy-text [role='status'] {
+  min-height: 1.8em;
+  font-size: 14px;
+}
+.delivery-views {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 24px 0;
+}

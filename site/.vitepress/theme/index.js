@@ -1,6 +1,7 @@
 import { nextTick } from 'vue';
 import DefaultTheme from 'vitepress/theme';
 import Demo from './Demo.vue';
+import CopyText from './CopyText.vue';
 import Presentation from './Presentation.vue';
 import './presentation.css';
 import ReadingTools from './ReadingTools.vue';
@@ -25,6 +26,7 @@ export default {
       window.scrollTo(0, y);
     };
     app.component('ProductDemo', Demo);
+    app.component('CopyText', CopyText);
     app.component('ProjectPresentation', Presentation);
     app.component('ReadingTools', ReadingTools);
   },

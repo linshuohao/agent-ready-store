@@ -71,6 +71,8 @@ try {
   await page.locator('.step-nav button').last().click();
   await page.getByRole('button', { name: '继续：Agent 购物 →' }).click();
   await page.locator('.step-nav button').last().click();
+  await page.getByRole('button', { name: '继续：直接生单 →' }).click();
+  await page.locator('.step-nav button').last().click();
   await page.locator('.step-actions a').click();
   for (const [i, slide] of data.slides.entries()) {
     await expect(
@@ -128,9 +130,70 @@ try {
   await expect(
     page.locator('.presentation-screens [aria-current=step]'),
   ).toHaveText(data.slides.find((s) => s.id === 'frontend').nav);
+  // Exercise the migrated route and both clipboard outcomes in a real browser.
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.goto(base + '/');
+  await page
+    .getByRole('button', { name: '复制 MCP 地址', exact: true })
+    .click();
+  await expect
+    .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+    .toBe('https://agent-ready-store-api.vercel.app/mcp');
+  await page.goto(base + '/demo.html?route=explore&step=1');
+  await expect(page.locator('.step-nav [aria-current=step]')).toContainText(
+    '明确加购',
+  );
+  const prompt = await page.locator('.copy-text textarea').inputValue();
+  await page.getByRole('button', { name: '复制这段指令', exact: true }).click();
+  await expect
+    .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+    .toBe(prompt);
+  await page.reload();
+  await expect(page.locator('.step-nav [aria-current=step]')).toContainText(
+    '明确加购',
+  );
+  await page.getByRole('button', { name: '下一步', exact: true }).click();
+  await page.goBack();
+  await expect(page.locator('.step-nav [aria-current=step]')).toContainText(
+    '明确加购',
+  );
+  await page.goForward();
+  await expect(page.locator('.step-nav [aria-current=step]')).toContainText(
+    '明确购买',
+  );
+  await page.locator('.reading-bridge a').click();
+  await page.reload();
+  await page.locator('.reading-rail .return-demo').click();
+  await expect(page.locator('.step-nav [aria-current=step]')).toContainText(
+    '明确购买',
+  );
+  await page.evaluate(() =>
+    Object.defineProperty(navigator.clipboard, 'writeText', {
+      value: async () => {
+        throw new DOMException('Denied', 'NotAllowedError');
+      },
+      configurable: true,
+    }),
+  );
+  await page.getByRole('button', { name: '复制这段指令', exact: true }).click();
+  await expect(page.locator('.copy-text [role=status]')).toContainText(
+    '请手动复制',
+  );
+  await expect(page.locator('.copy-text textarea')).toBeFocused();
+  const selected = await page
+    .locator('.copy-text textarea')
+    .evaluate((el) => el.selectionEnd - el.selectionStart === el.value.length);
+  if (!selected) throw Error('Clipboard fallback did not select the prompt');
+  await page.goto(base + '/demo.html?route=unknown&step=99');
+  await expect(page.locator('.step-nav [aria-current=step]')).toContainText(
+    '浏览商品',
+  );
   for (const width of [1440, 1024, 820, 390]) {
     await page.setViewportSize({ width, height: 900 });
     for (const url of [
+      '/',
+      '/demo.html?route=explore&step=0',
+      '/demo.html?route=quick&step=0',
       '/library.html',
       '/history.html',
       '/read/checkout.html',
@@ -145,7 +208,12 @@ try {
         )
       )
         throw Error('Page overflow: ' + width + ' ' + url);
-      if (!url.includes('presentation') && width >= 768) {
+      if (
+        ['/library.html', '/history.html', '/read/checkout.html'].includes(
+          url,
+        ) &&
+        width >= 768
+      ) {
         await expect(page.locator('.reading-rail')).toBeVisible();
         await expect(page.locator('.reading-mobile-tools')).toBeHidden();
       }
