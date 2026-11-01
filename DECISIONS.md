@@ -169,6 +169,10 @@
 
 **给PM的回复：** “先保证商品符合顾客的查询条件，再比较推荐分数；有多个购买目标时分别展示，不让无关高分商品干扰选择。”
 
+### 2026-10-31 — 分类发现与后续语义搜索方向
+
+Human 已确认按“共享分类发现、Web分类下拉框、MCP目录探索”制作方案，并将向量／混合搜索保留为后期演进方向。确认范围为方向与规划，不包含具体接口设计、实施或向量数据库选型。当前增量与后续评估条件统一见 [catalog-discovery](openspec/changes/archive/2026-10-31-catalog-discovery/proposal.md) 及其 [Design](openspec/changes/archive/2026-10-31-catalog-discovery/design.md#future-evolution)；D-15现有精确约束与排序规则保持，后续如需改变须另行批准。
+
 <a id="current-d-16"></a>
 ## D-16 — 商品评论采用分页查询
 
@@ -268,6 +272,12 @@
 
 **给PM的回复：** “可以先买选中的商品，其他问题商品留在车里另行处理；若本次所选有一件不满足条件，会明确提示，不偷偷少买。”
 
+### D-23 / D-24 限定替代：独立加购与明确购买量（2026-11-01）
+
+**Status：Accepted；Human已授权实施。** 本轮Human明确生单不依赖车数量，本页主动移除取消选择，未知结果必须只读核实；随后授权审查修复、按前后端和接口分工实施，并授权规划提交。原D-23/D-24及历史结算决定保留其批准时点，本节仅替代“全车变化要求重新选择、先改车量才能购买、全车写入互斥”的部分。
+
+当前行为以[CART-01/06/08](docs/product/REQUIREMENTS.md#cart-01)及[本轮Change](openspec/changes/archive/2026-11-01-cart-command-state-isolation/design.md)为准：add独立，购买量明确，按SKU整行清理，查询与继续分离。接受先提交的同SKU追加量被生单清理、不同请求键可能生成多单的取舍；不引入行版本或新请求状态表。其余价格、库存、整笔成功、Human支付、Demo权限及set/remove冲突保护继续适用。此授权不等于最终验收、Push、Merge或部署批准。
+
 <a id="统一价格计算语义d-09d-13"></a>
 <a id="价格规则验收示例与边界"></a>
 ## 补充：范围与价格算例
@@ -302,3 +312,13 @@
 <a id="s3-confirmation-lifetime-20261030"></a>
 
 以上旧锚点保留供历史文档引用，对应记录见[限定替代及确认依据](docs/product/archive/DECISIONS_HISTORY.md)与[D-01历史](docs/product/archive/D01_DECISION_HISTORY.md)。
+
+2026-10-31 catalog-discovery后续批准：Human审阅方案通过，授权复核通过后提交进入实施；复核发现到期清理冲突后，Human明确接受仅新增分类HTTP/MCP入口豁免，其他入口与库存保守约束保持。该批准不包含Push、Merge或发布。
+
+## 本地 MCP Demo 认证限定替代 — 2026-11-01
+
+**Human Accepted（当前对话，maintainability-modernization）**：本地 MCP 默认 `demo`，免服务 Token 且开放全部既有能力；显式 `token` 才启用认证。只替代此前本地入口必须认证的约束，公开部署仍须使用 Token；Host/Origin、公开数据、Human 点击模拟支付和交易不变量不变。批准实施不等于已验证或已部署，执行证据归当前 Change。
+
+## MCP 线上 Demo 范围替代 — 2026-11-01
+
+**Human Accepted（当前对话后续明确授权，maintainability-modernization）**：本地和线上正常演示均默认 `demo`，无需 Token，允许实际公网 Host/Origin 配置。明确替代上条“仅本地免认证、公开部署仍须 Token”的范围；上条保留作为决策演进记录。显式 `token` 为可选共享令牌接入门槛，不是顾客身份或用户级授权。Host/Origin、输入校验、Human 点击模拟支付与交易不变量不变；此次授权不包含发布或远端配置操作。

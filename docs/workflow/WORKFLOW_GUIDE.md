@@ -4,6 +4,41 @@
 
 详细任务分类和权限规则见 [Workflow Skill](../../.agents/skills/ai-native-workflow/SKILL.md)；阶段提交时机与 Gate 见 [Git Checkpoint Policy](GIT_CHECKPOINT_POLICY.md)。本指南是操作入口，不是第二套 Spec、Plan 或 Tasks。
 
+## 工作流全景
+
+从 Human 的目标出发，由 Workflow 判断授权、风险与所需上下文，再选择设计或直接实施路径。图中的 Review 是反馈环节：发现问题要回到对应阶段修正，而不是只向后推进。
+
+```mermaid
+flowchart TB
+    H["Human Intent<br/>提出目标、问题或修改需求"]
+    W["ai-native-workflow<br/>任务分类 · 授权边界 · Context · 工具路由"]
+    D["Explore / Design<br/>OpenSpec · Codex<br/>明确问题、方案与验收条件"]
+    DR["Design Review<br/>契约冲突 · 反例 · 风险 · 过度设计"]
+    I["Implement / Test<br/>Codex · 按需使用 Superpowers<br/>按行为切片实现并验证"]
+    BR["Behavioral Review<br/>实际行为 · 现行契约 · 运行证据"]
+    DL["Delivery Review<br/>验收标准 · 测试结果 · 残余风险"]
+    M["Merge & Learn<br/>按授权处理 Git · 同步与归档 OpenSpec<br/>必要的 Decision / AI Notes 更新"]
+    H --> W
+    W -->|需求或方案需要明确| D
+    D --> DR
+    DR -->|通过审查并取得必要的 Human 批准| I
+    DR -.->|设计不成立：修订同一方案| D
+    W -->|既有契约内、已授权的局部修改| I
+    I --> BR
+    BR -.->|行为不满足：修复并重验| I
+    BR -->|验证与适用审查通过| DL
+    DL -.->|交付或验收未通过：修复受影响部分| I
+    DL -->|Human 接受；Git 操作须有对应授权| M
+    classDef stage fill:#fff,stroke:#b8b8b8,color:#191919;
+    classDef review fill:#f5f5f3,stroke:#777,color:#191919;
+    class H,W,D,I,M stage;
+    class DR,BR,DL review;
+```
+
+**按风险使用，而非所有任务都经过全部环节。** 局部、可逆且可充分验证的维护，可以直接实施并聚焦自查；重要需求、契约或架构变化需要相应设计与批准。审查失败返回设计或实现，修复后只重验受影响范围。
+
+**审查通过、Human 接受与操作授权分别判断。** 图中的 Merge & Learn 表示交付后的收敛，不代表自动提交、合并或发布；具体 Git 检查点与归档顺序沿用项目政策。该图参照提供的 Workflow 图整理，是工作方式示意，不是某次执行或验收记录。
+
 ## 开始一个需求
 
 把目标、背景和当前授权交给 Codex，并明确这轮希望完成到哪一步。例如：

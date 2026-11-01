@@ -4,6 +4,8 @@ import { Decimal } from 'decimal.js';
 import { parse } from 'lossless-json';
 import {
   searchInput,
+  categoryPageInput,
+  type ProductCategory,
   groupedSearchInput,
   type GroupedSearchResult,
   pageInput,
@@ -85,6 +87,25 @@ export class Catalog {
     this.revision = createHash('sha256')
       .update(this.catalogRevision + searchRevision)
       .digest('hex');
+  }
+  categories(input: unknown): Page<ProductCategory> {
+    const parsed = categoryPageInput.safeParse(input);
+    if (!parsed.success) throw new AppError('VALIDATION_ERROR', 400);
+    const { offset, limit, catalogRevision } = parsed.data;
+    this.checkRevision(catalogRevision);
+    const values = [
+      ...new Set(
+        this.products.map((p) => p.category).filter((v) => v.trim().length > 0),
+      ),
+    ].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+    return {
+      items: values
+        .slice(offset, offset + limit)
+        .map((value) => ({ value, label: value })),
+      total: values.length,
+      nextOffset: offset + limit < values.length ? offset + limit : null,
+      catalogRevision: this.revision,
+    };
   }
   initialInventory() {
     return this.products.map((p) => ({ productId: p.id, quantity: p.stock }));

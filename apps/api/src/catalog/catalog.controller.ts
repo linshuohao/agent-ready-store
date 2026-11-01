@@ -24,6 +24,12 @@ export class CatalogController {
     res.setHeader('Cache-Control', 'no-store');
     res.status(r.ok ? 200 : (httpStatus[r.error.code] ?? 503)).json(r);
   }
+  @Get('catalog/categories') async categories(
+    @Query() query: Record<string, unknown>,
+    @Res() res: Response,
+  ) {
+    await this.send(res, () => this.catalog.categories(decodeQuery(query)));
+  }
   @Get('products') async search(
     @Query() query: Record<string, unknown>,
     @Res() res: Response,

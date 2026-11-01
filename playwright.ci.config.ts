@@ -18,6 +18,7 @@ export default defineConfig({
   testMatch: [
     'shopping-smoke.spec.ts',
     'cart-lifecycle.spec.ts',
+    'cart-feedback.spec.ts',
     'order-lifecycle.spec.ts',
   ],
   grep: /@ci/,

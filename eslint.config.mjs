@@ -1,6 +1,6 @@
 import js from '@eslint/js';
 import ts from 'typescript-eslint';
-export default ts.config(
+export const baseConfig = ts.config(
   {
     ignores: [
       '**/dist/**',
@@ -17,3 +17,5 @@ export default ts.config(
     rules: { '@typescript-eslint/no-explicit-any': 'error' },
   },
 );
+
+export default baseConfig;

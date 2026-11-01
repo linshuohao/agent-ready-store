@@ -92,12 +92,12 @@ Human可在网站或Apps点击模拟支付；Agent工具只承接查询、选购
 <a id="71-可执行验证入口"></a>
 ### 质量目标与验收链路
 
-面向开发者定位设计与实现、测试人员定位条件与判据、交付人员核对运行证据。下表引用现有需求，不新设指标或另一套验收任务；测试入口只说明如何验证。历史结算/搜索执行证据分别在[结算Tasks](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/tasks.md)与[搜索Tasks](../../openspec/changes/archive/2026-10-31-grouped-multilingual-search/tasks.md)，最新运行版本、CI和真实Host缺口只维护在[交付状态](DELIVERY_STATUS.md)。本轮仅核对文档与源码，未重新执行业务测试。
+面向开发者定位设计与实现、测试人员定位条件与判据、交付人员核对运行证据。下表引用现有需求，不新设指标或另一套验收任务；测试入口只说明如何验证。历史结算/搜索执行证据分别在[结算Tasks](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/tasks.md)与[搜索Tasks](../../openspec/changes/archive/2026-10-31-grouped-multilingual-search/tasks.md)，最新运行版本、CI和真实Host缺口只维护在[交付状态](DELIVERY_STATUS.md)。本轮购物命令隔离正在实施，实际验证见当前Change，不以设计正文推断完成。
 
 | 目标与依据 | 环境/触发 → 可观察验收条件 | 设计与验证入口 | 证据及待确认边界 |
 | --- | --- | --- | --- |
 | 搜索确定、有界且无交易写入：[商品发现Spec](../../openspec/specs/product-discovery/spec.md) | 相同目录/库存下查询等价文字及多个目标 → 独立预算与稳定排序、组引用可解析、同名ID不混并；公开字段过滤、异常数据保真与评论不可信文本隔离；续页版本变化明确拒绝，五表交易摘要不变 | [搜索设计](BACKEND_DESIGN.md#分组搜索与文字匹配)及其单元、HTTP/MCP、真实DB测试入口；[目录测试](../../apps/api/test/catalog/catalog.test.ts)覆盖公开投影与评论 | 历史搜索Tasks已有对应记录；无生产级容量/延迟承诺 |
-| 车编辑与选择：[CART-08](../product/REQUIREMENTS.md)、[AC-18](../product/REQUIREMENTS.md#ac-18) | 草稿未保存、外部版本变化及问题行 → 保护输入并显式核对，按完整选中集合报价/生单，不自动部分购买 | [前端交互状态](FRONTEND_DESIGN.md#54-交互状态与可继续的动作)、[车浏览器测试](../../e2e/cart-lifecycle.spec.ts)、[车命令测试](../../apps/web/test/cart-lifecycle-commands.test.ts) | 历史结算证据；报价不是库存或最终金额承诺 |
+| 车编辑与选择：[CART-08](../product/REQUIREMENTS.md)、[AC-18](../product/REQUIREMENTS.md#ac-18) | 草稿未保存、外部版本变化及问题行 → 保护输入和独立购买选择，按明确购买数量报价/生单，不自动部分购买 | [前端交互状态](FRONTEND_DESIGN.md#54-交互状态与可继续的动作)、[车浏览器测试](../../e2e/cart-lifecycle.spec.ts)、[车命令测试](../../apps/web/test/cart-lifecycle-commands.test.ts) | 历史结算证据；报价不是库存或最终金额承诺 |
 | 跨入口金额一致：[NFR-03](../product/REQUIREMENTS.md#nfr-03) | 阈值与舍入边界、生单后目录变化 → 服务端明细可对账、支付沿原单金额 | [交易计价](CHECKOUT_CORE.md#62-库存期限与计价事实)、[pricing测试](../../apps/api/test/cart/pricing.test.ts) | 历史结算证据；本轮未重跑，不以UI格式化替代金额验证 |
 | 不超卖、幂等与原子提交：[NFR-04](../product/REQUIREMENTS.md#nfr-04) | 隔离PostgreSQL下同键、末件与配额竞争及故障注入 → 订单事实与库存净变化满足不变量，失败不部分提交 | [交易约束索引](CHECKOUT_CORE.md#交易约束与实现索引)连接锁序、SQL约束与DB测试 | 已有历史真实DB证据；Mock/HTTP成功码不足以单独证明 |
 | 期限与释放：[NFR-02](../product/REQUIREMENTS.md#nfr-02)、[期限要求](../product/REQUIREMENTS.md#ac-08) | 锁等待跨截止/支付与关闭竞争 → 数据库时间拒绝新支付、只消费或释放一次；故障恢复补扫 | [期限与扫描](CHECKOUT_CORE.md#数据库运行与隔离验证)、[lifecycle-db测试](../../apps/api/test/cart/lifecycle-db.test.ts) | 功能/竞争证据不证明时延。五秒释放目标的设计负载、环境、观测起止点与统计口径**待确认**；需确认后实测，不承诺故障期上限 |
@@ -216,3 +216,11 @@ Human可在网站或Apps点击模拟支付；Agent工具只承接查询、选购
 
 
 </details>
+
+## 分类发现增量（2026-10-31）
+
+[catalog-discovery](../../openspec/changes/archive/2026-10-31-catalog-discovery/design.md)复用Catalog/Service与共享Page/Result：`GET /api/v1/catalog/categories`和MCP `list_product_categories`返回目录派生的分类原值；Web首屏并行加载商品与分类，共享SearchForm使用分类下拉框。无新数据库表或搜索依赖。Human已批准仅分类HTTP GET/HEAD和该MCP工具豁免请求到期清理；分类仍遵守当前入口模式的认证规则，其他商品/交易入口仍先清理。边界与版本语义见该Change，不修改历史批准。
+
+## MCP 演示接入（2026-11-01 当前限定补充）
+
+Human 已批准 maintainability-modernization，并随后明确线上正常演示也使用 `demo`。未配置模式时本地与线上均免 Token，公网域名可用；仍按配置检查 Host/Origin。显式 `token` 提供可选服务接入门槛，不构成顾客身份或用户级订单隔离。工具可见性、Human 支付及交易约束不变。该确认替代此前“仅本地免认证、线上必须token”的范围；实现与验收见当前 Change，不代表已发布。

@@ -3,7 +3,9 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   getOrCreateCartInput,
-  persistentCartOperationInput,
+  addCartItemInput,
+  requestResultInput,
+  requestResultOutput,
   createOrderInput,
   listOrdersInput,
   orderTargetInput,
@@ -16,7 +18,11 @@ import {
 } from '@store/contracts';
 import { useCartOperations } from '@/features/cart/provider';
 import { z } from 'zod';
-import { readCart, readOrders } from '@/features/cart/lifecycle-commands';
+import {
+  readCart,
+  readOrders,
+  shoppingRequest,
+} from '@/features/cart/lifecycle-commands';
 import { readLifecycleOrder } from '@/features/checkout/order-commands';
 import { useLifecycleOrders } from '@/features/checkout/order-memory';
 import type { EditResult } from '@/features/cart/commands';
@@ -210,34 +216,39 @@ export function PageTools(props: Props) {
     });
     const cartTarget = z.object({ cartId: z.uuid().optional() }).strict();
     if (!readonly) {
-      const initializationInput = z.union([
-        getOrCreateCartInput.options[0],
-        getOrCreateCartInput.options[1].extend({
-          stayOnPage: z.boolean().optional(),
-        }),
-      ]);
       register(
         'get_or_create_cart',
-        '只在首次明確寫入且無目前車時初始化；純瀏覽/諮詢不呼叫。加購預設顯示車；購買的內部準備或用戶要求留頁設stayOnPage。重試沿原鍵與完整條目，已有ID用cartId恢復，不主動換車。',
-        jsonSchema(initializationInput),
+        '只讀取已存在的購物車；首次加購請使用 add_cart_item。',
+        jsonSchema(getOrCreateCartInput),
+        true,
+        async (input) => {
+          const parsed = getOrCreateCartInput.safeParse(input);
+          if (!parsed.success) return failure('VALIDATION_ERROR');
+          const result = await readCart(parsed.data.cartId);
+          if (
+            active &&
+            result.kind === 'success' &&
+            latest.current.operations.selectCart(parsed.data.cartId)
+          )
+            latest.current.operations.install(result.data);
+          return result;
+        },
+      );
+      const addInput = z.union(
+        addCartItemInput.options.map((option) =>
+          option.extend({ stayOnPage: z.boolean().optional() }),
+        ),
+      );
+      register(
+        'add_cart_item',
+        '獨立加購，不需要車版本。首次由本頁共享初始化身份；不因其他商品在途而拒絕。未知結果先查詢，繼續原請求需明確指示。',
+        jsonSchema(addInput),
         false,
         async (input) => {
-          const p = initializationInput.safeParse(input);
-          if (!p.success) return failure('VALIDATION_ERROR');
-          if ('cartId' in p.data) {
-            if (currentCart() && currentCart() !== p.data.cartId)
-              return failure('STALE_CONTEXT');
-            const result = await readCart(p.data.cartId);
-            if (
-              active &&
-              result.kind === 'success' &&
-              latest.current.operations.selectCart(p.data.cartId)
-            )
-              latest.current.operations.install(result.data);
-            return result;
-          }
-          const { stayOnPage, ...body } = p.data;
-          const result = await latest.current.operations.toolInitialize(body);
+          const parsed = addInput.safeParse(input);
+          if (!parsed.success) return failure('VALIDATION_ERROR');
+          const { stayOnPage, ...body } = parsed.data;
+          const result = await latest.current.operations.toolAdd(body);
           if (
             result.kind === 'success' &&
             !stayOnPage &&
@@ -245,6 +256,20 @@ export function PageTools(props: Props) {
           )
             router.push(`/cart/${result.data.cartId}`);
           return result;
+        },
+      );
+      register(
+        'get_request_result',
+        '只讀核實原請求結果。not_found不是失敗，不會繼續生單或修改購物車。',
+        jsonSchema(requestResultInput),
+        true,
+        async (input) => {
+          const parsed = requestResultInput.safeParse(input);
+          if (!parsed.success) return failure('VALIDATION_ERROR');
+          return shoppingRequest(
+            `/request-result?${new URLSearchParams(parsed.data)}`,
+            requestResultOutput,
+          );
         },
       );
       register(
@@ -282,15 +307,15 @@ export function PageTools(props: Props) {
           return readOrders(id, query.offset, query.limit, query.pendingOnly);
         },
       );
-      const operationBase = persistentCartOperationInput
-        .omit({ operation: true })
-        .extend({
+      const operationBase = z
+        .object({
           cartId: z.uuid(),
+          operationRequestId: z.uuid(),
+          expectedCartVersion: z.number().int().nonnegative(),
           productId: z.string().min(1).max(64),
-          stayOnPage: z.boolean().optional(),
-        });
+        })
+        .strict();
       for (const [name, type] of [
-        ['add_cart_item', 'add_item'],
         ['update_cart_item', 'set_quantity'],
         ['remove_cart_item', 'remove_item'],
       ] as const) {
@@ -302,44 +327,34 @@ export function PageTools(props: Props) {
               });
         register(
           name,
-          '一次明確的加購/絕對改量/移除，使用原操作鍵及預期車版本；草稿或同車在途拒絕，未知重試同鍵，不縮減購買目標。加購通常顯示車；內部準備或用戶要求留頁設stayOnPage。',
+          '絕對改量或移除保留車版本檢查；本頁主動移除立即取消未提交的購買選擇。未知結果先查詢。',
           jsonSchema(operationSchema),
           false,
           async (input) => {
-            const p = operationSchema.safeParse(input);
-            if (!p.success) return failure('VALIDATION_ERROR');
+            const parsed = operationSchema.safeParse(input);
+            if (!parsed.success) return failure('VALIDATION_ERROR');
             const {
               cartId,
-              productId,
-              stayOnPage,
               operationRequestId,
               expectedCartVersion,
-            } = p.data;
+              productId,
+            } = parsed.data;
             const operation =
               type === 'remove_item'
                 ? { type, productId }
                 : {
                     type,
                     productId,
-                    quantity: (
-                      p.data as z.infer<typeof operationBase> & {
-                        quantity: number;
-                      }
-                    ).quantity,
+                    quantity:
+                      'quantity' in parsed.data
+                        ? Number(parsed.data.quantity)
+                        : 0,
                   };
-            const result = await latest.current.operations.toolOperate(cartId, {
+            return latest.current.operations.toolOperate(cartId, {
               operationRequestId,
               expectedCartVersion,
               operation,
             });
-            if (
-              result.kind === 'success' &&
-              type === 'add_item' &&
-              !stayOnPage &&
-              visible(cartId)
-            )
-              router.push(`/cart/${cartId}`);
-            return result;
           },
         );
       }
@@ -349,7 +364,7 @@ export function PageTools(props: Props) {
       });
       register(
         'create_order',
-        '僅明確購買且完整目標準備成功才生單。整行selectedItems及預算/幣別/規格必須完整；任一準備失敗先停止，不縮單。創建即預留15分鐘並固定金額，尚未支付；直接顯示原單等Human親自點支付，不代點。未知沿原鍵重試，留頁需求設stayOnPage。',
+        '僅明確購買且完整目標準備成功才生單。明確selectedItems.quantity及預算/幣別/規格必須完整；任一準備失敗先停止，不縮單。創建即預留15分鐘並固定金額，尚未支付；直接顯示原單等Human親自點支付，不代點。未知先只讀查詢，明確繼續才沿原鍵執行，留頁需求設stayOnPage。',
         jsonSchema(createInput),
         false,
         async (input) => {

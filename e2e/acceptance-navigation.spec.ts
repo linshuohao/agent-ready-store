@@ -304,7 +304,7 @@ test('quantity updates automatically without a save action', async ({
   await quantity.fill('0');
   await quantity.press('Tab');
   await expect(page.getByRole('main').getByRole('alert')).toContainText(
-    '數量必須是正整數',
+    '請輸入正整數數量',
   );
   expect(writes).toHaveLength(1);
   await quantity.fill('3');
@@ -680,8 +680,8 @@ test('cart and order actions stay visible with one page scroll and reachable con
   await page
     .getByRole('spinbutton', { name: '數量 P001', exact: true })
     .fill('2');
-  await expect(create).toBeDisabled();
-  await expect(cartDock).toContainText('待確認');
+  await expect(create).toBeEnabled();
+  await expect(cartDock).not.toContainText('待確認');
   await page
     .getByRole('spinbutton', { name: '數量 P001', exact: true })
     .press('Escape');

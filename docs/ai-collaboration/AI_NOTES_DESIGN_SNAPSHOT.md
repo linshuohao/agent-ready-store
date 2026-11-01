@@ -37,7 +37,7 @@
 - **AI Contribution（ChatGPT / Codex）**：摘要记载 ChatGPT 整理 UX Markdown/HTML 与设计取舍；仓库保留两份交接原件、Codex 设计预览、五页线框和三个视觉稿。本次 Codex 只核对档案与现有设计记录，没有重跑历史浏览器检查。
 - **Human Intervention**：据摘要及现有 UX 记录，Human 选择页面与共享 Checkout 方向，撤回双语、最终仅保留 zh-TW；Product Design 记录 Human 接受线框/视觉稿方向。摘要另记载 Human 将 Review 注意力集中到购买安全、金额、权限及关键路径，并要求关键技术选择先经 Human + ChatGPT 讨论确认；具体纠偏经过无原始消息证据。
 - **Outcome**：跨工具交接有 Markdown、HTML 和可渲染设计资产支撑；设计方向已接受、阶段已归档，完整响应式/无障碍验收仍未完成。技术决策与 Technical Design 未因此启动。
-- **Evidence**：[过程摘要 Case 03–04](../../docs/ai-collaboration/AI_COLLABORATION_NOTES.md#case-03--chatgpt-设计决策到-codex-可执行原型的跨工具交接) 支持过程；[UX 决策](../../docs/product/PRODUCT_DESIGN.md#ux-decisions)、[原件及设计资产索引](../../design/README.md)、[Product Design §7、§9](../../docs/product/PRODUCT_DESIGN.md#7-design-review验收与实际证据) 支持当前产物、确认范围和历史有限检查记录。截图存在不等于本轮浏览器重验；原始对话及未覆盖验收仍缺证据。
+- **Evidence**：[过程摘要 Case 03–04](../../docs/ai-collaboration/AI_COLLABORATION_NOTES.md#case-03--chatgpt-设计决策到-codex-可执行原型的跨工具交接) 支持过程；[UX 决策](../../docs/product/PRODUCT_DESIGN.md#ux-decisions)、[原件及设计资产索引](../design/README.md)、[Product Design §7、§9](../../docs/product/PRODUCT_DESIGN.md#7-design-review验收与实际证据) 支持当前产物、确认范围和历史有限检查记录。截图存在不等于本轮浏览器重验；原始对话及未覆盖验收仍缺证据。
 - **Lesson**：跨工具交接需保存结构与来源；方向接受、有限检查和完整验收分开表述。AI 工具能力不替代 Human 的关键决策权，Review 深度按风险选择。
 
 ## 4. Human 将技术栈完整性收敛为熟悉栈与最小真实业务范围

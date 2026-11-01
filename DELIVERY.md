@@ -2,7 +2,7 @@
 
 这是一份面向面试官与仓库读者的项目导览。你可以从这里了解产品、运行 Demo，并沿证据入口检查产品判断、前端架构与 AI 协作过程，无需先阅读完整设计文档。
 
-[打开 HTML 阅读版](delivery/index.html)：本地浏览器直接打开，无需启动服务；保留仓库目录即可访问证据文件。
+[打开在线文档与展示站](https://agent-ready-store-docs.vercel.app)：无需本地启动，可连续体验产品 Demo、章节讲解和设计正文。[旧版离线 HTML](docs/delivery/index.html)仍保留。
 
 ## 项目在做什么
 
@@ -23,7 +23,7 @@ Agent-Ready Store 是一个同时服务人类与 AI Agent 的商店。用户可�
 | 快速了解产品与关键取舍 | 阅读本文，再看[产品决策](DECISIONS.md) |
 | 实际运行与体验 | 直接打开[在线商店](https://agent-ready-store.vercel.app)，再走下方 Demo |
 | 在 Agent 中购物 | 查看 [MCP 接入指南](docs/engineering/MCP_CONNECT.md) |
-| 查看图解展示 | 本地打开 [HTML 展示](presentation/index.html)，[打开方式](presentation/README.md)；GitHub 文件页不会直接运行 HTML |
+| 查看图解展示 | 打开[在线章节展示](https://agent-ready-store-docs.vercel.app/presentation.html?slide=authorization)，或先看[产品 Demo](https://agent-ready-store-docs.vercel.app/demo.html) |
 | 检查架构和源码 | 从下方“设计解答”进入对应设计、实现与测试 |
 | 核对题目交付、CI 和缺口 | 查看[交付状态与证据](docs/engineering/DELIVERY_STATUS.md) |
 
@@ -33,7 +33,7 @@ HTML 展示用于现场按章节讲解与跳转；交付导览用于独立阅读
 
 直接打开[在线商店](https://agent-ready-store.vercel.app)，无需安装依赖或初始化数据库。线上使用 Vercel 前后端与 Neon 免费数据库；首次访问可能需要等待冷启动。
 
-Agent 客户端使用 MCP Streamable HTTP 连接 `https://agent-ready-store-api.vercel.app/mcp`，通过 `Authorization: Bearer <MCP_SERVICE_TOKEN>` 认证。请向项目维护者获取令牌，不要将令牌写入对话或仓库。具体配置见 [MCP 接入指南](docs/engineering/MCP_CONNECT.md)。
+Agent 客户端使用 MCP Streamable HTTP 连接 `https://agent-ready-store-api.vercel.app/mcp`，本版本默认 Demo 无需 Token。仅当维护者显式启用 `token` 接入门槛时，才配置 `Authorization: Bearer <MCP_SERVICE_TOKEN>`；不要将令牌写入对话或仓库。具体配置见 [MCP 接入指南](docs/engineering/MCP_CONNECT.md)。
 
 线上 Demo 在后续业务请求到来时清理到期订单，无访问时不运行独立清理任务；超过15分钟仍不可支付。
 
@@ -46,11 +46,11 @@ Agent 客户端使用 MCP Streamable HTTP 连接 `https://agent-ready-store-api.
 ### 1. 网页购物：从选购到支付
 
 1. 打开商品列表，搜索并查看一件当前可购买商品的详情、规格与评论。
-2. 加入购物车，修改数量，保存后勾选要购买的商品，核对选中金额。
+2. 加入购物车，修改并保存车内数量，再勾选商品、填写本次购买数量，核对选中金额。购买数量可以与车内数量不同。
 3. 生成待支付订单，查看固定的商品、数量、优惠、运费、总额与付款期限。
 4. 亲自点击模拟支付，查看原订单的支付结果；返回继续购物。
 
-**值得观察：** 购物车可以持续使用；已创建订单具有独立明细，后续改车不会重写原订单。商品实际库存决定当时能否购买。
+**值得观察：** 购物车可以持续使用；已创建订单具有独立明细，后续改车不会重写原订单。例如车内5件、本次买2件，生单后该SKU购物车整行清理，订单固定为2件；稍后新加购不受原请求重放影响。商品实际库存决定当时能否购买。
 
 ### 2. Agent 购物：明确意图与 Human 接手
 
@@ -82,9 +82,15 @@ Agent 客户端使用 MCP Streamable HTTP 连接 `https://agent-ready-store-api.
 
 到期释放、支付与关闭竞争、丢响应后的未知恢复，可进一步查看[交易核心](docs/engineering/CHECKOUT_CORE.md)和[数据库生命周期测试](apps/api/test/cart/lifecycle-db.test.ts)。不需要为了阅读 Demo 等待15分钟，也不要把关闭浏览器当作取消成功。
 
+### 4. 并发加购与未知结果恢复
+
+在商品列表连续加购不同商品，观察各按钮独立反馈；首次并发加购共享初始化身份，最终落在同一辆车。勾选商品后可独立填写本次购买数量；本页主动移除商品会取消其未提交购买选择。
+
+若网络异常出现未知状态，先选择只读查询；查不到不等于失败，也不会自动继续生单。只有明确继续原请求才沿原键执行。此路线说明可观察行为，不要求人为破坏线上网络；竞态与故障反例见[购物车隔离测试](apps/api/test/cart/command-isolation-db.test.ts)。
+
 ### Demo 与录影的证据状态
 
-[结算验收记录](openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/tasks.md)包含基础 MCP、WebMCP 与 Apps 的真实购物验收摘要。**可直接观看的完整对话导出或录影仍待补充**；摘要、浏览器测试和真实录影各有不同用途。在线体验入口已提供；线上 Demo 不替代完整购物对话或录影。
+[结算验收记录](openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/tasks.md)包含基础 MCP、WebMCP 与 Apps 的真实购物验收摘要。**可直接观看的完整对话导出或录影仍待补充**；摘要、浏览器测试和真实录影各有不同用途。在线体验入口已提供；线上 Demo 不替代完整购物对话或录影。当前发布版本见[交付状态](docs/engineering/DELIVERY_STATUS.md#购物车命令隔离已部署2026-11-01)。
 
 ## 设计解答：为什么这样做
 
@@ -110,7 +116,7 @@ Web 与 Apps 共用 `packages/commerce-ui` 中的页面、Hooks、Commands、组
 
 ### 如何避免多入口计价不一致，以及重复操作？
 
-HTTP 与 MCP 进入共享业务用例，计价集中在服务端。客户端不自行推算最终交易金额。交易使用原请求键与订单标识处理幂等和恢复；响应丢失时保留未知状态并查询事实，不能直接判断失败后换单重买。本地倒计时也不能替代数据库中的关闭事实。
+HTTP 与 MCP 进入共享业务用例，计价集中在服务端。客户端不自行推算最终交易金额。交易使用原请求键与订单标识处理幂等和恢复；响应丢失时保留未知状态并查询事实，不能直接判断失败后换单重买。只读查询不会继续写入，只有明确继续才使用原请求键执行。本地倒计时也不能替代数据库中的关闭事实。
 
 依据：[统一计价实现](apps/api/src/cart/pricing.ts)、[交易核心](docs/engineering/CHECKOUT_CORE.md)、[生命周期数据库测试](apps/api/test/cart/lifecycle-db.test.ts)。
 
@@ -139,4 +145,4 @@ HTTP 与 MCP 进入共享业务用例，计价集中在服务端。客户端不�
 | AI 协作 | [AI_NOTES](AI_NOTES.md)、[Workflow Skill](.agents/skills/ai-native-workflow/SKILL.md) | 真实纠偏、决策责任与验证范围 |
 | Git 历史 | [GitHub 仓库](https://github.com/linshuohao/agent-ready-store) | 规划、实现、修复及合并记录；需具备仓库权限 |
 
-单元、数据库、浏览器与真实 Host 验收分别覆盖不同层次。本文是交付导览，不宣称当前检出版本已重新通过所有检查。真实支付、账户隐私、生产部署与十万商品性能不在当前承诺内；可观看 Agent 材料和现场增量开发演练的缺口以交付状态为准。
+单元、数据库、浏览器与真实 Host 验收分别覆盖不同层次。本文是交付导览，不宣称当前检出版本已重新通过所有检查。真实支付、账户隐私、生产级运行保障与十万商品性能不在当前承诺内；可观看 Agent 材料和现场增量开发演练的缺口以交付状态为准。

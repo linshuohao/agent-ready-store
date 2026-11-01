@@ -6,16 +6,18 @@ import { CartService } from '../../src/cart/cart.service.js';
 const cartId = '10000000-0000-4000-8000-000000000001';
 const catalog = new Catalog(readFileSync('references/products.json', 'utf8'));
 const input = {
-  selectedItems: [{ productId: 'P001', expectedQuantity: 2 }],
+  selectedItems: [{ productId: 'P001', quantity: 2 }],
   constraints: { currency: 'TWD' },
 };
 // Only the database read boundary is substituted; selection and pricing are real.
-function service(quantity: number, reservedQuantity = 0) {
+function service(quantity: number, reservedQuantity = 0, cartQuantity = 2) {
   const tx = {
     cart: {
       findUnique: async () => ({
         id: cartId,
-        items: [{ productId: 'P001', quantity: 2 }],
+        items: cartQuantity
+          ? [{ productId: 'P001', quantity: cartQuantity }]
+          : [],
       }),
     },
     inventory: {
@@ -50,3 +52,15 @@ it('does not quote anomalous inventory as a stock shortage', async () => {
     service(-1).quoteSelection(cartId, input, 'WEB'),
   ).rejects.toMatchObject({ code: 'CART_ITEMS_INVALID' });
 });
+
+it.each([0, 1, 5])(
+  'quotes explicit purchase quantity independent of cart quantity %s',
+  async (cartQuantity) => {
+    const quote = await service(10, 0, cartQuantity).quoteSelection(
+      cartId,
+      input,
+      'WEB',
+    );
+    expect(quote.items).toMatchObject([{ productId: 'P001', quantity: 2 }]);
+  },
+);

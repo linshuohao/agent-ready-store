@@ -9,7 +9,7 @@ test.beforeAll(async () => {
   const { build } = await import(pathToFileURL(require.resolve('vite')).href);
   const appHtml = await readFile(
     new URL(
-      '../apps/api/dist/mcp-app/search-products-v8.html',
+      '../apps/api/dist/mcp-app/search-products-v9.html',
       import.meta.url,
     ),
     'utf8',
@@ -210,7 +210,7 @@ test('shared cart keeps the quantity draft after conflict until explicit reload'
     .press('Enter');
   await expect(
     f.getByRole('button', {
-      name: '重新載入購物車（放棄未儲存修改）',
+      name: '重新讀取購物車（保留購買量與草稿）',
       exact: true,
     }),
   ).toBeVisible();
@@ -219,10 +219,16 @@ test('shared cart keeps the quantity draft after conflict until explicit reload'
   ).toHaveValue('2');
   await f
     .getByRole('button', {
-      name: '重新載入購物車（放棄未儲存修改）',
+      name: '重新讀取購物車（保留購買量與草稿）',
       exact: true,
     })
     .click();
+  await expect(
+    f.getByRole('spinbutton', { name: '數量 P001', exact: true }),
+  ).toHaveValue('2');
+  await f
+    .getByRole('spinbutton', { name: '數量 P001', exact: true })
+    .press('Escape');
   await expect(
     f.getByRole('spinbutton', { name: '數量 P001', exact: true }),
   ).toHaveValue('1');
@@ -587,4 +593,38 @@ test('embedded catalog reaches server pages and comments retain their page acros
   expect(
     await f.locator('main').evaluate((el) => el.scrollWidth <= el.clientWidth),
   ).toBe(true);
+});
+
+test('selected quantity buttons and failed saves preserve the explicit purchase amount', async ({
+  page,
+}) => {
+  const f = await openFixture(page);
+  await f.getByRole('button', { name: '商品（2）', exact: true }).click();
+  await f.getByRole('checkbox', { name: '選取 P001', exact: true }).check();
+  await f.getByRole('button', { name: '增加 P001 數量', exact: true }).click();
+  await expect(
+    f.getByRole('spinbutton', { name: '數量 P001', exact: true }),
+  ).toHaveValue('2');
+  await page.evaluate(() => {
+    (window as any).fixture.controls.conflictOnce = true;
+  });
+  await f.getByRole('spinbutton', { name: '數量 P001', exact: true }).fill('5');
+  await f
+    .getByRole('spinbutton', { name: '數量 P001', exact: true })
+    .press('Enter');
+  await expect(
+    f.getByRole('button', {
+      name: '重新讀取購物車（保留購買量與草稿）',
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    f.getByRole('button', { name: '去結算', exact: true }),
+  ).toBeEnabled();
+  await expect(f.locator('.cart-line-subtotal').first()).toContainText('50.00');
+  await f.getByRole('button', { name: '去結算', exact: true }).click();
+  await expect(
+    f.getByRole('heading', { name: '待支付訂單', exact: true }),
+  ).toBeVisible();
+  await expect(f.locator('.purchase-product').first()).toContainText('5 件');
 });

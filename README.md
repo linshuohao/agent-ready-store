@@ -4,15 +4,22 @@
 
 网页与 Agent 共用商品查询、计价、库存和订单能力；MCP Apps 与网页进一步共享完整的购物界面和交互逻辑。
 
-首次了解项目或评审交付，可先阅读[交付与体验导览](DELIVERY.md)（[HTML 阅读版](delivery/index.html)）：项目说明、Demo 路线、关键设计解答及证据入口。
+首次了解项目或评审交付，可直接打开[文档与展示站](https://agent-ready-store-docs.vercel.app)：从产品 Demo 进入需求演进、技术方案与 AI 工作流，再跳转到设计正文、正式 Spec 和验证证据，读完可返回原演示位置。
 
 ## 在线体验
 
-- [打开商店](https://agent-ready-store.vercel.app)：无需安装，使用模拟支付，不会真实扣款。
-- [API 健康检查](https://agent-ready-store-api.vercel.app/api/v1/health)
-- MCP：`https://agent-ready-store-api.vercel.app/mcp`，需由项目维护者提供访问令牌，配置见下方 Agent 接入。
+| 入口 | 用途 |
+| --- | --- |
+| [在线商店](https://agent-ready-store.vercel.app) | 实际浏览商品、购物车与模拟支付，无需安装 |
+| [文档与展示站](https://agent-ready-store-docs.vercel.app) | 项目导览与完整阅读链路 |
+| [产品 Demo](https://agent-ready-store-docs.vercel.app/demo.html) | 网页与 Agent 购物流程的分步展示 |
+| [章节讲解](https://agent-ready-store-docs.vercel.app/presentation.html?slide=authorization) | 需求与演进、技术方案、AI 工作流 |
+| [完整文档](https://agent-ready-store-docs.vercel.app/library.html) | 设计方案、现行 Spec、历史归档与验证证据 |
+| [API 健康检查](https://agent-ready-store-api.vercel.app/api/v1/health) | 查看后端服务是否可用 |
 
-部署配置与限制见[部署说明](docs/engineering/DEPLOYMENT.md)。
+MCP 地址：`https://agent-ready-store-api.vercel.app/mcp`，本版本默认 Demo 无需访问令牌，配置见下方 Agent 接入。商城使用模拟支付，不会真实扣款。
+
+部署配置见[部署说明](docs/engineering/DEPLOYMENT.md)，文档站本地启动与发布设置见[文档站说明](site/README.md)。纯 Markdown 入口为[交付与体验导览](DELIVERY.md)。
 
 ## 功能
 
@@ -36,6 +43,7 @@ Next.js / React 提供网页，NestJS 承载 API 与 MCP，Prisma / PostgreSQL �
 | [packages/commerce-ui](packages/commerce-ui/) | Web / Apps 共用页面、交互、控件与样式 |
 | [packages/contracts](packages/contracts/) | 共享数据契约与输入校验 |
 | [openspec](openspec/) | 功能规格与变更记录 |
+| [site](site/) | VitePress 文档与展示站 |
 
 ## 本机开发
 
@@ -60,11 +68,12 @@ pnpm install --frozen-lockfile
 | --- | --- |
 | `POSTGRES_PASSWORD` | 本地 PostgreSQL 密码 |
 | `DATABASE_URL` | 数据库连接地址，密码需与上项一致；特殊字符需 URL 编码 |
-| `MCP_SERVICE_TOKEN` | MCP 服务认证 Token，使用至少24字符的随机值 |
+| `MCP_AUTH_MODE` | 本地与线上 Demo 默认 `demo` 免认证；需要限制接入时设为 `token` |
+| `MCP_SERVICE_TOKEN` | `token` 模式必需，使用至少24字符的随机值 |
 | `WEB_ORIGIN` | 网页地址，默认 `http://localhost:3000` |
 | `MCP_ALLOWED_HOSTS` | MCP 请求允许的 Host，默认本机3002端口 |
 
-可用 `openssl rand -hex 32` 生成 Token。`.env` 包含本机凭证，不应提交到 Git。
+选择 `token` 模式时，可用 `openssl rand -hex 32` 生成 Token。`.env` 包含本机凭证，不应提交到 Git。
 
 ### 初始化与启动
 
@@ -96,10 +105,9 @@ pnpm dev
 
 ```text
 URL: https://agent-ready-store-api.vercel.app/mcp
-Authorization: Bearer <MCP_SERVICE_TOKEN>
 ```
 
-线上连接使用项目维护者提供的令牌。本机开发时，将 URL 改为 `http://localhost:3002/mcp` 并使用本机配置的令牌；客户端需要能访问运行服务的机器。MCP 提供查询、购物车和订单工具；支持 MCP Apps 的客户端可在对话中展示商品与结算卡片，无需另建连接。不支持 Apps 时，仍可使用 MCP 工具，并通过网页完成支付。
+本版本的本地与线上 Demo 默认免认证，客户端仅配置 URL；本机开发将 URL 改为 `http://localhost:3002/mcp`。需要限制服务接入时，维护者显式启用 `token` 模式，客户端再发送 Bearer Token，详见下方接入指南。客户端需能访问服务地址。MCP 提供查询、购物车和订单工具；支持 MCP Apps 的客户端可在对话中展示商品与结算卡片，不支持 Apps 时通过网页完成支付。
 
 WebMCP 为支持该能力的浏览器 Agent 提供页面工具；其他浏览器仍可使用普通网页。Agent 可按明确购买意图准备订单，最终支付由用户在网页或内嵌界面完成。
 
@@ -147,7 +155,7 @@ pnpm start:docker
 
 ## 更多文档
 
-- [展示与答辩](presentation/index.html)：主讲、备查、设计说明与证据；[打开方式](presentation/README.md)。
+- [在线展示与文档](https://agent-ready-store-docs.vercel.app)：产品 Demo、章节图解、设计正文与证据；[旧版离线展示](docs/presentation/index.html)保留。
 
 - [产品需求](docs/product/REQUIREMENTS.md)与[产品设计](docs/product/PRODUCT_DESIGN.md)：功能、用户流程和交互约定。
 - [产品决策](DECISIONS.md)：需求理解、业务取舍与 PM 沟通。

@@ -6,7 +6,7 @@
 - 开始任务先检查 Git 状态和范围，加载 [ai-native-workflow](.agents/skills/ai-native-workflow/SKILL.md)，再按需读取相关决策、Spec、源码与测试。审查路由与按需可视化由 [ai-native-review](.agents/skills/ai-native-review/SKILL.md) 单向接入，代码审查复用 Superpowers。
 - OpenSpec 是唯一正式的变更级 Spec、Design、Tasks 与 Change 来源；Superpowers 补充执行方法，不建立第二套正式计划，不修改第三方 Skills。工具入口仅在需要时读 [TOOLING](docs/engineering/TOOLING.md)。
 - 验证失败先定位、修复并重验；不伪造测试、审批、Skill 使用或协作记录。输出以完成结果、关键取舍、验证证据和未解决问题为主；例行检查留当前对话/PR，不重复长篇过程或逐轮新增报告。
-- README 只作导航，不沿链接默认展开全部文档。`docs/presentation/` 与未来 `presentation/` 面向交付讲解，仅在演示、方法论讲解或展示入口维护/验收时读取，不属于日常执行上下文，也不批准业务契约。
+- README 只作导航，不沿链接默认展开全部文档。`docs/presentation/` 面向交付讲解，仅在演示、方法论讲解或展示入口维护/验收时读取，不属于日常执行上下文，也不批准业务契约。
 
 ## 默认执行原则
 

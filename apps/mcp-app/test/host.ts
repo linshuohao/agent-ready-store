@@ -271,16 +271,20 @@ bridge.oncalltool = async ({ name, arguments: args }) => {
       catalogRevision: 'fixture',
     });
   }
-  if (name === 'quote_selection')
+  if (name === 'quote_selection') {
+    const selected = args!.selectedItems as {
+      productId: string;
+      quantity: number;
+    }[];
     return ok(
       summary(
-        cart.items.filter((i) =>
-          (args!.selectedItems as { productId: string }[]).some(
-            (s) => s.productId === i.productId,
-          ),
-        ),
+        selected.map((item) => ({
+          ...cart.items.find((line) => line.productId === item.productId)!,
+          quantity: item.quantity,
+        })),
       ),
     );
+  }
   if (name === 'update_cart_item') {
     if (controls.conflictOnce) {
       controls.conflictOnce = false;
@@ -313,12 +317,23 @@ bridge.oncalltool = async ({ name, arguments: args }) => {
     return ok(cart);
   }
   if (name === 'apps_create_order') {
-    const selected = cart.items.filter((i) =>
-      (args!.selectedItems as { productId: string }[]).some(
-        (s) => s.productId === i.productId,
+    const selected = (
+      args!.selectedItems as { productId: string; quantity: number }[]
+    ).map((item) => ({
+      ...cart.items.find((line) => line.productId === item.productId)!,
+      quantity: item.quantity,
+    }));
+    const response = createFixtureOrder(selected);
+    cart = {
+      ...cart,
+      items: cart.items.filter(
+        (line) => !selected.some((item) => item.productId === line.productId),
       ),
-    );
-    return createFixtureOrder(selected);
+    };
+    return {
+      ...response,
+      structuredContent: { ok: true, data: { order, cart } },
+    };
   }
   if (name === 'get_order') return ok(order);
   if (name === 'list_orders') {

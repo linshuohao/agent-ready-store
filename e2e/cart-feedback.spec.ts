@@ -57,7 +57,7 @@ test('feedback respects reduced motion and pauses dismissal for keyboard use', a
   await expect(feedback).toHaveCount(0);
 });
 
-test('one page locks cart writes but only the clicked button shows progress', async ({
+test('A in flight does not disable or queue B; only each clicked button shows progress @ci', async ({
   page,
 }) => {
   let release!: () => void;
@@ -65,10 +65,10 @@ test('one page locks cart writes but only the clicked button shows progress', as
     release = resolve;
   });
   let creates = 0;
-  await page.route('**/api/v1/shopping/carts', async (route) => {
+  await page.route('**/api/v1/shopping/carts/add', async (route) => {
     if (route.request().method() === 'POST') {
       creates++;
-      await barrier;
+      if (creates === 1) await barrier;
     }
     await route.continue();
   });
@@ -76,9 +76,10 @@ test('one page locks cart writes but only the clicked button shows progress', as
   await page.locator('button[data-add-cart]:enabled:visible').first().click();
   await expect.poll(() => creates).toBe(1);
   try {
-    await expect(
-      page.locator('button[data-add-cart]:enabled:visible'),
-    ).toHaveCount(0);
+    const other = page.locator('button[data-add-cart]:enabled:visible').first();
+    await expect(other).toBeEnabled();
+    await other.click();
+    await expect.poll(() => creates).toBe(2);
     await expect(
       page.locator('button[data-add-cart]').filter({ hasText: '處理中…' }),
     ).toHaveCount(1);
@@ -91,7 +92,7 @@ test('one page locks cart writes but only the clicked button shows progress', as
   await expect(
     page.getByRole('status').filter({ hasText: '已儲存購物車' }),
   ).toBeVisible();
-  expect(creates).toBe(1);
+  expect(creates).toBe(2);
 });
 
 test('empty cart browsing creates nothing and header remains keyboard reachable', async ({

@@ -23,7 +23,7 @@
 - **Status：Approved — Product Design Baseline v0.2（批准范围及保留项见下表）**。
 - **版本 / 适用范围：** v0.2；归档 Human Web 与 Agent Handoff 的购物体验、五页线框结构、三个代表性视觉稿、视觉与响应式方向及必要异常状态。已接受的设计结构与方向范围见下表；本基线已获 Human 正式批准；批准不等于完整验收通过或业务实现授权。
 - **整理日期：** 2026-10-28（Asia/Shanghai）；2026-10-29 完成目录合并后的最终一致性修订，承接 Human「Product Design Baseline — Final Review & Alignment」指令；同日获 Human 最终批准，范围如下。
-- **依据：** [Requirements v0.2](2026-10-31-REQUIREMENTS.md)、[产品决策 D-01～D-22](../../../DECISIONS.md)、[UX 决策与演进](#ux-decisions)、[附件 Markdown 原件](../../../design/references/UX_DECISIONS.md)、[HTML 视觉与流程参考](../../../design/references/UX_DECISIONS.html)、[既有线框](../../../design/index.html?mode=wireframe)。Requirements v0.2 已由本轮 Baseline Finalization 批准已确认范围，P-02 / P-04 保留非阻塞设计细化。
+- **依据：** [Requirements v0.2](2026-10-31-REQUIREMENTS.md)、[产品决策 D-01～D-22](../../../DECISIONS.md)、[UX 决策与演进](#ux-decisions)、[附件 Markdown 原件](../../design/references/UX_DECISIONS.md)、[HTML 视觉与流程参考](../../design/references/UX_DECISIONS.html)、[既有线框](../../design/index.html?mode=wireframe)。Requirements v0.2 已由本轮 Baseline Finalization 批准已确认范围，P-02 / P-04 保留非阻塞设计细化。
 - **Human 确认依据：** Human 在此前「Agent-Ready Store — Product Design Phase Closure」请求中明确说明，主要 UI/UX 决策已经由 Human + ChatGPT 完成，五个 Wireframes 与三个代表性 Visual Mockups 已完成方向性 Review，目前未发现需要重新设计的重大问题，并要求记录设计方向已接受、完成本阶段归档。确认人：Human；记录日期：2026-10-28（Asia/Shanghai）；不补造历史审批编号或独立测试结论。此前五页线框作为结构基础的明确批准继续有效，演进见第 9 节。
 - **最终批准记录：** 确认人：Human；日期：2026-10-29（Asia/Shanghai）；直接依据：Human 在最终一致性修订交付后回复“批准”。批准对象为本 Product Design Baseline v0.2 的结构、页面职责、关键交互及视觉方向；Pending Verification、Planned Enhancement、P-02 / P-04 和工程传播差异继续保留，不视为验证通过、增强机制批准或实施/Commit/Push 授权。
 - **取代关系：** v0.2 整理并替代 v0.1 Draft 的当前阶段状态，不替代产品或 UX 决策，不改变设计资产或既有业务语义。保留 v0.1 生成、线框结构批准、方向性 Review 与阶段归档的演进，不将其改写成一次完整验收。
@@ -49,16 +49,16 @@
 
 以黑白极简、商品与价格优先的方式，支持顾客快速发现商品、理解信息、编辑购物车并知情确认。Agent 可以准备购物，Human 始终保有最终购买确认权。没有单独品牌营销 Landing Page、完整购物车 Drawer 或独立 Agent Checkout。
 
-[统一 Design Preview](../../../design/index.html) 提供“代表性視覺稿 / 五頁結構線框”切换、页面导航、路径/异常选择与宽度控制。五页共用展示内容和状态，视觉稿追加 CSS 与商品示意图，不构建第二套商城。
+[统一 Design Preview](../../design/index.html) 提供“代表性視覺稿 / 五頁結構線框”切换、页面导航、路径/异常选择与宽度控制。五页共用展示内容和状态，视觉稿追加 CSS 与商品示意图，不构建第二套商城。
 
 | 资产 | 实际位置 / 作用 | 确认状态 |
 | --- | --- | --- |
-| 五个核心页面线框 | [线框模式](../../../design/index.html?mode=wireframe)；共用 [HTML](../../../design/wireframes/pages.html) | Human 已确认作为结构基础，并完成方向性 Review；不表示产品实现已验收 |
-| 首页 Visual Mockup | [home.html](../../../design/mockups/home.html) | 设计方向已接受；完整验收未完成 |
-| 商品详情 Visual Mockup | [product.html](../../../design/mockups/product.html) | 设计方向已接受；完整验收未完成 |
-| Checkout Visual Mockup | [checkout.html](../../../design/mockups/checkout.html)；同页切换一般/Agent 来源 | 设计方向已接受；完整验收未完成 |
-| 视觉规范的实际样式 | [visual.css](../../../design/mockups/visual.css) | 已归档的现有视觉表达；不冒称每个参数均经逐项 Human 签核 |
-| 附件与来源 | [design/README.md](../../../design/README.md) | 原件保真与来源索引；展示边界见 §11 |
+| 五个核心页面线框 | [线框模式](../../design/index.html?mode=wireframe)；共用 [HTML](../../design/wireframes/pages.html) | Human 已确认作为结构基础，并完成方向性 Review；不表示产品实现已验收 |
+| 首页 Visual Mockup | [home.html](../../design/mockups/home.html) | 设计方向已接受；完整验收未完成 |
+| 商品详情 Visual Mockup | [product.html](../../design/mockups/product.html) | 设计方向已接受；完整验收未完成 |
+| Checkout Visual Mockup | [checkout.html](../../design/mockups/checkout.html)；同页切换一般/Agent 来源 | 设计方向已接受；完整验收未完成 |
+| 视觉规范的实际样式 | [visual.css](../../design/mockups/visual.css) | 已归档的现有视觉表达；不冒称每个参数均经逐项 Human 签核 |
+| 附件与来源 | [design/README.md](../../design/README.md) | 原件保真与来源索引；展示边界见 §11 |
 
 商品图片采用视觉稿制作阶段原创的灰阶 SVG 示意，明确标为“商品示意”，不冒称实物照片或供应商资产。商品名称、描述、价格、规格、原始评论来自只读 Mock；变价/缺货状态是另行标识的合成样本，原件不改写。正式商品摄影策略仍可在后续资源条件明确时调整，不影响当前结构和业务规则。资产源文件和截图保留生成时的 Draft 标签，表示设计参考及展示边界；当前方向接受与阶段状态以本文和统一预览说明为准。
 
@@ -125,7 +125,7 @@ flowchart TD
 
 ## 5. 视觉规范（现有设计表达归档）
 
-以下为视觉稿制作阶段在授权范围内细化、随现有设计归档的具体表达。Human 已接受黑白极简视觉方向，不据此虚构每一项像素值、字体或示意图的单独批准。实际样式维护于 [visual.css](../../../design/mockups/visual.css)，表格说明设计意图，不建立另一套应用或大型 Design System；阶段归档也不授权实施。
+以下为视觉稿制作阶段在授权范围内细化、随现有设计归档的具体表达。Human 已接受黑白极简视觉方向，不据此虚构每一项像素值、字体或示意图的单独批准。实际样式维护于 [visual.css](../../design/mockups/visual.css)，表格说明设计意图，不建立另一套应用或大型 Design System；阶段归档也不授权实施。
 
 | 项目 | 当前设计 |
 | --- | --- |
@@ -169,9 +169,9 @@ flowchart TD
 
 | 页面 | 桌面 1440 | 移动 390 |
 | --- | --- | --- |
-| 首页 | [截图](../../../design/review/home-desktop.jpg) | [截图](../../../design/review/home-mobile.jpg) |
-| 商品详情 | [截图](../../../design/review/product-desktop.jpg) | [截图](../../../design/review/product-mobile.jpg) |
-| Checkout（Agent） | [截图](../../../design/review/checkout-desktop.jpg) | [截图](../../../design/review/checkout-mobile.jpg) |
+| 首页 | [截图](../../design/review/home-desktop.jpg) | [截图](../../design/review/home-mobile.jpg) |
+| 商品详情 | [截图](../../design/review/product-desktop.jpg) | [截图](../../design/review/product-mobile.jpg) |
+| Checkout（Agent） | [截图](../../design/review/checkout-desktop.jpg) | [截图](../../design/review/checkout-mobile.jpg) |
 
 验收要求：完整摘要与金额可对账、明确 Human 授权、两种路径共用规则、编辑不丢原车/来源、异常不绕过确认或过期权限、全部评论可分页访问、响应式不隐藏关键信息、关键操作支持键盘与可理解的状态反馈。相关功能最终仍需在获授权的真实实现上验证，不能将本轮演示通过等同业务正确。
 
@@ -205,7 +205,7 @@ P-02 / P-04 不阻塞基线整体批准，但依赖其细则的设计、实现�
 
 2026-10-29 最终批准：Human 在本次一致性修订交付后回复“批准”；v0.2 正式生效，批准范围与保留项见开头记录。此前 Draft、方向接受及有限验证的历史不改写。
 
-**归档方式（设计阶段历史）：** 当时文档与资产保留原位，以本文维护当前状态及批准范围，[设计资产说明](../../../design/README.md)和[统一预览](../../../design/index.html)引用。当前 `openspec/` 仅有配置与空目录占位，没有待归档的业务 Change，因此本次不是 OpenSpec Change Archive，不新建 Change、归档目录或另一套阶段报告。Requirements、产品/UX 决策及其历史、附件原件保持不变。
+**归档方式（设计阶段历史）：** 当时文档与资产保留原位，以本文维护当前状态及批准范围，[设计资产说明](../../design/README.md)和[统一预览](../../design/index.html)引用。当前 `openspec/` 仅有配置与空目录占位，没有待归档的业务 Change，因此本次不是 OpenSpec Change Archive，不新建 Change、归档目录或另一套阶段报告。Requirements、产品/UX 决策及其历史、附件原件保持不变。
 
 **当前核查结论：** D-01 与 Requirements v0.2 已同步产品授权方向；本文已承接 MVP / Planned Enhancement，保留 UX-04 的共享 Checkout 路径。工程 C-01 / C-02 的同步结果见 §8；尚无理由重做五页线框或三个视觉稿。模拟样本、P-02 / P-04 与浏览器日志未知保持原有限制。
 
@@ -484,7 +484,7 @@ P-02 / P-04 不阻塞基线整体批准，但依赖其细则的设计、实现�
 
 以下从设计资产说明合并，保留生成时的样本口径和验证限制；当前浏览器证据与未完成验收统一见 §7。
 
-- [fixtures.js](../../../design/wireframes/fixtures.js) 为 30 项 Mock 的只读公开购物字段快照，商品原始名称、规格、描述及评论不改写；不嵌入内部毛利字段。评论始终作为转义后的业务文本呈现，包含伪造指令的内容没有执行权限。
+- [fixtures.js](../../design/wireframes/fixtures.js) 为 30 项 Mock 的只读公开购物字段快照，商品原始名称、规格、描述及评论不改写；不嵌入内部毛利字段。评论始终作为转义后的业务文本呈现，包含伪造指令的内容没有执行权限。
 - 默认购物车固定为 P001 × 1、P003 × 1：商品小计 NT$2,580.00，满减 NT$100.00，运费 0；一般来源总额 NT$2,480.00，Agent 折扣 NT$124.00、总额 NT$2,356.00。数字是依据现有规则预先核对的展示常量，没有客户端计价引擎。
 - 编辑样本固定为 P001 × 2、P003 × 1；Agent 总额 NT$4,151.50。结果页保留确认页选定的样本组成与金额。
 - 变价样本将 P001 展示单价临时设为 NT$1,990.00；同总额样本同时将 P003 设为 NT$590.00。缺货样本将当前可用量展示为 0。它们是明确的合成状态，不修改 Mock 原件，不宣称真实价格或库存变化。

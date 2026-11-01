@@ -5,8 +5,7 @@ it('requires an entire unique selection and rejects client prices or eligibility
   const schema = contracts.createOrderInput;
   const body = {
     requestId: '11111111-1111-4111-8111-111111111111',
-    expectedCartVersion: 1,
-    selectedItems: [{ productId: 'P001', expectedQuantity: 1 }],
+    selectedItems: [{ productId: 'P001', quantity: 1 }],
     constraints: { currency: 'TWD', maxTotal: '1000.00' },
   };
   expect(schema.safeParse(body).success).toBe(true);
@@ -15,7 +14,7 @@ it('requires an entire unique selection and rejects client prices or eligibility
     { selectedItems: [...body.selectedItems, ...body.selectedItems] },
     { aiEligible: true },
     { price: '1.00' },
-    { selectedItems: [{ productId: 'P001', expectedQuantity: 0 }] },
+    { selectedItems: [{ productId: 'P001', quantity: 0 }] },
     { constraints: { currency: 'USD' } },
   ])
     expect(schema.safeParse({ ...body, ...change }).success).toBe(false);

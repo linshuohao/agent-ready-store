@@ -30,6 +30,15 @@ export function CartPage({ id }: { id?: string }) {
     selected,
     setSelected,
     quote,
+    quoteError,
+    quoteLoading,
+    refreshQuote,
+    validPurchase,
+    selection,
+    rowErrors,
+    rows,
+    orderRequests,
+    queryOrder,
     error,
     loading,
     reload,
@@ -50,11 +59,7 @@ export function CartPage({ id }: { id?: string }) {
       : tab === 'items'
         ? view?.items.slice(safePage * 4, safePage * 4 + 4)
         : [];
-  const dirtyProduct = view?.items.find(
-    (item) => draft[item.productId] !== String(item.quantity),
-  )?.productId;
-  const busy =
-    working || operations.busy || operations.pending || !operations.ready;
+  const busy = !operations.ready;
   if (!id)
     return (
       <main id="main" tabIndex={-1} className="commerce-page">
@@ -120,7 +125,7 @@ export function CartPage({ id }: { id?: string }) {
           {(reload || (!view && !loading)) && (
             <CommerceActions>
               <Button disabled={busy} onClick={() => void load(true)}>
-                {reload ? '重新載入購物車（放棄未儲存修改）' : '重新讀取'}
+                {reload ? '重新讀取購物車（保留購買量與草稿）' : '重新讀取'}
               </Button>
             </CommerceActions>
           )}
@@ -134,7 +139,10 @@ export function CartPage({ id }: { id?: string }) {
               >
                 <h2>商品明細</h2>
                 {!!view.items.length && (
-                  <label className="cart-selection cart-select-all">
+                  <label
+                    className="cart-selection cart-select-all"
+                    onMouseDown={(event) => event.preventDefault()}
+                  >
                     <Checkbox
                       indeterminate={
                         selected.length > 0 &&
@@ -142,7 +150,7 @@ export function CartPage({ id }: { id?: string }) {
                       }
                       aria-label="全選商品"
                       checked={selected.length === view.items.length}
-                      disabled={busy || dirty || reload || conflict}
+                      disabled={busy || conflict}
                       onCheckedChange={(checked) =>
                         setSelected(
                           checked ? view.items.map((i) => i.productId) : [],
@@ -158,11 +166,14 @@ export function CartPage({ id }: { id?: string }) {
                     className="purchase-product cart-line"
                   >
                     <div className="cart-line-heading">
-                      <label className="cart-selection">
+                      <label
+                        className="cart-selection"
+                        onMouseDown={(event) => event.preventDefault()}
+                      >
                         <Checkbox
                           aria-label={`選取 ${item.productId}`}
                           checked={selected.includes(item.productId)}
-                          disabled={busy || dirty || reload || conflict}
+                          disabled={busy || conflict}
                           onCheckedChange={(checked) =>
                             setSelected(
                               checked
@@ -192,7 +203,15 @@ export function CartPage({ id }: { id?: string }) {
                           {item.unitPrice
                             ? `單價 ${formatMoney(item.unitPrice)}`
                             : '單價待確認'}
-                          <span> × {item.quantity} 件</span>
+                          <span>
+                            {' '}
+                            ×{' '}
+                            {Number(
+                              selection[item.productId]?.quantity ??
+                                item.quantity,
+                            )}{' '}
+                            件
+                          </span>
                         </p>
                         <p className="cart-line-stock">
                           可售數量{' '}
@@ -207,14 +226,49 @@ export function CartPage({ id }: { id?: string }) {
                           {i.code}：請調整或移除此商品
                         </p>
                       ))}
+                    {selection[item.productId] &&
+                      Number(selection[item.productId].quantity) !==
+                        item.quantity && (
+                        <p className="cart-issue">
+                          本次 {selection[item.productId].quantity} 件 ·
+                          車內已儲存 {item.quantity} 件
+                        </p>
+                      )}
+                    {rowErrors[item.productId] && (
+                      <p role="alert" className="cart-issue">
+                        {rowErrors[item.productId]}
+                      </p>
+                    )}
+                    {rows.includes(item.productId) && (
+                      <p role="status" className="cart-issue">
+                        正在保存此商品…
+                      </p>
+                    )}
                     <p className="cart-line-subtotal">
                       小計{' '}
                       <strong>
-                        {draft[item.productId] !== String(item.quantity)
+                        {!selection[item.productId] &&
+                        draft[item.productId] !== String(item.quantity)
                           ? '更新後顯示'
-                          : item.unitPrice
+                          : item.unitPrice &&
+                              Number.isSafeInteger(
+                                Number(
+                                  selection[item.productId]?.quantity ??
+                                    item.quantity,
+                                ),
+                              ) &&
+                              Number(
+                                selection[item.productId]?.quantity ??
+                                  item.quantity,
+                              ) > 0
                             ? formatMoney(
-                                multiplyMoney(item.unitPrice, item.quantity),
+                                multiplyMoney(
+                                  item.unitPrice,
+                                  Number(
+                                    selection[item.productId]?.quantity ??
+                                      item.quantity,
+                                  ),
+                                ),
                               )
                             : '待確認'}
                       </strong>
@@ -234,18 +288,24 @@ export function CartPage({ id }: { id?: string }) {
                             aria-label={`減少 ${item.productId} 數量`}
                             disabled={
                               busy ||
-                              dirty ||
-                              reload ||
                               conflict ||
-                              item.quantity <= 1
+                              rows.includes(item.productId) ||
+                              !Number.isSafeInteger(
+                                Number(draft[item.productId]),
+                              ) ||
+                              Number(draft[item.productId]) <= 1
                             }
-                            onClick={() =>
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => {
+                              const quantity =
+                                Number(draft[item.productId]) - 1;
+                              change(item.productId, String(quantity));
                               void perform({
                                 type: 'set_quantity',
                                 productId: item.productId,
-                                quantity: item.quantity - 1,
-                              })
-                            }
+                                quantity,
+                              });
+                            }}
                           >
                             −
                           </Button>
@@ -257,14 +317,7 @@ export function CartPage({ id }: { id?: string }) {
                             inputMode="numeric"
                             aria-label={`數量 ${item.productId}`}
                             value={draft[item.productId] ?? ''}
-                            disabled={
-                              busy ||
-                              reload ||
-                              conflict ||
-                              Boolean(
-                                dirtyProduct && dirtyProduct !== item.productId,
-                              )
-                            }
+                            disabled={busy || conflict}
                             onChange={(e) =>
                               change(item.productId, e.target.value)
                             }
@@ -301,20 +354,27 @@ export function CartPage({ id }: { id?: string }) {
                             aria-label={`增加 ${item.productId} 數量`}
                             disabled={
                               busy ||
-                              dirty ||
-                              reload ||
                               conflict ||
+                              rows.includes(item.productId) ||
+                              !Number.isSafeInteger(
+                                Number(draft[item.productId]),
+                              ) ||
+                              Number(draft[item.productId]) < 1 ||
                               !item.availability?.canPurchase ||
-                              item.quantity >=
+                              Number(draft[item.productId]) >=
                                 (item.availability.currentQuantity ?? 0)
                             }
-                            onClick={() =>
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => {
+                              const quantity =
+                                Number(draft[item.productId]) + 1;
+                              change(item.productId, String(quantity));
                               void perform({
                                 type: 'set_quantity',
                                 productId: item.productId,
-                                quantity: item.quantity + 1,
-                              })
-                            }
+                                quantity,
+                              });
+                            }}
                           >
                             +
                           </Button>
@@ -322,8 +382,9 @@ export function CartPage({ id }: { id?: string }) {
                         <Button
                           variant="ghost"
                           className="cart-line-remove"
+                          onMouseDown={(event) => event.preventDefault()}
                           aria-label={`移除 ${item.productId}`}
-                          disabled={busy || dirty || reload || conflict}
+                          disabled={busy || conflict}
                           onClick={() =>
                             void perform({
                               type: 'remove_item',
@@ -372,17 +433,37 @@ export function CartPage({ id }: { id?: string }) {
           </p>
           <div className="purchase-secondary-actions">
             <CommerceActions>
-              {unknownOrder && (
-                <div role="status">
-                  <p>原建立結果尚待確認。</p>
+              {orderRequests.map((request) => (
+                <div role="status" key={request.requestId}>
+                  <p>原購買 {request.requestId} 結果尚待確認。</p>
+                  <p>
+                    凍結清單：
+                    {JSON.stringify(
+                      (request.body as { selectedItems?: unknown })
+                        ?.selectedItems ?? '歷史請求',
+                    )}
+                  </p>
                   <Button
                     disabled={busy || conflict}
-                    onClick={() => void create(true)}
+                    onClick={() => void queryOrder(request)}
                   >
-                    恢復原建立訂單請求
+                    查詢結果
                   </Button>
+                  {!request.legacy && (
+                    <>
+                      <p>
+                        繼續可能現在執行原購買，並移除目前購物車內同商品的整行數量。
+                      </p>
+                      <Button
+                        disabled={working || busy || conflict}
+                        onClick={() => void create(request)}
+                      >
+                        繼續原購買
+                      </Button>
+                    </>
+                  )}
                 </div>
-              )}
+              ))}
               {createdId && (
                 <p role="status">
                   訂單已建立，請查看最新狀態。
@@ -397,26 +478,71 @@ export function CartPage({ id }: { id?: string }) {
         {view && (
           <PurchaseAside
             label="所選商品預估"
-            total={quote && !dirty && !reload ? quote.total : null}
+            total={quote ? quote.total : null}
             primaryAction={
               <Button
                 disabled={
                   busy ||
-                  dirty ||
-                  reload ||
+                  working ||
                   conflict ||
                   !selected.length ||
-                  Boolean(quote?.issues?.length) ||
-                  unknownOrder
+                  !validPurchase ||
+                  Boolean(quote?.issues?.length)
                 }
+                onMouseDown={(event) => event.preventDefault()}
                 onClick={() => void create()}
               >
-                {working ? '正在建立…' : '去結算'}
+                {working
+                  ? '正在建立…'
+                  : unknownOrder
+                    ? '另建新的待支付訂單'
+                    : '去結算'}
               </Button>
             }
           >
             <h2>所選商品預估</h2>
-            {quote && !dirty && !reload ? (
+            <span className="sr-only">
+              {Object.values(selection)
+                .map((item) => `${item.productId} 本次購買量 ${item.quantity}`)
+                .join('；')}
+            </span>
+            <p className="hint">
+              按所列數量建立訂單；完成後會移除車內同商品的整行數量，包含額外數量。
+            </p>
+            {Object.values(selection)
+              .filter(
+                (item) =>
+                  !view.items.some((line) => line.productId === item.productId),
+              )
+              .map((item) => (
+                <div className="notice" key={item.productId}>
+                  <p>{item.productId} 目前不在購物車，購買選擇仍保留。</p>
+                  <Input
+                    aria-label={`本次購買量 ${item.productId}`}
+                    type="number"
+                    min="1"
+                    value={item.quantity}
+                    onChange={(event) =>
+                      change(item.productId, event.target.value)
+                    }
+                  />
+                  <Button
+                    onClick={() =>
+                      setSelected(
+                        selected.filter((id) => id !== item.productId),
+                      )
+                    }
+                  >
+                    取消購買 {item.productId}
+                  </Button>
+                </div>
+              ))}
+            {unknownOrder && (
+              <p role="status">
+                原購買仍可能成功。若只是確認或繼續原購買，請使用原購買恢復操作；另建新訂單代表獨立的第二次購買。
+              </p>
+            )}
+            {quote ? (
               <>
                 {!embedded || tab === 'fees' ? (
                   <MoneyBreakdown
@@ -425,7 +551,7 @@ export function CartPage({ id }: { id?: string }) {
                   />
                 ) : (
                   <p className="compact-count">
-                    已選 {selected.length} 項 · 金額以目前儲存數量計算
+                    已選 {selected.length} 項 · 金額以本次購買量計算
                   </p>
                 )}
                 {embedded && Boolean(quote.issues?.length) && (
@@ -443,12 +569,16 @@ export function CartPage({ id }: { id?: string }) {
               </>
             ) : (
               <p>
-                {selected.length
-                  ? error
-                    ? '目前無法提供所選商品預估。'
-                    : '正在更新所選商品預估。'
-                  : '請勾選要購買的整行商品。'}
+                {quoteError ||
+                  (quoteLoading
+                    ? '正在更新所選商品預估。'
+                    : '請勾選要購買的商品。')}
               </p>
+            )}
+            {quoteError && validPurchase && (
+              <Button variant="outline" onClick={refreshQuote}>
+                重新查詢預估
+              </Button>
             )}
           </PurchaseAside>
         )}

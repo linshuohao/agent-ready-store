@@ -65,7 +65,7 @@ test('cart cards show artwork and support bounded quantity controls and draft re
   await expect(page.locator('.cart-line-subtotal')).toContainText('更新後顯示');
   await input.press('Enter');
   await expect(
-    page.getByText('數量必須是正整數。', { exact: true }),
+    page.getByText('請輸入正整數數量。', { exact: true }),
   ).toBeVisible();
   await expect(
     page.getByRole('button', { name: /還原|恢復已儲存/ }),

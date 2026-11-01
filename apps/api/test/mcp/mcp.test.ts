@@ -18,6 +18,7 @@ const token = process.env.MCP_SERVICE_TOKEN;
         const tools = await client.listTools();
         expect(tools.tools.map((t) => t.name).sort()).toEqual([
           'add_cart_item',
+          'apps_add_cart_item',
           'apps_create_order',
           'apps_get_or_create_cart',
           'apps_pay_order',
@@ -27,7 +28,9 @@ const token = process.env.MCP_SERVICE_TOKEN;
           'get_or_create_cart',
           'get_order',
           'get_product',
+          'get_request_result',
           'list_orders',
+          'list_product_categories',
           'list_product_reviews',
           'query_products',
           'quote_selection',
@@ -41,13 +44,8 @@ const token = process.env.MCP_SERVICE_TOKEN;
         );
         expect(schemas.get('get_or_create_cart')).toMatchObject({
           type: 'object',
-          anyOf: expect.arrayContaining([
-            expect.objectContaining({
-              properties: expect.objectContaining({
-                initialItems: expect.objectContaining({ minItems: 1 }),
-              }),
-            }),
-          ]),
+          required: ['cartId'],
+          additionalProperties: false,
         });
         expect(schemas.get('create_order')).toMatchObject({
           type: 'object',
@@ -55,7 +53,6 @@ const token = process.env.MCP_SERVICE_TOKEN;
           required: expect.arrayContaining([
             'cartId',
             'requestId',
-            'expectedCartVersion',
             'selectedItems',
             'constraints',
           ]),
@@ -71,7 +68,7 @@ const token = process.env.MCP_SERVICE_TOKEN;
         const uiOnly = tools.tools.filter((tool) =>
           tool.name.startsWith('apps_'),
         );
-        expect(uiOnly).toHaveLength(3);
+        expect(uiOnly).toHaveLength(4);
         for (const tool of uiOnly)
           expect(tool._meta?.ui).toEqual({ visibility: ['app'] });
         expect(
@@ -93,6 +90,11 @@ const token = process.env.MCP_SERVICE_TOKEN;
         ).toBe(true);
         for (const [tool, args, path] of [
           ['search_products', { limit: 2 }, '/api/v1/products?limit=2'],
+          [
+            'list_product_categories',
+            { limit: 2 },
+            '/api/v1/catalog/categories?limit=2',
+          ],
           ['query_products', { limit: 2 }, '/api/v1/products?limit=2'],
           ['get_product', { productId: 'P005' }, '/api/v1/products/P005'],
           [

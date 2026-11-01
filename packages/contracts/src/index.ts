@@ -12,11 +12,31 @@ export const pageInput = z
     catalogRevision: z.string().max(128).optional(),
   })
   .strict();
+export const categoryPageInput = pageInput
+  .extend({ limit: z.number().int().min(1).max(100).default(50) })
+  .refine(
+    (value) => value.offset === 0 || value.catalogRevision !== undefined,
+    {
+      message: 'catalogRevision required for continuation',
+    },
+  );
+export interface ProductCategory {
+  value: string;
+  label: string;
+}
 export const searchInput = pageInput
   .extend({
     q: z.string().max(200).default(''),
-    category: z.string().max(200).optional(),
-    brand: z.string().max(200).optional(),
+    category: z
+      .string()
+      .max(200)
+      .describe('目录分类原文，精确匹配；未知分类时省略，先用q查询，不猜分类。')
+      .optional(),
+    brand: z
+      .string()
+      .max(200)
+      .describe('目录品牌原文，精确匹配；不限品牌时省略。')
+      .optional(),
     minPrice: z.number().nonnegative().max(Number.MAX_SAFE_INTEGER).optional(),
     maxPrice: z.number().nonnegative().max(Number.MAX_SAFE_INTEGER).optional(),
     purchasableOnly: z.boolean().default(false),
@@ -122,6 +142,12 @@ export interface Page<T> {
 export interface ReviewPage extends Page<Review> {
   productId: string;
 }
+export interface ConstraintViolation {
+  productId?: string;
+  field: string;
+  expected: string | number | boolean | null;
+  actual: string | number | boolean | null;
+}
 export type Result<T> =
   | { ok: true; data: T; requestId: string }
   | {
@@ -130,6 +156,7 @@ export type Result<T> =
         code: string;
         message: string;
         retryable: boolean;
+        constraintViolations?: ConstraintViolation[];
         issues?: CartIssue[];
         currentCartVersion?: number;
       };
@@ -572,3 +599,9 @@ export const groupedSearchOutput = z
       )
     );
   });
+
+export {
+  mcpAppTools,
+  mcpAppVersion,
+  mcpCachedAppVersions,
+} from './mcp-resources.js';

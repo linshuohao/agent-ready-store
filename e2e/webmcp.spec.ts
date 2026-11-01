@@ -32,9 +32,11 @@ async function call(page: Page, name: string, args: unknown = {}) {
   );
 }
 async function initialize(page: Page, stayOnPage = true) {
-  return call(page, 'get_or_create_cart', {
-    requestId: randomUUID(),
-    initialItems: [{ productId: 'P001', quantity: 1 }],
+  return call(page, 'add_cart_item', {
+    initializationId: randomUUID(),
+    operationRequestId: randomUUID(),
+    productId: 'P001',
+    quantity: 1,
     stayOnPage,
   });
 }
@@ -58,8 +60,7 @@ test('registration and queries do not write; explicit preparation creates an AI 
   const result = await call(page, 'create_order', {
     cartId: created.data.cartId,
     requestId: randomUUID(),
-    expectedCartVersion: created.data.cartVersion,
-    selectedItems: [{ productId: 'P001', expectedQuantity: 1 }],
+    selectedItems: [{ productId: 'P001', quantity: 1 }],
     constraints: { currency: 'TWD' },
   });
   expect(result).toMatchObject({
@@ -101,11 +102,12 @@ test('add intent displays cart, protects drafts and retains original operation k
     quantity: 3,
   };
   expect(await call(page, 'update_cart_item', input)).toMatchObject({
-    kind: 'failure',
-    error: { code: 'UNSAVED_DRAFT' },
+    kind: 'success',
   });
   await expect(page.getByLabel('數量 P001', { exact: true })).toHaveValue('2');
   await page.getByLabel('數量 P001', { exact: true }).press('Escape');
+  input.operationRequestId = randomUUID();
+  input.expectedCartVersion = 2;
   let lost = true;
   await page.route('**/shopping/carts/*/operations', async (route) => {
     if (lost) {
@@ -144,8 +146,7 @@ test('a stale page handle cannot write and a late creation never pulls navigatio
   const input = {
     cartId: init.data.cartId,
     requestId: randomUUID(),
-    expectedCartVersion: 1,
-    selectedItems: [{ productId: 'P001', expectedQuantity: 1 }],
+    selectedItems: [{ productId: 'P001', quantity: 1 }],
     constraints: { currency: 'TWD' },
   };
   const creating = call(page, 'create_order', input);
@@ -200,8 +201,7 @@ test('lost WebMCP creation resumes the original channel and request after reload
   const input = {
     cartId: init.data.cartId,
     requestId: randomUUID(),
-    expectedCartVersion: 1,
-    selectedItems: [{ productId: 'P001', expectedQuantity: 1 }],
+    selectedItems: [{ productId: 'P001', quantity: 1 }],
     constraints: { currency: 'TWD' },
   };
   expect(await call(page, 'create_order', input)).toMatchObject({
@@ -239,8 +239,7 @@ test('a late creation does not replace a newer catalog query on the same pathnam
   const creating = call(page, 'create_order', {
     cartId: init.data.cartId,
     requestId: randomUUID(),
-    expectedCartVersion: 1,
-    selectedItems: [{ productId: 'P001', expectedQuantity: 1 }],
+    selectedItems: [{ productId: 'P001', quantity: 1 }],
     constraints: { currency: 'TWD' },
   });
   await started;
@@ -252,4 +251,54 @@ test('a late creation does not replace a newer catalog query on the same pathnam
   await expect(page).toHaveURL(/q=Aero/);
   await call(page, 'cancel_order', { orderId: result.data.order.orderId });
   await expect(page).toHaveURL(/q=Aero/);
+});
+
+test('Human first add and corrected tool add share identity without waiting for Human response @ci', async ({
+  page,
+}) => {
+  let release!: () => void;
+  const barrier = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let human: any;
+  await page.route('**/shopping/carts/add', async (route) => {
+    human = route.request().postDataJSON();
+    await barrier;
+    await route.continue();
+  });
+  await page.goto('/products/P001');
+  await page.getByRole('button', { name: '加入購物車', exact: true }).click();
+  await expect.poll(() => human?.initializationId).toBeTruthy();
+  const operationRequestId = randomUUID();
+  const mismatch = await call(page, 'add_cart_item', {
+    initializationId: randomUUID(),
+    operationRequestId,
+    productId: 'P003',
+    quantity: 1,
+    stayOnPage: true,
+  });
+  expect(mismatch).toMatchObject({
+    kind: 'failure',
+    error: {
+      code: 'STALE_CONTEXT',
+      details: { initializationId: human.initializationId },
+    },
+  });
+  const added = await call(page, 'add_cart_item', {
+    ...mismatch.error.details,
+    operationRequestId,
+    productId: 'P003',
+    quantity: 1,
+    stayOnPage: true,
+  });
+  expect(added.kind).toBe('success');
+  release();
+  await expect
+    .poll(async () => {
+      const result = await call(page, 'get_cart', {
+        cartId: added.data.cartId,
+      });
+      return result.data?.items.length;
+    })
+    .toBe(2);
 });

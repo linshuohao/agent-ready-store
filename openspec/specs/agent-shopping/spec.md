@@ -9,21 +9,21 @@
 ## Requirements
 
 ### Requirement: 订单工具与共享服务语义
-系统 SHALL 保留商品搜索、详情、独立评论查询能力；search_products用于明确搜索展示，query_products提供同输入/结果的无UI查询供购买准备使用，提供get_or_create_cart、get_cart、add/update/remove_cart_item、create_order、get_order、list_orders、cancel_order；quote_selection仅无占用预估，不强制为前置步骤。工具使用共享业务语义，返回结构化及可读结果，可区分校验、冲突、受阻、配额和技术故障，不包含支付工具。
+系统 SHALL 保留商品搜索、详情、独立评论查询能力；search_products用于明确搜索展示，query_products提供同输入/结果的无UI查询供购买准备使用，提供get_or_create_cart、get_cart、add/update/remove_cart_item、create_order、get_order、list_orders、cancel_order；quote_selection仅无占用预估，不强制为前置步骤。工具使用共享业务语义，返回结构化及可读结果，可区分校验、冲突、受阻、配额和技术故障，不包含支付工具。 MCP Demo仅按agent-shopping的「Demo入口模式」免除Token认证，其他边界不变。
 
 #### Scenario: 工具切换与发现
 - **WHEN** 新流程Host发现工具并调用，或旧客户端调用旧prepare/review/submit/create_handoff/get_order_link写流程
 - **THEN** 新schema明确cartId/orderId、请求键、版本和selectedItems；旧写流程不再生效，提示重新发现，不能以兼容别名绕回旧购买；注解不替代服务端校验
 
 #### Scenario: 服务边界与公开数据
-- **WHEN** 无有效MCP服务认证、Host/Origin非法，或商品评论带操作指令
+- **WHEN** 显式token认证模式下无有效MCP服务认证、Host/Origin非法，或商品评论带操作指令
 - **THEN** 保留既有入口拒绝，商品评论仅数据；公开结果不包含内部经营字段、凭证或堆栈，Demo ID接续不等于移除服务入口保护
 
 ### Requirement: 完整意图执行与约束
-Agent SHALL 在明确目标下连续准备本次完整商品集合，默认只选本次涉及行；明确改量直接操作，语义含糊才澄清。生单传selectedItems的整行数量断言和显式预算/币种/规格，服务端验证；多工具准备失败不自动缩小目标。
+Agent SHALL 在明确目标下连续准备本次完整商品集合，默认购买清单只包含本次明确涉及商品；明确改量直接操作，语义含糊才澄清。生单提交selectedItems的显式购买quantity和预算/币种/规格约束，由服务端验证；不要求车中存在或数量相等，不先改车来匹配购买量；多工具准备失败不自动缩小目标。
 
 #### Scenario: A成功B失败
-- **WHEN** 购买A和B的准备中A加购成功，B失败或实际数量与意图不符
+- **WHEN** 购买A和B的准备中A加购成功，B准备失败或准备出的购买清单数量与明确意图不符（仅车量不同不算此类失败）
 - **THEN** 保留并如实说明A已在车，停止生单；只有Human明确修改目标才以新意图请求购买A，不把最终支付当作遗漏约束的兜底
 
 #### Scenario: 咨询与直接购买
@@ -31,11 +31,15 @@ Agent SHALL 在明确目标下连续准备本次完整商品集合，默认只�
 - **THEN** 分别只读、不生单的改车、完整生单并显示支付入口；不强制车页中转，未支付明确标为待支付
 
 ### Requirement: 持久上下文与原请求恢复
-系统 SHALL 以cartId接续同车；纯浏览/咨询不建车，首次明确写意图的新建分支携初始化键及非空initialItems，所有初始条目可购买且与车、创建归因同事务持久化。初始化请求键和操作键持久幂等；同键恢复先于当前库存/版本检查，不覆盖后续编辑。同键异载荷冲突；查询订单按orderId，多候选先定位，list_orders按cartId有界分页，不因未知结果创建替代车或订单。
+系统 SHALL 以cartId接续同车；纯浏览/咨询不建车。新建统一由同一初始化身份的add与各自操作键完成，首个有效add与车及归因原子提交；get_or_create_cart只保留已有cartId读取，旧initialItems分支停止新写，历史初始化只读核实。add不读取或提交expectedCartVersion，set/remove保留原版本，createOrder按显式quantity生单且不带车版本。初始化请求和操作持久幂等；同键恢复先于当前库存/版本检查，不覆盖后续编辑，同键异载荷冲突。查询订单按orderId，多候选先定位，list_orders按cartId有界分页，不因未知结果创建替代车或订单。
 
 #### Scenario: 跨重启和多单
 - **WHEN** 建车/加购/生单已提交后丢响应并重启，或查看旧订单时仍在另一车购物
 - **THEN** 恢复原车/操作/订单事实，不重复加量或预留；看单不隐式切换当前车，支付/关闭只影响目标订单
+
+#### Scenario: 无车并发准备两件商品
+- **WHEN** 同一明确购物意图下两个add并发且尚无cartId
+- **THEN** 调用者复用初始化身份、分别保存操作键与原载荷，只产生一车；不得调用旧initialItems新建分支，不因未知结果另建车；任一准备失败仍遵循完整目标要求，不自动部分生单
 
 ### Requirement: 结果与导航明确
 系统 SHALL 在生单和读单结果返回orderId、cartId、状态、完整固定摘要、截止、可用操作以及普通/分享入口。基础MCP可展示网页入口，不等待原生form；导航失败保留原单，状态读取不等于支付，模型不得代开UI点击支付。
@@ -74,7 +78,7 @@ Agent MUST 保留用户明确的预算、品牌、规格及目标集合；语言
 系统 SHALL 为明确需要Human决定的候选型号提供独立只读选择步骤，优先使用目标客户端实际协商并验证的form elicitation能力；客户端不支持时返回待选择候选供Agent对话澄清。普通搜索不因结果多就自动询问，已有明确SKU不重复询问。系统不能仅凭工具描述或调用参数断言客户端能力，也不保证选择以弹窗呈现。
 
 #### Scenario: 两款有货型号
-- **WHEN** 用户明确购买目标但型号未定，有两款符合约束且可购商品，客户端支持已验证的选择往返
+- **WHEN** 用户明确购买目标但型号未定，未授权Agent自选且存在必须由Human决定的歧义，有两款符合约束且可购商品，客户端支持已验证的选择往返
 - **THEN** 服务端发送包含可辨认名称、SKU、价格和必要规格的结构化选择请求；选项来自当前目录，无默认选择，接受后校验原目标再返回选择结果
 
 #### Scenario: 无能力或浏览意图
@@ -120,3 +124,67 @@ Agent MUST 保留用户明确的预算、品牌、规格及目标集合；语言
 #### Scenario: SDK升级不等于协议启用
 - **WHEN** 验证更新后的仓库SDK
 - **THEN** 使用显式固定2026-07-28的真实SDK客户端验证发现、工具与资源及选择续调；另跑旧协议兼容，真实Host点选另列验收证据
+
+### Requirement: 最终意图优先与模拟环境说明
+MCP 工具说明 SHALL 以最终目标区分搜索、加购、购买及订单操作；购买中的搜索只用于后台准备，成功建单后结束本轮购物展示。已授权自选且约束充分时 Agent SHALL 自选，只有必须由 Human 决定的歧义才澄清。工具说明与普通结果 MUST 明确本服务为模拟商店，无真实扣款或物流。
+
+#### Scenario: 搜索并购买
+- **WHEN** 用户授权 Agent 自选符合预算商品并直接建单
+- **THEN** 后台准备完整目标后仅展示最终订单，不再补搜索/购物车卡片；说明订单及支付属于模拟流程
+
+#### Scenario: 仅搜索及已有同 SKU
+- **WHEN** 用户仅搜索，或本次明确购买数量与车内同SKU数量不同
+- **THEN** 前者一次展示搜索结果且不写车；后者按明确购买量准备订单，无须为整行限制澄清或先覆盖车数量；生单成功清理该SKU整行，不能扩大购买量
+
+### Requirement: 可操作参数与约束错误
+查询 schema SHALL 说明分类/品牌原文精确匹配，未知分类不猜填；规格约束 SHALL 原样引用目录且只承载用户硬条件。预算及规格失败 SHALL 返回公开预期值与实际值，MCP 错误 SHALL 给出安全恢复指引，保留原码和重试标志；结果未知 MUST 按原请求恢复，不自动另生单。
+
+#### Scenario: 规格键或预算不符
+- **WHEN** 规格键不存在、规格值不符或含运总额超预算
+- **THEN** 返回商品/约束范围、预期及实际值；不建单、不默认放宽预算或删除约束
+
+#### Scenario: 未知结果与确定失败
+- **WHEN** 写响应未知，或明确返回参数/版本/预算失败
+- **THEN** 前者沿原键原载荷恢复；后者按错误详情核对约束或重读，不能换键盲目重放
+
+### Requirement: 每轮至多一个最终展示调用
+Agent SHALL 以每轮至多一张最终卡片为目标，只选择一次search_products或create_order展示；咨询可以零卡片。有预算/规格时优先无UI报价预检，建单仍重验。展示调用失败或结果未知时 SHALL 本轮说明并保留原请求，不能自动再次调用展示工具；原单已知可只读恢复。Host重投递与卡片数量须独立实测。
+
+#### Scenario: 建单规格失败或丢响应
+- **WHEN** 本轮已调用create_order但失败或结果未知
+- **THEN** 不在同轮修参重开结算卡或补搜索卡，保留原请求及已知事实；后续恢复遵守原键原载荷或确定失败修正规则
+
+### Requirement: Demo入口模式
+系统 SHALL 未配置模式时默认使用Demo免认证模式，允许显式选择demo或token；token模式要求服务Token；demo模式开放全部现有工具和Apps资源，不改变工具可见性、Human支付、Host/Origin、输入及交易约束。显式token模式缺少Token不得回退Demo，非法模式配置MUST拒绝启动；本地及线上演示部署均使用demo；需要限制服务访问时显式选择token。
+
+#### Scenario: 显式token认证和配置失败
+- **WHEN** 显式选择token且Token缺失或少于24字符，或模式为空字符串、拼写错误或其他非法值
+- **THEN** 服务启动明确失败；token模式启动后缺失或错误Token的MCP请求被拒绝
+
+#### Scenario: 本地及线上完整体验
+- **WHEN** 未配置模式或显式选择demo，且已配置的Host/Origin合法，客户端不提供Token
+- **THEN** 可发现并调用全部原有工具、读取Apps资源；商品查询、购物车、订单与Human在Apps或网页点击模拟支付的业务语义不变，模型仍不能代付
+
+#### Scenario: 认证例外不绕过其他边界
+- **WHEN** Demo请求携带非法Host/Origin、非法参数或不满足交易约束
+- **THEN** 按原有边界拒绝，不因免认证绕过校验、幂等、库存或支付确认
+
+
+#### Scenario: 模式不依赖Token是否存在
+- **WHEN** 未配置模式且环境中存在服务Token
+- **THEN** 仍使用demo模式，不根据Token存在隐式切换；显式token模式下才校验凭证
+
+#### Scenario: 无Origin的合法Host请求
+- **WHEN** 非浏览器Host在demo模式下不发送Origin及Token，但请求Host在允许列表内
+- **THEN** 不因Origin缺失拒绝合法请求；若发送Origin则必须与配置精确匹配，token模式仍另行校验Bearer Token
+
+#### Scenario: 非本地部署配置
+- **WHEN** demo模式使用非回环WEB_ORIGIN或允许Host，或运行于现有Vercel托管入口
+- **THEN** 允许启动并免除Token认证，仍按配置校验Host/Origin，不根据部署平台自动切换认证模式
+
+### Requirement: 请求结果核实与继续分离
+Agent工具 SHALL 提供独立get_request_result只读能力，以操作类型、原定位身份和请求键核实购物车/生单结果。未知时不以再次调用写工具冒充查询；暂未找到不等于失败，不自动重建、继续或付款。继续原操作须有明确继续意图并使用原键原载荷；旧契约停止后只查询已有事实，不能重放旧载荷。
+
+#### Scenario: 只想查有没有成功
+- **WHEN** 用户要求查询此前未知购买结果而未要求继续购买
+- **THEN** 仅调用结果查询，找到显示原订单，未找到如实说明仍未核实，不调用create_order或操作购物车
