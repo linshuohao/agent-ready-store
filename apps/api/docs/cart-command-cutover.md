@@ -1,6 +1,6 @@
 # Cart command cutover operations
 
-This is an operational companion to the approved [Change design](../../../openspec/changes/archive/2026-11-01-cart-command-state-isolation/design.md), not a second contract. No production cutover or rollback has been performed by this implementation.
+This is an operational companion to the approved [Change design](../../../openspec/changes/archive/2026-11-01-cart-command-state-isolation/design.md), not a second contract. The Demo release was deployed on 2026-11-01 using the Human-approved simplified procedure below. No rollback was performed.
 
 ## Implementation map
 
@@ -9,7 +9,19 @@ This is an operational companion to the approved [Change design](../../../opensp
 - `GET /api/v1/shopping/request-result` and MCP `get_request_result` read persisted success facts. They alone receive the new expiry-maintenance exemption; authentication, Host/Origin rules, validation and no-store remain. `not_found` is only a current observation.
 - MCP `add_cart_item` is fixed to MCP; app-only `apps_add_cart_item` uses the same factory fixed to APPS. Web/WebMCP have separate trusted add routes. Legacy initialization and order payloads fail strict validation.
 
-## Authorized deployment procedure (not yet executed)
+## Executed Demo procedure (2026-11-01)
+
+Human explicitly accepted a simplified release for this Demo, superseding the stop/drain prerequisite for this release only. Temporary request failures and refreshing stale pages were accepted; no strict drain or atomic traffic switch was performed or claimed.
+
+1. Preserve business data in a Neon backup branch without compute and a restricted local pg_dump backup.
+2. Run `pnpm --filter @store/api db:migrate` against the existing database. The initialization migration completed without reset, seed or deletion of historical facts.
+3. Merge PR #9 as `78e3d76`; Vercel Git integration builds the API, Web and documentation projects independently. All three Production deployments reached READY.
+4. Verify the new MCP schemas/v9 resources, shared-identity concurrent adds, explicit-quantity orders, legacy payload rejection, read-only lookup and replay preserving later additions. Cancel the test order to release its reservation.
+5. Keep unresolved historical attempts query-only and refresh MCP schema discovery when reconnecting clients.
+
+Release version and configuration are maintained in the [deployment record](../../../docs/engineering/DEPLOYMENT.md#本次发布2026-11-01). Environment acceptance logs and temporary follow-ups stay in the release PR or collaboration conversation.
+
+## Original strict cutover procedure (not executed in this release)
 
 1. Obtain deployment authorization and stop admitting all shopping writes across Web, WebMCP, MCP and Apps on every instance. Keep historical read-only reconciliation available. Do not infer drain completion from missing database success records.
 2. Drain already-admitted requests; confirm no old application instance or old worker can accept another write. Record infrastructure evidence of this condition before interpreting an old unknown attempt as unfinished.
