@@ -4,22 +4,37 @@
 
 网页与 Agent 共用商品查询、计价、库存和订单能力；MCP Apps 与网页进一步共享完整的购物界面和交互逻辑。
 
-首次了解项目或评审交付，可直接打开[文档与展示站](https://agent-ready-store-docs.vercel.app)：从产品 Demo 进入需求演进、技术方案与 AI 工作流，再跳转到设计正文、正式 Spec 和验证证据，读完可返回原演示位置。
-
 ## 在线体验
+
+直接打开[在线商店](https://agent-ready-store.vercel.app)，浏览商品、管理购物车并完成模拟支付，无需安装。商城使用模拟支付，不会真实扣款。
+
+## Agent 接入
+
+在线体验时，在支持 MCP Streamable HTTP 的客户端中配置：
+
+```text
+URL: https://agent-ready-store-api.vercel.app/mcp
+```
+
+本版本的本地与线上 Demo 默认免认证，客户端仅配置 URL；本机开发将 URL 改为 `http://localhost:3002/mcp`。需要限制服务接入时，维护者显式启用 `token` 模式，客户端再发送 Bearer Token，详见下方接入指南。客户端需能访问服务地址。MCP 提供查询、购物车和订单工具；支持 MCP Apps 的客户端可在对话中展示商品与结算卡片，不支持 Apps 时通过网页完成支付。
+
+WebMCP 为支持该能力的浏览器 Agent 提供页面工具；其他浏览器仍可使用普通网页。Agent 可按明确购买意图准备订单，最终支付由用户在网页或内嵌界面完成。
+
+具体配置、工具参数与客户端兼容说明见 [MCP 接入指南](docs/engineering/MCP_CONNECT.md)。
+
+## 文档与交付
+
+体验产品后，可打开[文档与展示站](https://agent-ready-store-docs.vercel.app)，了解需求演进、技术方案与 AI 工作流，并查看设计正文、正式 Spec 和验证证据。
 
 | 入口 | 用途 |
 | --- | --- |
-| [在线商店](https://agent-ready-store.vercel.app) | 实际浏览商品、购物车与模拟支付，无需安装 |
-| [文档与展示站](https://agent-ready-store-docs.vercel.app) | 项目导览与完整阅读链路 |
-| [产品 Demo](https://agent-ready-store-docs.vercel.app/demo.html) | 网页与 Agent 购物流程的分步展示 |
+| [交付与体验导览](DELIVERY.md) | 体验路线、设计解答与交付证据导航 |
+| [产品流程演示](https://agent-ready-store-docs.vercel.app/demo.html) | 网页与 Agent 购物流程的分步展示 |
 | [章节讲解](https://agent-ready-store-docs.vercel.app/presentation.html?slide=authorization) | 需求与演进、技术方案、AI 工作流 |
 | [完整文档](https://agent-ready-store-docs.vercel.app/library.html) | 设计方案、现行 Spec、历史归档与验证证据 |
-| [API 健康检查](https://agent-ready-store-api.vercel.app/api/v1/health) | 查看后端服务是否可用 |
+| [交付状态](docs/engineering/DELIVERY_STATUS.md) | 已交付能力、CI、仓库保护与剩余缺口 |
 
-MCP 地址：`https://agent-ready-store-api.vercel.app/mcp`，本版本默认 Demo 无需访问令牌，配置见下方 Agent 接入。商城使用模拟支付，不会真实扣款。
-
-部署配置见[部署说明](docs/engineering/DEPLOYMENT.md)，文档站本地启动与发布设置见[文档站说明](site/README.md)。纯 Markdown 入口为[交付与体验导览](DELIVERY.md)。
+部署配置见[部署说明](docs/engineering/DEPLOYMENT.md)，文档站本地启动与发布设置见[文档站说明](site/README.md)。服务状态可查看[API 健康检查](https://agent-ready-store-api.vercel.app/api/v1/health)。
 
 ## 功能
 
@@ -98,20 +113,6 @@ pnpm dev
 日常开发只需 `pnpm db:up` 和 `pnpm dev`；数据库已运行时直接执行 `pnpm dev`。启动脚本读取根目录 `.env`，准备必要构建产物并监听 Web、API 与 Apps 的修改，不会自动迁移或导入数据。
 
 按 Ctrl+C 停止应用，`pnpm db:down` 停止开发数据库并保留数据卷。已有数据库不要重复清空或执行 seed；从旧订单流程升级时，先参阅[数据库切换说明](docs/engineering/TOOLING.md#订单生命周期受控切换入口)。
-
-## Agent 接入
-
-在线体验时，在支持 MCP Streamable HTTP 的客户端中配置：
-
-```text
-URL: https://agent-ready-store-api.vercel.app/mcp
-```
-
-本版本的本地与线上 Demo 默认免认证，客户端仅配置 URL；本机开发将 URL 改为 `http://localhost:3002/mcp`。需要限制服务接入时，维护者显式启用 `token` 模式，客户端再发送 Bearer Token，详见下方接入指南。客户端需能访问服务地址。MCP 提供查询、购物车和订单工具；支持 MCP Apps 的客户端可在对话中展示商品与结算卡片，不支持 Apps 时通过网页完成支付。
-
-WebMCP 为支持该能力的浏览器 Agent 提供页面工具；其他浏览器仍可使用普通网页。Agent 可按明确购买意图准备订单，最终支付由用户在网页或内嵌界面完成。
-
-具体配置、工具参数与客户端兼容说明见 [MCP 接入指南](docs/engineering/MCP_CONNECT.md)。
 
 ## 测试与检查
 

@@ -15,9 +15,28 @@
 | GitHub Actions实际测试 | 已记录发布提交 `78e3d76` 的[run 41275113495](https://github.com/linshuohao/agent-ready-store/actions/runs/41275113495)中 Verify 与 Delivery image 均通过，包含真实数据库、token兼容、关键桌面/移动购物、生产镜像冒烟及免凭据demo MCP；[PR CI](https://github.com/linshuohao/agent-ready-store/actions/runs/41274607908)亦通过 | 历史测试计数见各Change；跳过用例不计通过，CI不替代真实Host验收 |
 | 唯一计价实现，Web与Agent共用 | [priceSelection](../../apps/api/src/cart/pricing.ts)由共享CartService调用，HTTP/MCP进入同一服务；[计价测试](../../apps/api/test/cart/pricing.test.ts)保留门槛、叠加、舍入验证 | CI计价与交易测试已通过；历史真实Host记录仍按其版本与环境解释 |
 | 真实AI Agent购物对话或录影 | 结算Tasks的真实验收段记录基础MCP、WebMCP、Apps三笔订单、Human支付与只读确认；不是仅有Mock | 尚缺可直接观看的完整对话导出或录影。需补可访问材料入口，不能把订单摘要等同题目要求的完整购物记录 |
-| GitHub repo与完整commit历史 | [仓库](https://github.com/linshuohao/agent-ready-store)已配置为origin；保留完整规划、实现、修复与合并历史 | 面试方访问权限另需确认 |
+| GitHub repo与完整commit历史 | [仓库](https://github.com/linshuohao/agent-ready-store)已配置为origin；保留完整规划、实现、修复与合并历史 | 仓库当前公开；`main` 保护与安全配置见[仓库配置](#repository-settings) |
 | AI_NOTES 3～5个关键时刻 | [AI_NOTES](../../AI_NOTES.md)精选4例，聚焦风险分级自治、上下文权威与Spec传播、Skill职责收敛、独立行为审查与真实竞态验证 | 外部摘要不是完整原始对话；没有量化效率收益证据 |
 | 现场演示及增量开发 | README提供开发/测试入口，既有切片可追溯协作路径 | 尚缺现场增量开发的演练证据；不能仅凭文档声称已准备充分 |
+
+<a id="repository-settings"></a>
+
+## 仓库配置
+
+2026-11-01 通过 GitHub API 回读确认以下设置已生效。仓库公开，默认分支为 `main`；[仓库主页](https://github.com/linshuohao/agent-ready-store)优先提供[在线商店](https://agent-ready-store.vercel.app)与 MCP 接入，文档与交付入口见 README。
+
+| 配置 | 当前生效状态 |
+| --- | --- |
+| `main` 分支保护 | 必须经 PR 合并，管理员同样受限；禁止强推和删除 |
+| 必需 CI | GitHub Actions 的 `Verify`、`Delivery image` 均须通过，待合并分支须包含最新 `main` |
+| 审查讨论 | 必须解决全部审查讨论；新提交使已有批准失效 |
+| 审批人数 | 0；目前仅一位维护者，不要求另一位 GitHub 审批人。Human 的审查、合并授权仍按 AGENTS 执行，平台不代为判断 |
+| 合并与历史 | 仅允许 Merge Commit，禁用 Squash / Rebase Merge；合并后自动删除来源分支 |
+| 依赖安全 | Dependabot 漏洞告警、安全修复 PR 已开启；修复仍经 PR 与 CI 门禁 |
+| 密钥保护 | Secret Scanning 与 Secret Scanning Push Protection 已开启 |
+| Actions 权限 | 默认 `GITHUB_TOKEN` 只读，禁止 Actions 创建或批准 PR |
+
+[分支保护设置](https://github.com/linshuohao/agent-ready-store/settings/branches)与[仓库通用设置](https://github.com/linshuohao/agent-ready-store/settings)可供管理员复核。以上是核查日期的实际配置；后续变更须同步本节，GitHub 门禁不替代 Commit、Push、Merge 或发布的 Human 授权。
 
 ## 当前产品结果
 

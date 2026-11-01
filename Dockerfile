@@ -1,6 +1,6 @@
 FROM node:24.22.1-bookworm-slim AS dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
-RUN npm install -g pnpm@12.11.2
+RUN npm install --global --allow-scripts=pnpm pnpm@12.11.2
 WORKDIR /app
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc ./
 COPY apps/api/package.json apps/api/package.json
