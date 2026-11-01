@@ -21,9 +21,7 @@ test('browse, select, pay and resume the same cart @ci', async ({ page }) => {
   const cartId = new URL(page.url()).pathname.split('/').at(-1)!;
   await expect(page.getByLabel('數量 P001', { exact: true })).toHaveValue('1');
   await page.getByLabel('選取 P001', { exact: true }).check();
-  await page
-    .getByRole('button', { name: '建立待支付訂單', exact: true })
-    .click();
+  await page.getByRole('button', { name: '去結算', exact: true }).click();
   await expect(page).toHaveURL(/\/orders\//);
   const orderId = new URL(page.url()).pathname.split('/').at(-1)!;
   await expect(
@@ -52,7 +50,7 @@ test('browse, select, pay and resume the same cart @ci', async ({ page }) => {
     status: 'PAID',
     summary: { items: [{ productId: 'P001', quantity: 1 }], total: '1790.00' },
   });
-  await page.getByRole('link', { name: '繼續購物', exact: true }).click();
+  await page.getByRole('link', { name: 'AGENT / STORE', exact: true }).click();
   await page.getByRole('link', { name: '購物車', exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`/cart/${cartId}$`));
   await expect(

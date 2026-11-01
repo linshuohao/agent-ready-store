@@ -17,7 +17,7 @@ function own<T>(record: Record<string, T>, key: string): T | undefined {
 }
 
 export function GroupedCatalogPage({ collection }: { collection: string }) {
-  const { transport, storage, location } = useRuntime();
+  const { transport, storage, location, surface } = useRuntime();
   const [data, setData] = useState<GroupedSearchResult | null>(null);
   const current = useRef<GroupedSearchResult | null>(null);
   const [error, setError] = useState('');
@@ -155,7 +155,12 @@ export function GroupedCatalogPage({ collection }: { collection: string }) {
     }
   };
   return (
-    <main id="main" tabIndex={-1} className="grouped-catalog">
+    <main
+      id="main"
+      tabIndex={-1}
+      className="grouped-catalog"
+      data-compact={surface === 'embedded' || undefined}
+    >
       <h1>搜尋結果</h1>
       {storageWarning && (
         <p role="status">無法保存頁碼，重新開啟將從原搜尋位置載入。</p>

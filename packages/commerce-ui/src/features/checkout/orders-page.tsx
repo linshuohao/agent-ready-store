@@ -1,17 +1,27 @@
 'use client';
-import { Link } from '../../runtime';
+import { Link, useRuntime } from '../../runtime';
 import { cartIdInput } from '@store/contracts';
 import { CartOrders } from '../cart/cart-orders';
 import { useCartOperations } from '../cart/provider';
 export function OrdersPage({ cartId }: { cartId?: string }) {
+  const embedded = useRuntime().surface === 'embedded';
   const cart = useCartOperations();
   const id = cartId ?? cart.currentCartId;
   return (
-    <main id="main" tabIndex={-1} className="commerce-page orders-page">
+    <main
+      id="main"
+      tabIndex={-1}
+      className="commerce-page orders-page"
+      data-compact={embedded || undefined}
+    >
       <div className="commerce-page-heading">
         <p className="eyebrow">ORDERS</p>
         <h1>訂單列表</h1>
-        <p>查看這次購物的待支付與歷史訂單，選擇一筆查看明細或繼續支付。</p>
+        <p>
+          {embedded
+            ? '每頁 4 筆，點擊訂單查看完整內容或繼續支付。'
+            : '查看這次購物的待支付與歷史訂單，選擇一筆查看明細或繼續支付。'}
+        </p>
       </div>
       {!cart.ready ? (
         <p role="status">正在讀取訂單…</p>

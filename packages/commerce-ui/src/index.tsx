@@ -1,54 +1,7 @@
-export const formatMoney = (amount: string) => {
-  const [whole, fraction] = amount.split('.');
-  return `NT$ ${whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}.${fraction}`;
-};
-import type { Quote } from '@store/contracts';
-import { useId } from 'react';
-export function MoneyBreakdown({
-  quote,
-  mode = 'estimate',
-}: {
-  quote: Quote;
-  mode?: 'estimate' | 'confirmation' | 'completed';
-}) {
-  const headingId = useId();
-  return (
-    <section className="cart-totals commerce-card" aria-labelledby={headingId}>
-      <h2 id={headingId}>
-        {mode === 'completed'
-          ? '成交金額'
-          : mode === 'confirmation'
-            ? '本次確認金額'
-            : '目前已儲存報價'}
-      </h2>
-      {mode === 'estimate' && (
-        <p className="hint">未儲存的調整尚未計入報價；庫存與價格仍可能變動。</p>
-      )}
-      <dl>
-        {[
-          ['商品小計', quote.subtotal],
-          ['全站滿減', quote.thresholdDiscount],
-          ['AI 優惠', quote.aiDiscount],
-          ['運費', quote.shipping],
-          ['應付金額', quote.total],
-        ].map(([label, amount]) => (
-          <div key={label}>
-            <dt>{label}</dt>
-            <dd>{formatMoney(amount)}</dd>
-          </div>
-        ))}
-      </dl>
-      <ul aria-label="已儲存商品明細">
-        {quote.items.map((item) => (
-          <li key={item.productId}>
-            {item.name} · {item.productId} · {item.quantity} 件 ×{' '}
-            {formatMoney(item.unitPrice)} = {formatMoney(item.lineSubtotal)}
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
+import { formatMoney } from './lib/money';
+export { formatMoney };
+import { MoneyBreakdown } from './features/cart/money-breakdown';
+export { MoneyBreakdown };
 import type { PurchaseSummary as Summary } from '@store/contracts';
 
 export function PurchaseSummary({

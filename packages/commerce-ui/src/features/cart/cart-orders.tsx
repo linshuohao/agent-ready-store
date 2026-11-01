@@ -2,12 +2,13 @@
 import { useRuntime } from '../../runtime';
 
 import { CommerceActions } from '../../index';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useId } from 'react';
 import { Link } from '../../runtime';
 import type { OrderView } from '@store/contracts';
 import { Button } from '../../components/ui/button';
 import { readOrders, cartFailure } from './lifecycle-commands';
 import { formatMoney } from '../../lib/money';
+import { OrderProduct } from '../checkout/order-product';
 const status = {
   CHECKOUT: '待支付',
   PAID: '已支付',
@@ -15,7 +16,11 @@ const status = {
   EXPIRED: '已超時',
 };
 export function CartOrders({ id, revision }: { id: string; revision: number }) {
-  const { transport } = useRuntime();
+  const { transport, surface } = useRuntime();
+  const embedded = surface === 'embedded';
+  const limit = embedded ? 4 : 20;
+  const productsId = useId();
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [page, setPage] = useState<{
       items: OrderView[];
       nextOffset: number | null;
@@ -28,7 +33,7 @@ export function CartOrders({ id, revision }: { id: string; revision: number }) {
     let sequence = 0;
     async function load() {
       const request = ++sequence;
-      const result = await readOrders(id, offset, 20, false, transport);
+      const result = await readOrders(id, offset, limit, false, transport);
       if (!live || request !== sequence) return;
       if (result.kind === 'success') {
         setPage(result.data);
@@ -51,7 +56,7 @@ export function CartOrders({ id, revision }: { id: string; revision: number }) {
       window.removeEventListener('focus', returned);
       document.removeEventListener('visibilitychange', returned);
     };
-  }, [id, revision, offset, refresh, transport]);
+  }, [id, revision, offset, refresh, transport, limit]);
   return (
     <section aria-label="所有訂單">
       <h2>所有訂單</h2>
@@ -68,25 +73,84 @@ export function CartOrders({ id, revision }: { id: string; revision: number }) {
         <p role="status">正在讀取訂單…</p>
       ) : page.items.length ? (
         page.items.map((order) => (
-          <article key={order.orderId} className="order-list-item">
-            <Link href={`/orders/${order.orderId}`} prefetch={false}>
-              訂單 {order.orderId}
-            </Link>{' '}
-            <span className="order-list-status">
-              {status[order.effectiveStatus]}
-            </span>
-            <p>
-              {order.summary.items
-                .map((item) => `${item.name} × ${item.quantity}`)
-                .join('、')}
-            </p>
+          <article
+            key={order.orderId}
+            className="order-list-item"
+            data-status={order.effectiveStatus}
+          >
+            <div className="order-list-heading">
+              <div className="order-list-reference">
+                <p className="order-list-label">訂單編號</p>
+                <Link href={`/orders/${order.orderId}`} prefetch={false}>
+                  <span className="sr-only">訂單 </span>
+                  {order.orderId}
+                </Link>
+                <p className="order-list-date">
+                  建立於{' '}
+                  <time dateTime={order.createdAt}>
+                    {new Date(order.createdAt).toLocaleString('zh-TW')}
+                  </time>
+                </p>
+              </div>
+              <span
+                className="order-list-status"
+                data-status={order.effectiveStatus}
+              >
+                <span className="order-status-dot" aria-hidden="true" />
+                {status[order.effectiveStatus]}
+              </span>
+            </div>
+            <ul
+              id={`${productsId}-${order.orderId}`}
+              className="order-list-products"
+              aria-label="訂單商品"
+            >
+              {(expanded[order.orderId]
+                ? order.summary.items
+                : order.summary.items.slice(0, 2)
+              ).map((item) => (
+                <li key={item.productId}>
+                  <OrderProduct item={item} compact />
+                </li>
+              ))}
+            </ul>
+            <div className="order-list-product-controls">
+              <p>共 {order.summary.items.length} 項商品</p>
+              {order.summary.items.length > 2 && (
+                <Button
+                  variant="outline"
+                  aria-expanded={Boolean(expanded[order.orderId])}
+                  aria-controls={`${productsId}-${order.orderId}`}
+                  onClick={() =>
+                    setExpanded((previous) => ({
+                      ...previous,
+                      [order.orderId]: !previous[order.orderId],
+                    }))
+                  }
+                >
+                  {expanded[order.orderId]
+                    ? '收起商品'
+                    : `展開其餘 ${order.summary.items.length - 2} 項商品`}
+                </Button>
+              )}
+            </div>
             <div className="order-list-meta">
-              <strong>{formatMoney(order.summary.total)}</strong>
-              {order.effectiveStatus === 'CHECKOUT' && (
+              <div className="order-list-total">
                 <span>
-                  預留至{' '}
-                  {new Date(order.reservationExpiresAt).toLocaleString('zh-TW')}
+                  {order.effectiveStatus === 'PAID' ? '實付金額' : '訂單金額'}
                 </span>
+                <strong>{formatMoney(order.summary.total)}</strong>
+              </div>
+              {order.effectiveStatus === 'CHECKOUT' && (
+                <p className="order-list-deadline">
+                  支付截止{' '}
+                  <time dateTime={order.reservationExpiresAt}>
+                    {new Date(order.reservationExpiresAt).toLocaleString(
+                      'zh-TW',
+                    )}
+                  </time>
+                  <span>請進入訂單核對並確認支付</span>
+                </p>
               )}
             </div>
           </article>
@@ -99,7 +163,7 @@ export function CartOrders({ id, revision }: { id: string; revision: number }) {
           <Button
             onClick={() => {
               setPage(null);
-              setOffset(Math.max(0, offset - 20));
+              setOffset(Math.max(0, offset - limit));
             }}
           >
             上一頁訂單

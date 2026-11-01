@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { WebCommerce } from '../commerce-runtime';
 import './globals.css';
 export const metadata: Metadata = {
@@ -13,7 +14,9 @@ export default function RootLayout({
   return (
     <html lang="zh-Hant">
       <body>
-        <WebCommerce>{children}</WebCommerce>
+        <Suspense fallback={null}>
+          <WebCommerce>{children}</WebCommerce>
+        </Suspense>
       </body>
     </html>
   );

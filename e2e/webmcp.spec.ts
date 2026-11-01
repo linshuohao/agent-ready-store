@@ -105,7 +105,7 @@ test('add intent displays cart, protects drafts and retains original operation k
     kind: 'success',
   });
   await expect(page.getByLabel('數量 P001', { exact: true })).toHaveValue('2');
-  await page.getByRole('button', { name: '恢復已儲存數量 P001' }).click();
+  await page.getByLabel('數量 P001', { exact: true }).press('Escape');
   input.operationRequestId = randomUUID();
   input.expectedCartVersion = 2;
   let lost = true;
@@ -168,9 +168,7 @@ test('ordinary Web order on a WebMCP-created cart does not inherit AI eligibilit
   await page.goto('/products/P001');
   const init = await initialize(page, false);
   await page.getByLabel('選取 P001', { exact: true }).check();
-  await page
-    .getByRole('button', { name: '建立待支付訂單', exact: true })
-    .click();
+  await page.getByRole('button', { name: '去結算', exact: true }).click();
   await expect(page).toHaveURL(/\/orders\//);
   await expect(
     page.getByRole('heading', { name: '待支付訂單', exact: true }),

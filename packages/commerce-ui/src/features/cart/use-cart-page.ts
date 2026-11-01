@@ -407,7 +407,7 @@ export function useCartPage(id?: string) {
           operations.isCurrentCart(id) &&
           Object.keys(choices.current).length === 0
         )
-          router.push(`/orders/${result.data.order.orderId}`);
+          router.push(`/orders/${result.data.order.orderId}?created=1`);
       } else
         setError(
           result.kind === 'unknown'

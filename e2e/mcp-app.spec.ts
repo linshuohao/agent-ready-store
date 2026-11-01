@@ -74,6 +74,7 @@ test('shared cart, original order payment, remount, explicit share and continued
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   const f = await openFixture(page);
+  await f.getByRole('button', { name: '商品（2）', exact: true }).click();
   await f.getByRole('spinbutton', { name: '數量 P001', exact: true }).fill('2');
   await f
     .getByRole('spinbutton', { name: '數量 P001', exact: true })
@@ -82,8 +83,8 @@ test('shared cart, original order payment, remount, explicit share and continued
     f.getByRole('checkbox', { name: '選取 P001', exact: true }),
   ).toBeEnabled();
   await f.getByRole('checkbox', { name: '選取 P001', exact: true }).check();
-  await expect(f.locator('.cart-totals')).toBeVisible();
-  await f.getByRole('button', { name: '建立待支付訂單', exact: true }).click();
+  await expect(f.getByRole('region', { name: '金額與操作' })).toBeVisible();
+  await f.getByRole('button', { name: '去結算', exact: true }).click();
   await expect(
     f.getByRole('heading', { name: '待支付訂單', exact: true }),
   ).toBeVisible();
@@ -101,7 +102,10 @@ test('shared cart, original order payment, remount, explicit share and continued
   await expect(
     f.getByRole('heading', { name: '支付成功', exact: true }),
   ).toBeVisible();
-  await f.getByRole('link', { name: '查看所有訂單', exact: true }).click();
+  await f
+    .getByRole('banner')
+    .getByRole('link', { name: '訂單列表', exact: true })
+    .click();
   await f.getByRole('link', { name: /訂單 20000000/ }).click();
   await expect(
     f.getByRole('heading', { name: '支付成功', exact: true }),
@@ -115,7 +119,7 @@ test('shared cart, original order payment, remount, explicit share and continued
   );
   expect(calls.filter((n) => n === 'apps_pay_order')).toHaveLength(1);
   expect(calls.filter((n) => n === 'apps_create_order')).toHaveLength(1);
-  await f.getByRole('link', { name: '繼續購物', exact: true }).click();
+  await f.getByRole('link', { name: 'AGENT / STORE', exact: true }).click();
   await expect(
     f.getByRole('heading', { name: '搜尋結果', exact: true }),
   ).toBeVisible();
@@ -126,7 +130,7 @@ test('shared original payment recovery survives a lost Bridge response without a
 }) => {
   const f = await openFixture(page);
   await f.getByRole('checkbox', { name: '選取 P001', exact: true }).check();
-  await f.getByRole('button', { name: '建立待支付訂單', exact: true }).click();
+  await f.getByRole('button', { name: '去結算', exact: true }).click();
   await expect(
     f.getByRole('heading', { name: '待支付訂單', exact: true }),
   ).toBeVisible();
@@ -167,22 +171,33 @@ test('shared product details and reviews use the same artwork, controls and layo
     await f
       .locator('.detail')
       .evaluate((el) => getComputedStyle(el).gridTemplateColumns),
-  ).toMatch(/^\d+(?:\.\d+)?px$/);
+  ).toMatch(/^80px \d+(?:\.\d+)?px$/);
   await expect(
     f.getByRole('img', { name: 'P001 商品示意，非實物照片' }),
   ).toBeVisible();
+  await expect(
+    f.getByRole('heading', { name: '商品規格', exact: true }),
+  ).not.toBeVisible();
+  await f.getByRole('button', { name: '規格', exact: true }).click();
   await expect(
     f.getByRole('heading', { name: '商品規格', exact: true }),
   ).toBeVisible();
   await expect(
     f.getByRole('button', { name: '加入購物車', exact: true }),
   ).toBeVisible();
+  await f.getByRole('button', { name: '評論（0）', exact: true }).click();
   await expect(f.getByText('尚無評論。', { exact: true })).toBeVisible();
+  await f.getByRole('button', { name: '概覽', exact: true }).click();
+  await page.screenshot({
+    path: `test-results/compact-product-${test.info().project.name}.png`,
+  });
+  await expect(f.getByText('尚無評論。', { exact: true })).not.toBeVisible();
 });
 test('shared cart keeps the quantity draft after conflict until explicit reload', async ({
   page,
 }) => {
   const f = await openFixture(page);
+  await f.getByRole('button', { name: '商品（2）', exact: true }).click();
   await expect(
     f.getByRole('spinbutton', { name: '數量 P001', exact: true }),
   ).toHaveValue('1');
@@ -211,7 +226,9 @@ test('shared cart keeps the quantity draft after conflict until explicit reload'
   await expect(
     f.getByRole('spinbutton', { name: '數量 P001', exact: true }),
   ).toHaveValue('2');
-  await f.getByRole('button', { name: '恢復已儲存數量 P001' }).click();
+  await f
+    .getByRole('spinbutton', { name: '數量 P001', exact: true })
+    .press('Escape');
   await expect(
     f.getByRole('spinbutton', { name: '數量 P001', exact: true }),
   ).toHaveValue('1');
@@ -240,6 +257,7 @@ test('external cart delivery preserves the current unsaved draft', async ({
   page,
 }) => {
   const f = await openFixture(page);
+  await f.getByRole('button', { name: '商品（2）', exact: true }).click();
   await f.getByRole('spinbutton', { name: '數量 P001', exact: true }).fill('2');
   await page.evaluate(async () => {
     await (window as any).fixture.deliverCart(
@@ -416,4 +434,197 @@ test('embedded search uses available width for compact cards without splitting p
   expect(
     await f.locator('main').evaluate((el) => el.scrollWidth <= el.clientWidth),
   ).toBe(true);
+});
+
+for (const checkout of [false, true]) {
+  test(`embedded ${checkout ? 'order' : 'cart'} bounds long lists and keeps full totals`, async ({
+    page,
+  }) => {
+    const f = await openFixture(page, checkout ? '?checkout&long' : '?long');
+    await expect(f.locator('.purchase-product')).toHaveCount(2);
+    await f.getByRole('button', { name: '商品（13）', exact: true }).click();
+    await expect(f.locator('.purchase-product')).toHaveCount(4);
+    if (checkout) {
+      const first = f.locator('.purchase-product').first();
+      await expect(first.getByText('黑', { exact: true })).not.toBeVisible();
+      await first.getByText('規格與小計', { exact: true }).click();
+      await expect(first.getByText('黑', { exact: true })).toBeVisible();
+      await expect(first.locator('.order-product-subtotal')).toContainText(
+        '10.00',
+      );
+      await first.getByText('規格與小計', { exact: true }).click();
+    }
+    if (!checkout)
+      await f.getByRole('checkbox', { name: '全選商品', exact: true }).check();
+    await f.getByRole('button', { name: '下一頁', exact: true }).click();
+    await expect(f.locator('.purchase-product').first()).toContainText('P005');
+    if (!checkout) {
+      await expect(
+        f.getByRole('checkbox', { name: '選取 P005', exact: true }),
+      ).toBeChecked();
+      await f
+        .getByRole('spinbutton', { name: '數量 P005', exact: true })
+        .fill('2');
+      await expect(
+        f.getByRole('button', { name: '概覽', exact: true }),
+      ).toBeDisabled();
+      await f
+        .getByRole('spinbutton', { name: '數量 P005', exact: true })
+        .press('Escape');
+    }
+    await f.getByRole('button', { name: '費用明細', exact: true }).click();
+    await expect(f.locator('.purchase-product')).toHaveCount(0);
+    await expect(f.locator('.fee-items > li')).toHaveCount(4);
+    await expect(f.getByRole('dialog')).toHaveCount(0);
+    await expect(f.locator('.amount-row-final')).toContainText('229.00');
+    await f.getByRole('button', { name: '下一頁', exact: true }).click();
+    await expect(f.locator('.fee-items > li').first()).toContainText('P005');
+    await expect(f.locator('.amount-row-final')).toContainText('229.00');
+    await f.getByRole('button', { name: '商品（13）', exact: true }).click();
+    await expect(f.locator('.purchase-product').first()).toContainText('P005');
+    await f.getByRole('button', { name: '概覽', exact: true }).click();
+    await expect(f.locator('.purchase-product')).toHaveCount(2);
+    const layout = await f.locator('.commerce-application').evaluate((el) => ({
+      height: el.getBoundingClientRect().height,
+      overflow: el.scrollWidth > el.clientWidth,
+      scrollRegions: [...el.querySelectorAll('*')].filter(
+        (node) =>
+          ['auto', 'scroll'].includes(getComputedStyle(node).overflowY) &&
+          node.scrollHeight > node.clientHeight,
+      ).length,
+    }));
+    await page.screenshot({
+      path: `test-results/compact-${checkout ? 'order' : 'cart'}-${test.info().project.name}.png`,
+      fullPage: true,
+    });
+    expect(layout.height).toBeLessThan(1100);
+    expect(layout.overflow).toBe(false);
+    expect(layout.scrollRegions).toBe(0);
+  });
+}
+
+test('embedded catalog batches replace items and order history bounds each page and preview', async ({
+  page,
+}) => {
+  const f = await openFixture(page, '?search&many');
+  await expect(f.locator('.product-card')).toHaveCount(4);
+  await f.getByRole('button', { name: '下一批商品', exact: true }).click();
+  await expect(f.locator('.product-card')).toHaveCount(4);
+  await expect(f.locator('.product-card').first()).toContainText('P005');
+  await f.getByRole('button', { name: '下一批商品', exact: true }).click();
+  await expect(f.locator('.product-card')).toHaveCount(1);
+  await expect(f.locator('.product-card').first()).toContainText('P009');
+  await f.getByRole('button', { name: '上一批商品', exact: true }).click();
+  await expect(f.locator('.product-card').first()).toContainText('P005');
+  await expect(
+    f
+      .locator('.product-card')
+      .first()
+      .getByRole('button', { name: '加入購物車', exact: true }),
+  ).toBeEnabled();
+  await page.screenshot({
+    path: `test-results/compact-catalog-${test.info().project.name}.png`,
+  });
+  await page.goto('http://localhost:3999/?checkout&manyOrders&long');
+  await f
+    .getByRole('banner')
+    .getByRole('link', { name: '訂單列表', exact: true })
+    .click();
+  await expect(f.locator('.order-list-item')).toHaveCount(4);
+  await expect(f.locator('.order-list-products > li')).toHaveCount(8);
+  const firstOrder = f.locator('.order-list-item').first();
+  const total = await firstOrder
+    .locator('.order-list-total strong')
+    .innerText();
+  await firstOrder
+    .getByRole('button', { name: '展開其餘 11 項商品', exact: true })
+    .click();
+  await expect(firstOrder.locator('.order-list-products > li')).toHaveCount(13);
+  await expect(
+    f.locator('.order-list-item').nth(1).locator('.order-list-products > li'),
+  ).toHaveCount(2);
+  await expect(firstOrder.locator('.order-list-total strong')).toHaveText(
+    total,
+  );
+  await firstOrder
+    .getByRole('button', { name: '收起商品', exact: true })
+    .click();
+  await expect(firstOrder.locator('.order-list-products > li')).toHaveCount(2);
+  await page.screenshot({
+    path: `test-results/compact-orders-${test.info().project.name}.png`,
+    animations: 'disabled',
+  });
+  await expect(f.locator('.order-list-item').first()).toContainText(
+    '共 13 項商品',
+  );
+  await f.getByRole('button', { name: '下一頁訂單', exact: true }).click();
+  await expect(f.locator('.order-list-item').first()).toContainText(
+    '20000000-0000-4000-8000-000000000005',
+  );
+  await f.getByRole('button', { name: '下一頁訂單', exact: true }).click();
+  await expect(f.locator('.order-list-item')).toHaveCount(1);
+  await f.getByRole('button', { name: '上一頁訂單', exact: true }).click();
+  await expect(f.locator('.order-list-item')).toHaveCount(4);
+  expect(
+    await f.locator('main').evaluate((el) => el.scrollWidth <= el.clientWidth),
+  ).toBe(true);
+});
+
+test('embedded catalog reaches server pages and comments retain their page across tabs', async ({
+  page,
+}) => {
+  const f = await openFixture(page, '?search&serverPages');
+  await expect(f.locator('.product-card')).toHaveCount(4);
+  await f.getByRole('button', { name: '下一批商品', exact: true }).click();
+  await f.getByRole('button', { name: '下一批商品', exact: true }).click();
+  await f.getByRole('link', { name: '下一頁', exact: true }).click();
+  await expect(f.locator('.product-card').first()).toContainText('P013');
+  await f.getByRole('link', { name: '上一頁', exact: true }).click();
+  await expect(f.locator('.product-card').first()).toContainText('P001');
+  await page.goto('http://localhost:3999/?product&reviews');
+  await f.getByRole('button', { name: '評論（3）', exact: true }).click();
+  await expect(f.getByText('評論內容 1', { exact: true })).toBeVisible();
+  await f.getByRole('button', { name: '下一頁評論', exact: true }).click();
+  await expect(f.getByText('評論內容 3', { exact: true })).toBeVisible();
+  await f.getByRole('button', { name: '規格', exact: true }).click();
+  await expect(f.getByText('評論內容 3', { exact: true })).not.toBeVisible();
+  await f.getByRole('button', { name: '評論（3）', exact: true }).click();
+  await expect(f.getByText('評論內容 3', { exact: true })).toBeVisible();
+  expect(
+    await f.locator('main').evaluate((el) => el.scrollWidth <= el.clientWidth),
+  ).toBe(true);
+});
+
+test('selected quantity buttons and failed saves preserve the explicit purchase amount', async ({
+  page,
+}) => {
+  const f = await openFixture(page);
+  await f.getByRole('button', { name: '商品（2）', exact: true }).click();
+  await f.getByRole('checkbox', { name: '選取 P001', exact: true }).check();
+  await f.getByRole('button', { name: '增加 P001 數量', exact: true }).click();
+  await expect(
+    f.getByRole('spinbutton', { name: '數量 P001', exact: true }),
+  ).toHaveValue('2');
+  await page.evaluate(() => {
+    (window as any).fixture.controls.conflictOnce = true;
+  });
+  await f.getByRole('spinbutton', { name: '數量 P001', exact: true }).fill('5');
+  await f
+    .getByRole('spinbutton', { name: '數量 P001', exact: true })
+    .press('Enter');
+  await expect(
+    f.getByRole('button', {
+      name: '重新讀取購物車（保留購買量與草稿）',
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    f.getByRole('button', { name: '去結算', exact: true }),
+  ).toBeEnabled();
+  await expect(f.locator('.cart-line-subtotal').first()).toContainText('50.00');
+  await f.getByRole('button', { name: '去結算', exact: true }).click();
+  await expect(
+    f.getByRole('heading', { name: '待支付訂單', exact: true }),
+  ).toBeVisible();
+  await expect(f.locator('.purchase-product').first()).toContainText('5 件');
 });

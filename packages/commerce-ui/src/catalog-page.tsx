@@ -1,6 +1,7 @@
 'use client';
 import { Link, PageTools, useRuntime } from './runtime';
-import { buttonVariants } from './components/ui/button';
+import { useState } from 'react';
+import { Button, buttonVariants } from './components/ui/button';
 import type { Page, ProductSummary } from '@store/contracts';
 
 import { ProductCard } from './features/product-discovery/components/product-card';
@@ -17,6 +18,20 @@ export function CatalogPage({
   categories?: CategoriesResult;
 }) {
   const embedded = useRuntime().surface === 'embedded';
+  const contentKey =
+    query +
+    (response.ok
+      ? response.data.catalogRevision +
+        response.data.items.map((p) => p.id).join(',')
+      : 'error');
+  const [local, setLocal] = useState({ key: contentKey, page: 0 });
+  const localPage = local.key === contentKey ? local.page : 0;
+  const items = response.ok ? response.data.items : [];
+  const lastPage = Math.max(0, Math.ceil(items.length / 4) - 1);
+  const safePage = Math.min(localPage, lastPage);
+  const visibleItems = embedded
+    ? items.slice(safePage * 4, safePage * 4 + 4)
+    : items;
   const params = new URLSearchParams(query);
   const values = Object.fromEntries(params);
   const pageLink = (offset: number, revision: string) => {
@@ -29,7 +44,12 @@ export function CatalogPage({
   retry.delete('catalogRevision');
   retry.delete('offset');
   return (
-    <main tabIndex={-1} id="main">
+    <main
+      tabIndex={-1}
+      id="main"
+      className="catalog-page"
+      data-compact={embedded || undefined}
+    >
       <PageTools catalog={response} queryKey={params.toString()} />
       {!embedded && (
         <section className="hero">
@@ -67,7 +87,7 @@ export function CatalogPage({
         ) : (
           <>
             <div className="product-grid">
-              {response.data.items.map((product) => (
+              {visibleItems.map((product) => (
                 <ProductCard key={product.id} product={product} />
               ))}
             </div>
@@ -80,40 +100,70 @@ export function CatalogPage({
               <p>這一頁沒有商品，請返回上一頁。</p>
             )}
             <nav className="pagination" aria-label="商品分頁">
+              {embedded && safePage > 0 && (
+                <Button
+                  onClick={() =>
+                    setLocal({ key: contentKey, page: safePage - 1 })
+                  }
+                >
+                  上一批商品
+                </Button>
+              )}
+              {embedded && safePage < lastPage && (
+                <Button
+                  onClick={() =>
+                    setLocal({ key: contentKey, page: safePage + 1 })
+                  }
+                >
+                  下一批商品
+                </Button>
+              )}
               <span className="pagination-count">
-                第{' '}
-                {Math.floor(
-                  Number(values.offset ?? 0) / Number(values.limit ?? 12),
-                ) + 1}{' '}
-                頁
+                {embedded ? (
+                  visibleItems.length ? (
+                    `第 ${Number(values.offset ?? 0) + safePage * 4 + 1}–${Number(values.offset ?? 0) + safePage * 4 + visibleItems.length} 項 · 共 ${response.data.total} 項`
+                  ) : (
+                    '本頁沒有商品'
+                  )
+                ) : (
+                  <>
+                    第{' '}
+                    {Math.floor(
+                      Number(values.offset ?? 0) / Number(values.limit ?? 12),
+                    ) + 1}{' '}
+                    頁
+                  </>
+                )}
               </span>
-              {Number(values.offset ?? 0) > 0 && (
-                <Link
-                  prefetch={false}
-                  className={buttonVariants()}
-                  href={pageLink(
-                    Math.max(
-                      0,
-                      Number(values.offset) - Number(values.limit ?? 12),
-                    ),
-                    response.data.catalogRevision,
-                  )}
-                >
-                  <span aria-hidden="true">←</span> 上一頁
-                </Link>
-              )}
-              {response.data.nextOffset !== null && (
-                <Link
-                  prefetch={false}
-                  className={buttonVariants()}
-                  href={pageLink(
-                    response.data.nextOffset,
-                    response.data.catalogRevision,
-                  )}
-                >
-                  下一頁 <span aria-hidden="true">→</span>
-                </Link>
-              )}
+              {Number(values.offset ?? 0) > 0 &&
+                (!embedded || safePage === 0) && (
+                  <Link
+                    prefetch={false}
+                    className={buttonVariants()}
+                    href={pageLink(
+                      Math.max(
+                        0,
+                        Number(values.offset) - Number(values.limit ?? 12),
+                      ),
+                      response.data.catalogRevision,
+                    )}
+                  >
+                    <span aria-hidden="true">←</span> 上一頁
+                  </Link>
+                )}
+              {response.data.nextOffset !== null &&
+                (!embedded || safePage === lastPage) && (
+                  <Link
+                    prefetch={false}
+                    className={buttonVariants()}
+                    href={pageLink(
+                      response.data.nextOffset,
+                      response.data.catalogRevision,
+                    )}
+                  >
+                    下一頁 <span aria-hidden="true">→</span>
+                  </Link>
+                )}
             </nav>
           </>
         )}

@@ -35,7 +35,7 @@ const select = (page: Page, id = 'P001') =>
 const quantity = (page: Page, id = 'P001') =>
   page.getByLabel(`數量 ${id}`, { exact: true });
 const create = (page: Page) =>
-  page.getByRole('button', { name: '建立待支付訂單', exact: true });
+  page.getByRole('button', { name: '去結算', exact: true });
 function gate() {
   let release!: () => void;
   const promise = new Promise<void>((r) => {
@@ -333,7 +333,7 @@ test('draft keeps its original base version after a newer snapshot and restore s
   await expect(
     page.getByRole('alert').filter({ hasText: '購物車已更新' }),
   ).toBeVisible();
-  await page.getByRole('button', { name: '恢復已儲存數量 P001' }).click();
+  await page.getByLabel('數量 P001', { exact: true }).press('Escape');
   await expect(quantity(page)).toHaveValue('1');
   await expect(
     page.getByRole('complementary', { name: '所選商品預估' }),
@@ -425,11 +425,7 @@ test('completed purchase clears only its old draft so a later same SKU add uses 
   });
   await create(page).click();
   await expect.poll(() => submitted).toBe(true);
-  await page
-    .locator('label.cart-selection')
-    .filter({ has: select(page, 'P003') })
-    .locator('span.hint')
-    .click();
+  await select(page, 'P003').check();
   await expect(select(page, 'P003')).toBeChecked();
   barrier.release();
   await expect(page.getByRole('link', { name: '查看新訂單' })).toBeVisible();

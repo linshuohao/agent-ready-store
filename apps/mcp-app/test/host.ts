@@ -12,7 +12,13 @@ let cart: ShoppingCartView = {
   cartId: id,
   cartVersion: 1,
   agentCreated: true,
-  items: ['P001', 'P002'].map((productId) => ({
+  items: (new URL(location.href).searchParams.has('long')
+    ? Array.from(
+        { length: 13 },
+        (_, index) => `P${String(index + 1).padStart(3, '0')}`,
+      )
+    : ['P001', 'P002']
+  ).map((productId) => ({
     productId,
     quantity: 1,
     name: '同名耳機',
@@ -73,7 +79,9 @@ const productDetail = {
   availability: { canPurchase: true, reasons: [], currentQuantity: 8 },
   description: '商品詳情',
   specs: { 連線: '藍牙' },
-  reviewOverview: { count: 0 },
+  reviewOverview: {
+    count: new URL(location.href).searchParams.has('reviews') ? 3 : 0,
+  },
 };
 const {
   description: _description,
@@ -81,13 +89,21 @@ const {
   reviewOverview: _reviews,
   ...productSummary
 } = productDetail;
-const catalogItems = new URL(location.href).searchParams.has('multiple')
-  ? [productSummary, { ...productSummary, id: 'P002', name: '另一款耳機' }]
-  : [productSummary];
+const serverPages = new URL(location.href).searchParams.has('serverPages');
+const catalogItems =
+  serverPages || new URL(location.href).searchParams.has('many')
+    ? Array.from({ length: serverPages ? 24 : 9 }, (_, index) => ({
+        ...productSummary,
+        id: `P${String(index + 1).padStart(3, '0')}`,
+        name: `商品 ${index + 1}`,
+      }))
+    : new URL(location.href).searchParams.has('multiple')
+      ? [productSummary, { ...productSummary, id: 'P002', name: '另一款耳機' }]
+      : [productSummary];
 const catalogData = {
-  items: catalogItems,
+  items: serverPages ? catalogItems.slice(0, 12) : catalogItems,
   total: catalogItems.length,
-  nextOffset: null,
+  nextOffset: serverPages ? 12 : null,
   catalogRevision: 'fixture',
 };
 const checkoutMode = new URL(location.href).searchParams.has('checkout');
@@ -119,11 +135,15 @@ const summary = (items: ShoppingCartView['items']) => ({
     unitPrice: i.unitPrice!,
     lineSubtotal: (i.quantity * 10).toFixed(2),
   })),
-  subtotal: '20.00',
+  subtotal: items
+    .reduce((total, item) => total + item.quantity * 10, 0)
+    .toFixed(2),
   thresholdDiscount: '0.00',
   aiDiscount: '1.00',
   shipping: '100.00',
-  total: '119.00',
+  total: (
+    items.reduce((total, item) => total + item.quantity * 10, 0) + 99
+  ).toFixed(2),
 });
 function createFixtureOrder(selected: ShoppingCartView['items']) {
   order ??= {
@@ -133,7 +153,7 @@ function createFixtureOrder(selected: ShoppingCartView['items']) {
     status: 'CHECKOUT',
     effectiveStatus: 'CHECKOUT',
     createdAt: '2026-01-01T00:00:00.000Z',
-    reservationExpiresAt: '2099-01-01T00:00:00.000Z',
+    reservationExpiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
     paidAt: null,
     closedAt: null,
     closeReason: null,
@@ -218,26 +238,53 @@ bridge.oncalltool = async ({ name, arguments: args }) => {
       },
     };
   }
-  if (name === 'query_products')
-    return ok('queries' in args ? groupedData(args) : catalogData);
-  if (name === 'list_product_reviews')
+  if (name === 'query_products') {
+    if ('queries' in args) return ok(groupedData(args));
+    const offset = Number(args.offset ?? 0);
+    return ok(
+      serverPages
+        ? {
+            ...catalogData,
+            items: catalogItems.slice(offset, offset + 12),
+            nextOffset: offset + 12 < catalogItems.length ? offset + 12 : null,
+          }
+        : catalogData,
+    );
+  }
+  if (name === 'list_product_reviews') {
+    const offset = Number(args.offset ?? 0);
+    const reviews = Array.from(
+      { length: productDetail.reviewOverview.count },
+      (_, index) => ({
+        reviewId: `30000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+        user: 'User',
+        rating: 5,
+        content: `評論內容 ${index + 1}`,
+        createdAt: '2026-01-01T00:00:00.000Z',
+      }),
+    );
     return ok({
       productId: 'P001',
-      items: [],
-      total: 0,
-      nextOffset: null,
+      items: reviews.slice(offset, offset + 2),
+      total: reviews.length,
+      nextOffset: offset + 2 < reviews.length ? offset + 2 : null,
       catalogRevision: 'fixture',
     });
-  if (name === 'quote_selection')
+  }
+  if (name === 'quote_selection') {
+    const selected = args!.selectedItems as {
+      productId: string;
+      quantity: number;
+    }[];
     return ok(
       summary(
-        cart.items.filter((i) =>
-          (args!.selectedItems as { productId: string }[]).some(
-            (s) => s.productId === i.productId,
-          ),
-        ),
+        selected.map((item) => ({
+          ...cart.items.find((line) => line.productId === item.productId)!,
+          quantity: item.quantity,
+        })),
       ),
     );
+  }
   if (name === 'update_cart_item') {
     if (controls.conflictOnce) {
       controls.conflictOnce = false;
@@ -270,16 +317,41 @@ bridge.oncalltool = async ({ name, arguments: args }) => {
     return ok(cart);
   }
   if (name === 'apps_create_order') {
-    const selected = cart.items.filter((i) =>
-      (args!.selectedItems as { productId: string }[]).some(
-        (s) => s.productId === i.productId,
+    const selected = (
+      args!.selectedItems as { productId: string; quantity: number }[]
+    ).map((item) => ({
+      ...cart.items.find((line) => line.productId === item.productId)!,
+      quantity: item.quantity,
+    }));
+    const response = createFixtureOrder(selected);
+    cart = {
+      ...cart,
+      items: cart.items.filter(
+        (line) => !selected.some((item) => item.productId === line.productId),
       ),
-    );
-    return createFixtureOrder(selected);
+    };
+    return {
+      ...response,
+      structuredContent: { ok: true, data: { order, cart } },
+    };
   }
   if (name === 'get_order') return ok(order);
-  if (name === 'list_orders')
-    return ok({ items: order ? [order] : [], nextOffset: null });
+  if (name === 'list_orders') {
+    const orders = order
+      ? new URL(location.href).searchParams.has('manyOrders')
+        ? Array.from({ length: 9 }, (_, index) => ({
+            ...order!,
+            orderId: `20000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
+          }))
+        : [order]
+      : [];
+    const offset = Number(args?.offset ?? 0),
+      limit = Number(args?.limit ?? 20);
+    return ok({
+      items: orders.slice(offset, offset + limit),
+      nextOffset: offset + limit < orders.length ? offset + limit : null,
+    });
+  }
   if (name === 'apps_pay_order' && order) {
     if (controls.failPayOnce) {
       controls.failPayOnce = false;
