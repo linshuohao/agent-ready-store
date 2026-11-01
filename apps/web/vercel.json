@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "installCommand": "npm install --global pnpm@12.11.2 && pnpm install --frozen-lockfile",
+  "installCommand": "env -u npm_config_cache_dir -u NPM_CONFIG_CACHE_DIR npm install --global --allow-scripts=pnpm pnpm@12.11.2 && pnpm install --frozen-lockfile",
   "buildCommand": "pnpm --filter @store/contracts build && pnpm --filter @store/web build"
 }

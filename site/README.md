@@ -49,7 +49,7 @@ AI 工作流补充参考用户提供的 ai_native_engineering_manual.html、ai_n
 
 2026-10-31 经 Human 授权上线。项目 `agent-ready-store-docs` 与商城、API 独立，连接同仓库 main，Node.js 24.x，根目录为仓库根，输出 `site/dist`，关闭 Preview 部署。配置保存在 Vercel 项目设置。
 
-安装命令：`npm install --global pnpm@12.11.2 && cd site && pnpm install --frozen-lockfile`。
+安装命令：`env -u npm_config_cache_dir -u NPM_CONFIG_CACHE_DIR npm install --global --allow-scripts=pnpm pnpm@12.11.2 && cd site && pnpm install --frozen-lockfile`。
 
 构建命令：
 
