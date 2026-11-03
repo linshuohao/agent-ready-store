@@ -221,3 +221,45 @@ test('review pagination keeps the current content mounted while waiting', async 
   await expect(page.locator('.review-content')).toHaveCount(1);
   await expect(page.getByRole('button', { name: '上一頁評論' })).toBeEnabled();
 });
+
+test('leaving product reviews aborts the active HTTP read', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const original = window.fetch.bind(window);
+    window.fetch = (input, init) => {
+      if (typeof input === 'string' && input.includes('/reviews?'))
+        (window as any).__activeReviewSignal = init?.signal;
+      return original(input, init);
+    };
+  });
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route('**/api/v1/products/P005/reviews?**', async (route) => {
+    await gate;
+    try {
+      await route.abort();
+    } catch {
+      /* The client may already have cancelled. */
+    }
+  });
+  try {
+    await page.goto('/products/P005');
+    await expect
+      .poll(() =>
+        page.evaluate(() => (window as any).__activeReviewSignal?.aborted),
+      )
+      .toBe(false);
+    await page
+      .getByRole('link', { name: 'AGENT / STORE', exact: true })
+      .click();
+    await expect(page).toHaveURL(/\/$/);
+    expect(
+      await page.evaluate(() => (window as any).__activeReviewSignal.aborted),
+    ).toBe(true);
+  } finally {
+    release();
+  }
+});

@@ -15,11 +15,14 @@ export function Reviews({ productId }: { productId: string }) {
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     const controller = new AbortController();
+    // Hosts may not support cancellation; also ignore responses after cleanup.
     let current = true;
     const params = new URLSearchParams({ offset: String(offset), limit: '2' });
     if (revision) params.set('catalogRevision', revision);
     transport(
       `/api/v1/products/${encodeURIComponent(productId)}/reviews?${params}`,
+      undefined,
+      { signal: controller.signal },
     )
       .then((r) => r.json())
       .then((r: Result<ReviewPage>) => {

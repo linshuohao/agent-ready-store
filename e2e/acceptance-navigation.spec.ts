@@ -810,3 +810,50 @@ test('shared Web links retain client navigation and modified-click browser behav
     true,
   );
 });
+
+for (const [action, heading] of [
+  ['確認支付', '支付成功'],
+  ['取消這筆訂單', '訂單已取消'],
+] as const) {
+  test(`countdown stops after ${heading} and stays stopped on reload`, async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      const interval = window.setInterval.bind(window);
+      const clear = window.clearInterval.bind(window);
+      const timers = new Set<number>();
+      (window as any).__countdownTimers = timers;
+      window.setInterval = ((
+        callback: TimerHandler,
+        delay?: number,
+        ...args: any[]
+      ) => {
+        const id = interval(callback, delay, ...args);
+        if (delay === 1000) timers.add(id);
+        return id;
+      }) as typeof window.setInterval;
+      window.clearInterval = (id) => {
+        timers.delete(id!);
+        clear(id);
+      };
+    });
+    await page.goto(`/orders/${orderId}`);
+    await expect
+      .poll(() => page.evaluate(() => (window as any).__countdownTimers.size))
+      .toBe(1);
+    await page.getByRole('button', { name: action, exact: true }).click();
+    await expect(
+      page.getByRole('heading', { name: heading, exact: true }),
+    ).toBeVisible();
+    await expect
+      .poll(() => page.evaluate(() => (window as any).__countdownTimers.size))
+      .toBe(0);
+    await page.reload();
+    await expect(
+      page.getByRole('heading', { name: heading, exact: true }),
+    ).toBeVisible();
+    expect(
+      await page.evaluate(() => (window as any).__countdownTimers.size),
+    ).toBe(0);
+  });
+}

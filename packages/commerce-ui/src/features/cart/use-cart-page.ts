@@ -27,6 +27,7 @@ export function useCartPage(id?: string) {
   const operations = useCartOperations(),
     router = useRouter(),
     pathname = usePathname();
+  const { setDraftGuard, install, selectCart } = operations;
   const [view, setView] = useState<ShoppingCartView | null>(null);
   const viewRef = useRef<ShoppingCartView | null>(null);
   const [draft, setDraft] = useState<Record<string, string>>({});
@@ -61,11 +62,11 @@ export function useCartPage(id?: string) {
     (item) => draft[item.productId] !== String(item.quantity),
   );
   useEffect(() => {
-    if (id) operations.setDraftGuard(id, dirty, reload);
+    if (id) setDraftGuard(id, dirty, reload);
     return () => {
-      if (id) operations.setDraftGuard(id, false);
+      if (id) setDraftGuard(id, false);
     };
-  }, [id, dirty, reload, operations.setDraftGuard]);
+  }, [id, dirty, reload, setDraftGuard]);
   const updateSelection = useCallback((next: PurchaseSelection) => {
     choices.current = next;
     setSelection(next);
@@ -109,9 +110,9 @@ export function useCartPage(id?: string) {
       setDraft(values);
       viewRef.current = incoming;
       setView(incoming);
-      operations.install(incoming);
+      install(incoming);
     },
-    [id, operations.install],
+    [id, install],
   );
   const refreshRecovery = useCallback(() => {
     if (!id) return;
@@ -152,8 +153,9 @@ export function useCartPage(id?: string) {
     [id, transport, accept],
   );
   useEffect(() => {
+    const reads = readSequence;
     alive.current = true;
-    if (id) operations.selectCart(id);
+    if (id) selectCart(id);
     void load();
     refreshRecovery();
     const foreground = () => {
@@ -169,13 +171,13 @@ export function useCartPage(id?: string) {
     document.addEventListener('visibilitychange', foreground);
     return () => {
       alive.current = false;
-      readSequence.current++;
+      reads.current++;
       document.removeEventListener('click', leaving, true);
       window.removeEventListener('focus', foreground);
       window.removeEventListener('pageshow', foreground);
       document.removeEventListener('visibilitychange', foreground);
     };
-  }, [id, load, refreshRecovery, operations.selectCart]);
+  }, [id, load, refreshRecovery, selectCart]);
   useEffect(() => {
     refreshRecovery();
   }, [operations.orderRevision, refreshRecovery]);
@@ -195,7 +197,8 @@ export function useCartPage(id?: string) {
     updateSelection(next);
   }, [operations.removalRevision, updateSelection]);
   useEffect(() => {
-    const sequence = ++quoteSequence.current;
+    const quotes = quoteSequence;
+    const sequence = ++quotes.current;
     const items = purchaseItems(selection);
     // Keep the last confirmed estimate mounted while refreshing this cart.
     if (!id || !items || quoteCartId.current !== id) setQuote(null);
@@ -221,7 +224,7 @@ export function useCartPage(id?: string) {
       }
     });
     return () => {
-      quoteSequence.current++;
+      quotes.current++;
     };
   }, [id, selection, view?.cartVersion, transport, quoteRevision]);
   const setSelected = (ids: string[]) => {
