@@ -114,3 +114,102 @@ it('keeps HTTP status, result envelopes and no-store across both controllers', a
   });
   expect(log).toHaveBeenCalledTimes(1);
 });
+
+it('applies route admission before services and preserves guard error precedence and pipe transforms', async () => {
+  vi.stubEnv('WEB_ORIGIN', 'http://localhost:3000');
+  const carts = {
+    add: vi.fn(() => ({})),
+    listOrders: vi.fn((_id, query) => query),
+    payOrder: vi.fn(() => ({})),
+  };
+  const catalog = { searchGrouped: vi.fn(() => ({})), get: vi.fn(() => ({})) };
+  const module = await Test.createTestingModule({
+    controllers: [CatalogController, CartController],
+    providers: [
+      { provide: CartService, useValue: carts },
+      { provide: CatalogService, useValue: catalog },
+    ],
+  }).compile();
+  app = module.createNestApplication({ logger: false });
+  await app.listen(0, '127.0.0.1');
+  const base = await app.getUrl();
+  for (const [path, method, headers, body, status] of [
+    [
+      '/shopping/carts/add?extra=1',
+      'POST',
+      { origin: 'https://evil.invalid' },
+      '{}',
+      400,
+    ],
+    [
+      '/products/search?extra=1',
+      'POST',
+      { origin: 'https://evil.invalid' },
+      '{}',
+      403,
+    ],
+    [
+      '/products/search?extra=1',
+      'POST',
+      { origin: 'http://localhost:3000' },
+      '{}',
+      400,
+    ],
+    [
+      '/shopping/carts/add',
+      'POST',
+      { origin: 'http://localhost:3000', 'x-cart-token': 'old' },
+      '{}',
+      400,
+    ],
+    [
+      '/shopping/carts/add',
+      'POST',
+      { origin: 'http://localhost:3000', 'content-type': 'text/plain' },
+      '{}',
+      403,
+    ],
+    ['/shopping/carts/id/orders?offset=no', 'GET', {}, undefined, 400],
+    [
+      '/shopping/orders/id/pay',
+      'POST',
+      { origin: 'http://localhost:3000' },
+      '{"cartId":"bad"}',
+      400,
+    ],
+    ['/products/P001?productId=P002', 'GET', {}, undefined, 400],
+    [
+      '/carts?extra=1',
+      'POST',
+      { origin: 'https://evil.invalid', 'x-cart-token': 'old' },
+      '{}',
+      410,
+    ],
+  ] as const) {
+    const response = await fetch(`${base}/api/v1${path}`, {
+      method,
+      headers: { 'content-type': 'application/json', ...headers },
+      body,
+    });
+    expect(response.status, path).toBe(status);
+    expect(response.headers.get('cache-control'), path).toBe('no-store');
+    expect(await response.json()).toMatchObject({
+      ok: false,
+      requestId: expect.any(String),
+    });
+  }
+  expect(carts.add).not.toHaveBeenCalled();
+  expect(carts.listOrders).not.toHaveBeenCalled();
+  expect(carts.payOrder).not.toHaveBeenCalled();
+  expect(catalog.searchGrouped).not.toHaveBeenCalled();
+  expect(catalog.get).not.toHaveBeenCalled();
+  const response = await fetch(
+    `${base}/api/v1/shopping/carts/id/orders?offset=2&limit=3&pendingOnly=false`,
+  );
+  expect(response.status).toBe(200);
+  expect(carts.listOrders).toHaveBeenCalledWith('id', {
+    offset: 2,
+    limit: 3,
+    pendingOnly: false,
+  });
+});

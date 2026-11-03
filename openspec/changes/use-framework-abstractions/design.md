@@ -28,3 +28,11 @@
 ## Watch experiment outcome
 
 隔离fixture确认Nest watch会清空dist下Apps资源，且共享JS仅实现变化不会重启；现有Node watch会重启。保留当前组合，避免为采用高层入口反而增加资产复制和第二套依赖监听。详见tasks验证证据。
+
+## Follow-up scope and implementation
+
+2026-11-03 Human追加授权清理及逐项优化，优先Next/Nest最佳实践。职责拆分：cleanup仅contracts和无消费者PurchaseSummary；ui仅Bridge/PageTools；root仅HTTP Guard/Pipe与协调、清单和集成。三者无重叠写入，契约保留清单为共享边界，任一现行消费者出现则保留其依赖。
+
+HTTP以小型Guard集中准入，路由声明query是否允许/退役豁免等必要差异；购物车先请求形状再Origin，商品搜索先Origin再query的原拒绝优先级保留。Zod Pipe仅承接当前Controller已有参数校验/转换，Service校验不能因HTTP Pipe删除。不要新增身份保证；Origin不是Human身份。原生dialog保留为候选，只有具体收益/回归验证支持才替换。历史只读恢复、退役410及数据库锁/维护时序均不改。
+
+Next扫描补充：内部publicApi模块增加server-only边界，默认Server页面取数/客户端交互边界与并行fetch保留；清单及不改理由统一见tasks。本轮独立复查无findings，域内权限逻辑不变，只迁移HTTP准入职责。

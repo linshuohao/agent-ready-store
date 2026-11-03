@@ -497,23 +497,6 @@ html {
 .purchase-aside {
   min-width: 0;
 }
-.purchase-section-heading {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 8px 16px;
-  margin-bottom: 20px;
-}
-.purchase-section-heading h2 {
-  font-size: 20px;
-  margin: 0;
-}
-.purchase-section-heading p {
-  font-size: 12px;
-  color: var(--muted-foreground);
-  margin: 0;
-}
 .purchase-product-list {
   list-style: none;
   margin: 0;
@@ -525,19 +508,6 @@ html {
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 24px;
-}
-.purchase-product-heading {
-  margin-bottom: 16px;
-}
-.purchase-product-heading h3 {
-  margin: 0;
-  font-size: 18px;
-  line-height: 1.5;
-}
-.purchase-product-meta {
-  margin: 8px 0 0;
-  color: var(--muted-foreground);
-  font-size: 12px;
 }
 .purchase-product dl {
   margin: 0;

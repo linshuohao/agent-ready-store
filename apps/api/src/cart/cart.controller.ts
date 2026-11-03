@@ -5,12 +5,13 @@ import {
   Inject,
   Param,
   Post,
-  Req,
+  Body,
+  Query,
+  UseGuards,
   HttpCode,
   UseFilters,
   UseInterceptors,
 } from '@nestjs/common';
-import type { Request } from 'express';
 import { z } from 'zod';
 import { orderTargetInput } from '@store/contracts';
 import { CartService } from './cart.service.js';
@@ -19,6 +20,12 @@ import {
   HttpResultFilter,
   HttpResultInterceptor,
 } from '../shared/http-result.js';
+
+import {
+  CartRequestGuard,
+  CartRequestPolicy,
+} from '../shared/request-guards.js';
+import { ZodValidationPipe } from '../shared/zod-validation.pipe.js';
 
 const orderContext = orderTargetInput.omit({ orderId: true });
 const listQuery = z
@@ -39,128 +46,114 @@ const listQuery = z
       .optional(),
   })
   .strict();
-function parse<T>(schema: z.ZodType<T>, input: unknown): T {
-  const parsed = schema.safeParse(input);
-  if (!parsed.success) throw new AppError('VALIDATION_ERROR', 400);
-  return parsed.data;
-}
-
 @UseInterceptors(HttpResultInterceptor)
 @UseFilters(HttpResultFilter)
+@UseGuards(CartRequestGuard)
 @Controller('api/v1')
 export class CartController {
   constructor(@Inject(CartService) private readonly carts: CartService) {}
 
-  private checkRequest(req: Request, write: boolean, query = false) {
-    if (
-      (!query && Object.keys(req.query).length) ||
-      req.headers['x-cart-token']
-    )
-      throw new AppError('VALIDATION_ERROR', 400);
-    if (
-      write &&
-      (req.get('origin') !== process.env.WEB_ORIGIN ||
-        !req.is('application/json'))
-    )
-      throw new AppError('FORBIDDEN', 403);
-  }
-
+  @CartRequestPolicy({ allowQuery: true })
   @Get('shopping/request-result')
-  async requestResult(@Req() req: Request) {
-    this.checkRequest(req, false, true);
-    return this.carts.requestResult(req.query);
+  async requestResult(@Query() query: Record<string, unknown>) {
+    return this.carts.requestResult(query);
   }
 
   @HttpCode(200)
   @Post('shopping/carts/add')
-  async add(@Req() req: Request) {
-    this.checkRequest(req, true);
-    return this.carts.add(req.body, 'WEB');
+  async add(@Body() body: unknown) {
+    return this.carts.add(body, 'WEB');
   }
 
   @HttpCode(200)
   @Post('shopping/webmcp/carts/add')
-  async addWebMcp(@Req() req: Request) {
-    this.checkRequest(req, true);
-    return this.carts.add(req.body, 'WEBMCP');
+  async addWebMcp(@Body() body: unknown) {
+    return this.carts.add(body, 'WEBMCP');
   }
 
   @HttpCode(200)
   @Post('shopping/carts')
-  async initialize(@Req() req: Request) {
-    this.checkRequest(req, true);
-    return this.carts.getOrCreate(req.body, 'WEB');
+  async initialize(@Body() body: unknown) {
+    return this.carts.getOrCreate(body, 'WEB');
   }
 
   @HttpCode(200)
   @Post('shopping/webmcp/carts')
-  async initializeWebMcp(@Req() req: Request) {
-    this.checkRequest(req, true);
-    return this.carts.getOrCreate(req.body, 'WEBMCP');
+  async initializeWebMcp(@Body() body: unknown) {
+    return this.carts.getOrCreate(body, 'WEBMCP');
   }
 
   @HttpCode(200)
   @Post('shopping/webmcp/carts/:id/orders')
-  async createWebMcpOrder(@Param('id') id: string, @Req() req: Request) {
-    this.checkRequest(req, true);
-    return this.carts.createOrder(id, req.body, 'WEBMCP');
+  async createWebMcpOrder(@Param('id') id: string, @Body() body: unknown) {
+    return this.carts.createOrder(id, body, 'WEBMCP');
   }
 
   @Get('shopping/carts/:id')
-  async get(@Param('id') id: string, @Req() req: Request) {
-    this.checkRequest(req, false);
+  async get(@Param('id') id: string) {
     return this.carts.get(id);
   }
 
   @HttpCode(200)
   @Post('shopping/carts/:id/operations')
-  async operate(@Param('id') id: string, @Req() req: Request) {
-    this.checkRequest(req, true);
-    return this.carts.operate(id, req.body);
+  async operate(@Param('id') id: string, @Body() body: unknown) {
+    return this.carts.operate(id, body);
   }
 
   @HttpCode(200)
   @Post('shopping/carts/:id/quote')
-  async quote(@Param('id') id: string, @Req() req: Request) {
-    this.checkRequest(req, true);
-    return this.carts.quoteSelection(id, req.body, 'WEB');
+  async quote(@Param('id') id: string, @Body() body: unknown) {
+    return this.carts.quoteSelection(id, body, 'WEB');
   }
 
   @HttpCode(200)
   @Post('shopping/carts/:id/orders')
-  async createOrder(@Param('id') id: string, @Req() req: Request) {
-    this.checkRequest(req, true);
-    return this.carts.createOrder(id, req.body, 'WEB');
+  async createOrder(@Param('id') id: string, @Body() body: unknown) {
+    return this.carts.createOrder(id, body, 'WEB');
   }
 
+  @CartRequestPolicy({ allowQuery: true })
   @Get('shopping/carts/:id/orders')
-  async listOrders(@Param('id') id: string, @Req() req: Request) {
-    this.checkRequest(req, false, true);
-    return this.carts.listOrders(id, parse(listQuery, req.query));
+  async listOrders(
+    @Param('id') id: string,
+    @Query(new ZodValidationPipe(listQuery)) query: z.output<typeof listQuery>,
+  ) {
+    return this.carts.listOrders(id, query);
   }
 
+  @CartRequestPolicy({ allowQuery: true })
   @Get('shopping/orders/:id')
-  async getOrder(@Param('id') id: string, @Req() req: Request) {
-    this.checkRequest(req, false, true);
-    return this.carts.getOrder(id, parse(orderContext, req.query).cartId);
+  async getOrder(
+    @Param('id') id: string,
+    @Query(new ZodValidationPipe(orderContext))
+    query: z.output<typeof orderContext>,
+  ) {
+    return this.carts.getOrder(id, query.cartId);
   }
 
   // UI interaction only; never registered as an Agent tool. Origin is not human identity proof.
   @HttpCode(200)
   @Post('shopping/orders/:id/pay')
-  async payOrder(@Param('id') id: string, @Req() req: Request) {
-    this.checkRequest(req, true);
-    return this.carts.payOrder(id, parse(orderContext, req.body).cartId);
+  async payOrder(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(orderContext))
+    body: z.output<typeof orderContext>,
+  ) {
+    return this.carts.payOrder(id, body.cartId);
   }
 
   @HttpCode(200)
   @Post('shopping/orders/:id/cancel')
-  async cancelOrder(@Param('id') id: string, @Req() req: Request) {
-    this.checkRequest(req, true);
-    return this.carts.cancelOrder(id, parse(orderContext, req.body).cartId);
+  async cancelOrder(
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(orderContext))
+    body: z.output<typeof orderContext>,
+  ) {
+    return this.carts.cancelOrder(id, body.cartId);
   }
 
   // Separate namespace: old clients cannot execute a legacy purchase on the new model.
+  @CartRequestPolicy({ retired: true })
   @All([
     'carts',
     'carts/*path',

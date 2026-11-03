@@ -19,7 +19,6 @@ export type PageToolsProps = {
   product?: ProductDetail;
   cartId?: string;
   readonly?: boolean;
-  reviewId?: string;
   orderId?: string;
 };
 export type Navigation = {

@@ -1,3 +1,4 @@
+import 'server-only';
 import type { Result } from '@store/contracts';
 export async function publicApi<T>(path: string): Promise<Result<T>> {
   try {

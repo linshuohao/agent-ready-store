@@ -11,11 +11,8 @@ import {
   orderTargetInput,
   searchInput,
   pageInput,
-  type Page,
-  type ProductSummary,
-  type ProductDetail,
-  type Result,
 } from '@store/contracts';
+import type { PageToolsProps } from '@store/commerce-ui/runtime';
 import { useCartOperations } from '@/features/cart/provider';
 import { z } from 'zod';
 import {
@@ -39,15 +36,6 @@ type Context = {
     options: { signal: AbortSignal },
   ) => void | Promise<void>;
 };
-type Props = {
-  catalog?: Result<Page<ProductSummary>>;
-  queryKey?: string;
-  product?: ProductDetail;
-  cartId?: string;
-  readonly?: boolean;
-  reviewId?: string;
-  orderId?: string;
-};
 const jsonSchema = (input: z.ZodType) => ({
   type: 'object',
   ...z.toJSONSchema(input, { io: 'input' }),
@@ -59,7 +47,7 @@ const queryKey = (params: URLSearchParams) => {
   p.sort();
   return p.toString();
 };
-export function PageTools(props: Props) {
+export function PageTools(props: PageToolsProps) {
   const operations = useCartOperations();
   const orders = useLifecycleOrders();
   const router = useRouter(),

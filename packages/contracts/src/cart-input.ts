@@ -1,6 +1,5 @@
 import { z } from 'zod';
 export const cartIdInput = z.uuid();
-export const cartTokenInput = z.string().regex(/^[A-Za-z0-9_-]{43}$/);
 export const cartItemInput = z
   .object({
     productId: z.string().min(1).max(64),

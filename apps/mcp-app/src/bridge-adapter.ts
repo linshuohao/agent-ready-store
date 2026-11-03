@@ -10,11 +10,11 @@ import {
   productSummaryOutput as product,
   pageInput,
   cartIdInput,
+  cartOperationInput,
 } from '@store/contracts';
 import type { Transport, Storage } from '@store/commerce-ui/transport';
 export interface Bridge {
   call(name: string, args: Record<string, unknown>): Promise<unknown>;
-  open(url: string): Promise<{ isError?: boolean }>;
 }
 const envelope = z.object({
   structuredContent: z.discriminatedUnion('ok', [
@@ -130,13 +130,7 @@ export function bridgeTransport(bridge: Bridge): Transport {
         parts[3] === 'operations' &&
         body !== undefined
       ) {
-        const operation = z
-          .object({
-            type: z.enum(['add_item', 'set_quantity', 'remove_item']),
-            productId: z.string(),
-            quantity: z.number().optional(),
-          })
-          .parse(args.operation);
+        const operation = cartOperationInput.parse(args.operation);
         name =
           operation.type === 'add_item'
             ? 'add_cart_item'
