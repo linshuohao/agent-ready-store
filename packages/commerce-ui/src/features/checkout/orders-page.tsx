@@ -34,6 +34,7 @@ export function OrdersPage({ cartId }: { cartId?: string }) {
       )}
       <p>
         <Link
+          prefetch={false}
           href={
             id && cartIdInput.safeParse(id).success ? `/cart/${id}` : '/cart'
           }

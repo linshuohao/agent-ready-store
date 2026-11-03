@@ -4,11 +4,12 @@ import type { ToolDefinition } from '../register-tools.js';
 import type { CartService } from '../../cart/cart.service.js';
 import { quoteSelectionInput } from '@store/contracts';
 import { z } from 'zod';
-import { parseToolInput as parse } from '../tool-input.js';
 
 const selectionQuote = quoteSelectionInput.safeExtend({ cartId: z.uuid() });
 
-export function createQuoteSelection(carts: CartService): ToolDefinition {
+export function createQuoteSelection(
+  carts: CartService,
+): ToolDefinition<z.output<typeof selectionQuote>> {
   return {
     name: 'quote_selection',
     description:
@@ -22,7 +23,7 @@ export function createQuoteSelection(carts: CartService): ToolDefinition {
     },
     handler: async (input) => {
       try {
-        const { cartId, ...body } = parse(selectionQuote, input);
+        const { cartId, ...body } = input;
         return await carts.quoteSelection(cartId, body, 'MCP');
       } catch (error) {
         if (

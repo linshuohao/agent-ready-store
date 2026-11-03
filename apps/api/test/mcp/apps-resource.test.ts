@@ -96,17 +96,12 @@ const token = process.env.MCP_SERVICE_TOKEN;
           },
         });
       }
-      // Cached final cards may still reference v4/v5/v6; resolve only these exact known URIs.
+      // Historical resources are no longer aliases for the current build.
       for (const name of ['search-products', 'create-order']) {
-        const current = await client.readResource({
-          uri: `ui://store/${name}-v9.html`,
-        });
         for (const version of ['v4', 'v5', 'v6', 'v7', 'v8']) {
-          const uri = `ui://store/${name}-${version}.html`;
-          const cached = await client.readResource({ uri });
-          expect(cached.contents).toEqual(
-            current.contents.map((c) => ({ ...c, uri })),
-          );
+          await expect(
+            client.readResource({ uri: `ui://store/${name}-${version}.html` }),
+          ).rejects.toThrow();
         }
       }
       // Do not revive intermediate cards or derive arbitrary file paths from aliases.

@@ -59,6 +59,14 @@ const url = process.env.TEST_DATABASE_URL;
       ]);
       return payload;
     }
+    async function invalid(name: string, args: Record<string, unknown>) {
+      const response = await client.callTool({ name, arguments: args });
+      expect(response.structuredContent).toBeUndefined();
+      expect(response.content).toEqual([
+        { type: 'text', text: expect.any(String) },
+      ]);
+      return response;
+    }
     const initialize = () => ({
       initializationId: randomUUID(),
       operationRequestId: randomUUID(),
@@ -142,23 +150,20 @@ const url = process.env.TEST_DATABASE_URL;
       ).toBe(true);
       expect(await db.cart.count()).toBe(0);
       expect(await db.order.count()).toBe(0);
-      expect(
-        await call('get_or_create_cart', {
-          requestId: randomUUID(),
-          initialItems: [],
-        }),
-      ).toMatchObject({ error: { code: 'VALIDATION_ERROR' } });
-      expect(
-        (
-          await call('get_or_create_cart', {
-            requestId: randomUUID(),
-            initialItems: [
-              { productId: 'P001', quantity: 1 },
-              { productId: 'missing', quantity: 1 },
-            ],
-          })
-        ).ok,
-      ).toBe(false);
+      for (const initialItems of [
+        [],
+        [
+          { productId: 'P001', quantity: 1 },
+          { productId: 'missing', quantity: 1 },
+        ],
+      ]) {
+        expect(
+          await client.callTool({
+            name: 'get_or_create_cart',
+            arguments: { requestId: randomUUID(), initialItems },
+          }),
+        ).toMatchObject({ isError: true });
+      }
       expect(await db.cart.count()).toBe(0);
       const input = initialize();
       const cart = (await call('add_cart_item', input)).data;
@@ -242,20 +247,20 @@ const url = process.env.TEST_DATABASE_URL;
           await call('create_order', { ...input, constraints }),
         ).toMatchObject({ error: { code } });
       expect(
-        await call('create_order', { ...input, userApproved: true }),
-      ).toMatchObject({ error: { code: 'VALIDATION_ERROR' } });
+        await invalid('create_order', { ...input, userApproved: true }),
+      ).toMatchObject({ isError: true });
       expect(
-        await call('get_or_create_cart', {
+        await invalid('get_or_create_cart', {
           ...initialize(),
           createdByChannel: 'WEB',
         }),
-      ).toMatchObject({ error: { code: 'VALIDATION_ERROR' } });
+      ).toMatchObject({ isError: true });
       expect(
-        await call('create_order', {
+        await invalid('create_order', {
           ...input,
           selectedItems: [{ productId: 'P001', quantity: 0 }],
         }),
-      ).toMatchObject({ error: { code: 'VALIDATION_ERROR' } });
+      ).toMatchObject({ isError: true });
       expect(await db.order.count()).toBe(0);
       expect(
         (
@@ -328,9 +333,9 @@ const url = process.env.TEST_DATABASE_URL;
         (await call('list_orders', { cartId: cart.cartId, pendingOnly: true }))
           .data.items,
       ).toHaveLength(2);
-      expect(await call('cancel_order', { cartId: cart.cartId })).toMatchObject(
-        { error: { code: 'VALIDATION_ERROR' } },
-      );
+      expect(
+        await invalid('cancel_order', { cartId: cart.cartId }),
+      ).toMatchObject({ isError: true });
       expect(
         await call('cancel_order', {
           cartId: randomUUID(),
@@ -396,11 +401,11 @@ const url = process.env.TEST_DATABASE_URL;
       expect(after.reservedQuantity).toBe(inventory.reservedQuantity - 1);
       expect(await db.order.count()).toBe(1);
       expect(
-        await call('apps_pay_order', {
+        await invalid('apps_pay_order', {
           orderId: order.orderId,
           approved: true,
         }),
-      ).toMatchObject({ ok: false, error: { code: 'VALIDATION_ERROR' } });
+      ).toMatchObject({ isError: true });
     });
     it('maps named updates/removals and refuses schema bypass or invented payment calls', async () => {
       const cart = (await call('add_cart_item', initialize())).data;
@@ -424,21 +429,24 @@ const url = process.env.TEST_DATABASE_URL;
         ).data.items,
       ).toEqual([]);
       for (const name of ['pay_order', 'simulate_click'])
-        expect(await call(name, {})).toMatchObject({
-          error: { code: 'VALIDATION_ERROR' },
-        });
+        await expect(
+          client.callTool({ name, arguments: {} }),
+        ).rejects.toMatchObject({ code: -32602 });
       expect(
-        await call('get_cart', { cartId: cart.cartId, cartAccessToken: 'old' }),
-      ).toMatchObject({ error: { code: 'VALIDATION_ERROR' } });
+        await invalid('get_cart', {
+          cartId: cart.cartId,
+          cartAccessToken: 'old',
+        }),
+      ).toMatchObject({ isError: true });
       expect(
-        await call('list_orders', { cartId: cart.cartId, limit: 101 }),
-      ).toMatchObject({ error: { code: 'VALIDATION_ERROR' } });
+        await invalid('list_orders', { cartId: cart.cartId, limit: 101 }),
+      ).toMatchObject({ isError: true });
       expect(
-        await call('remove_cart_item', {
+        await invalid('remove_cart_item', {
           ...context,
           operation: { type: 'add_item', quantity: 9 },
         }),
-      ).toMatchObject({ error: { code: 'VALIDATION_ERROR' } });
+      ).toMatchObject({ isError: true });
     });
   },
 );

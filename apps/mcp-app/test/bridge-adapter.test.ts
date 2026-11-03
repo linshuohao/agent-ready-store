@@ -579,3 +579,25 @@ it('known order success survives local association failure while durable recover
   });
   expect(pendingRequests(storage).map((r) => r.requestId)).toEqual([requestId]);
 });
+
+it('rejects standard SDK errors and propagates protocol failures without reporting success', async () => {
+  const sdkError = {
+    isError: true,
+    content: [{ type: 'text', text: 'Input validation error' }],
+  };
+  const bridge: Bridge = { call: async () => sdkError, open: async () => ({}) };
+  await expect(
+    bridgeTransport(bridge)(`/api/v1/shopping/carts/${id}`),
+  ).rejects.toThrow();
+  expect(() => toolRoute('search_products', {}, sdkError)).toThrow();
+  const protocolError = new Error('Tool not found');
+  const failed: Bridge = {
+    call: async () => {
+      throw protocolError;
+    },
+    open: async () => ({}),
+  };
+  await expect(
+    bridgeTransport(failed)(`/api/v1/shopping/carts/${id}`),
+  ).rejects.toBe(protocolError);
+});

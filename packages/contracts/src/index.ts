@@ -636,8 +636,4 @@ export const groupedSearchOutput = z
     );
   });
 
-export {
-  mcpAppTools,
-  mcpAppVersion,
-  mcpCachedAppVersions,
-} from './mcp-resources.js';
+export { mcpAppTools, mcpAppVersion } from './mcp-resources.js';

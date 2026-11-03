@@ -117,7 +117,7 @@ export function CartPage({ id }: { id?: string }) {
           {conflict && (
             <p role="alert">
               這不是目前購物車，未更換購物上下文。
-              <Link href={`/cart/${operations.currentCartId}`}>
+              <Link href={`/cart/${operations.currentCartId}`} prefetch={false}>
                 返回目前購物車
               </Link>
             </p>

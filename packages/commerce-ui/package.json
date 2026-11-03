@@ -13,7 +13,6 @@
     "./components/ui/button": "./src/components/ui/button.tsx",
     "./components/ui/checkbox": "./src/components/ui/checkbox.tsx",
     "./components/ui/input": "./src/components/ui/input.tsx",
-    "./features/cart/commands": "./src/features/cart/commands.ts",
     "./features/cart/add-button": "./src/features/cart/add-button.tsx",
     "./features/cart/cart-orders": "./src/features/cart/cart-orders.tsx",
     "./features/cart/site-header": "./src/features/cart/site-header.tsx",

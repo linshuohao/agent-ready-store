@@ -302,3 +302,33 @@ test('Human first add and corrected tool add share identity without waiting for 
     })
     .toBe(2);
 });
+
+test('page tool schemas retain shared input constraints and runtime validation', async ({
+  page,
+}) => {
+  await page.goto('/');
+  expect(
+    await call(page, 'search_products', { category: 'x'.repeat(201) }),
+  ).toMatchObject({ error: { code: 'VALIDATION_ERROR' } });
+  const search = await page.evaluate(
+    () => (window as any).s5Tools.get('search_products').inputSchema,
+  );
+  expect(search.properties.category.maxLength).toBe(200);
+  expect(search.properties.brand.maxLength).toBe(200);
+  expect(search.properties.catalogRevision.maxLength).toBe(128);
+  expect(search.properties.limit.maximum).toBe(50);
+  await page.goto('/products/P001');
+  expect(
+    await call(page, 'list_product_reviews', {
+      catalogRevision: 'x'.repeat(129),
+    }),
+  ).toMatchObject({ error: { code: 'VALIDATION_ERROR' } });
+  const reviews = await page.evaluate(
+    () => (window as any).s5Tools.get('list_product_reviews').inputSchema,
+  );
+  expect(reviews.properties.catalogRevision.maxLength).toBe(128);
+  expect(reviews.properties.offset.maximum).toBe(Number.MAX_SAFE_INTEGER);
+  expect(await call(page, 'get_product', [])).toMatchObject({
+    error: { code: 'VALIDATION_ERROR' },
+  });
+});

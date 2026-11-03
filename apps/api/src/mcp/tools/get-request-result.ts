@@ -1,9 +1,11 @@
+import type { z } from 'zod';
 import { requestResultInput } from '@store/contracts';
 import type { CartService } from '../../cart/cart.service.js';
 import type { ToolDefinition } from '../register-tools.js';
-import { parseToolInput } from '../tool-input.js';
 
-export function createGetRequestResult(carts: CartService): ToolDefinition {
+export function createGetRequestResult(
+  carts: CartService,
+): ToolDefinition<z.output<typeof requestResultInput>> {
   return {
     name: 'get_request_result',
     description:
@@ -16,7 +18,6 @@ export function createGetRequestResult(carts: CartService): ToolDefinition {
       openWorldHint: false,
     },
     skipMaintenance: true,
-    handler: (input) =>
-      carts.requestResult(parseToolInput(requestResultInput, input)),
+    handler: (input) => carts.requestResult(input),
   };
 }

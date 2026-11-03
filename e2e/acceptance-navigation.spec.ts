@@ -785,3 +785,28 @@ test('order product previews expand independently without changing full totals',
     2,
   );
 });
+
+test('shared Web links retain client navigation and modified-click browser behavior', async ({
+  page,
+  context,
+}) => {
+  await page.goto('/');
+  await page.evaluate(() => {
+    (window as any).__navigationMarker = true;
+  });
+  const link = page
+    .getByRole('navigation', { name: '購物導覽' })
+    .getByRole('link', { name: '購物車', exact: true });
+  await expect(link).toHaveAttribute('href', `/cart/${cartId}`);
+  const newPage = context.waitForEvent('page');
+  await link.click({ modifiers: ['ControlOrMeta'] });
+  const opened = await newPage;
+  await expect(opened).toHaveURL(new RegExp(`/cart/${cartId}$`));
+  await expect(page).toHaveURL(/\/$/);
+  await opened.close();
+  await link.click();
+  await expect(page).toHaveURL(new RegExp(`/cart/${cartId}$`));
+  expect(await page.evaluate(() => (window as any).__navigationMarker)).toBe(
+    true,
+  );
+});

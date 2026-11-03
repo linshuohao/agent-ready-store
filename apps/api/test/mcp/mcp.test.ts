@@ -117,6 +117,18 @@ const token = process.env.MCP_SERVICE_TOKEN;
           const mcp = await client.callTool({ name: tool, arguments: args });
           const http = await (await fetch(`${base}${path}`)).json();
           const structured = mcp.structuredContent as Record<string, unknown>;
+          if ('unknown' in args || ('limit' in args && args.limit === 51)) {
+            expect(http).toMatchObject({
+              ok: false,
+              error: { code: 'VALIDATION_ERROR' },
+            });
+            expect(mcp).toMatchObject({
+              isError: true,
+              content: [{ type: 'text', text: expect.any(String) }],
+            });
+            expect(structured).toBeUndefined();
+            continue;
+          }
           expect(structured.ok).toBe(http.ok);
           if (http.ok) expect(structured.data).toEqual(http.data);
           else expect(structured.error).toEqual(http.error);

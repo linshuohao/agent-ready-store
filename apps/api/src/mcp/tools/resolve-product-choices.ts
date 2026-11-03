@@ -38,19 +38,17 @@ export function createChoiceCodec() {
 }
 type Codec = ReturnType<typeof createChoiceCodec>;
 export async function resolveProductChoices(
-  input: unknown,
+  input: z.output<typeof productChoicesInput>,
   catalog: CatalogService,
   ctx: ServerContext,
   modern: boolean,
   codec: Codec,
 ): Promise<Record<string, unknown> | InputRequiredResult> {
-  const parsed = productChoicesInput.safeParse(input);
-  if (!parsed.success) throw new AppError('VALIDATION_ERROR', 400);
-  const { queries, choices = {} } = parsed.data;
+  const { queries, choices = {} } = input;
   if (Object.keys(choices).some((id) => !queries.some((q) => q.id === id)))
     throw new AppError('VALIDATION_ERROR', 400);
   const fingerprint = createHash('sha256')
-    .update(JSON.stringify(parsed.data))
+    .update(JSON.stringify(input))
     .digest('hex');
   const state = ctx.mcpReq.requestState<ChoiceState>();
   const answer = inputResponse(ctx.mcpReq.inputResponses, 'products');
@@ -162,7 +160,7 @@ export function createResolveProductChoices({
   catalog: CatalogService;
   choiceCodec: ReturnType<typeof createChoiceCodec>;
   modern: boolean;
-}): ToolDefinition {
+}): ToolDefinition<z.output<typeof productChoicesInput>> {
   return {
     name: 'resolve_product_choices',
     description:

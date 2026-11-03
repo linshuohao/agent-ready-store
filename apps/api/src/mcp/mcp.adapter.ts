@@ -54,7 +54,6 @@ export function attachMcp(
           '改车/生单结果未知先用get_request_result只读核实；not_found不等于失败，明确继续才沿原键原载荷恢复。取消未知用get_order查原单；纯查询失败不能当作未知购买去恢复。保留用户预算和规格硬条件；一般知识问答或全网真实购物不应被本店模拟目录替代。',
         ].join('\n'),
         requestState: { verify: choiceCodec.verify },
-        capabilities: { tools: {}, resources: {} },
         supportedProtocolVersions: [
           '2026-07-28',
           '2025-11-25',

@@ -79,7 +79,7 @@ WebMCP 使用同源 JSON 的 `POST /api/v1/shopping/webmcp/carts` 和 `POST /api
 
 当前资源URI版本为`v9`；Apps自报版本当前仍为`commerce-shared-v8`（两者不能混同）。仅search_products与create_order关联两份隔离静态HTML；query_products、详情/评论、建车/读车/加购/改量/移除、报价、查单/列表/取消均只返回数据。购买准备使用query_products，完整目标准备好后仅create_order展示结算；搜索意图直接用search_products展示结果。Human在原结算卡片内点击支付，状态与未知恢复原地更新，不依赖Agent调用查单生成新卡片。卡片内主动导航及Bridge操作不新增对话卡片。使用ext-apps 2.0.4与MCP v2 (server/core/client 2.4.0, node 2.1.2)，资源只含构建代码，不含交易数据或服务凭证。API构建后须构建Apps；资源URI白名单禁止任意文件读取，资源沿用当前入口模式：Demo无需Token，token模式校验服务令牌。
 
-Host可能缓存tools/list中的旧资源URI。服务只为两个最终展示入口保留v4/v5/v6/v7/v8→当前v9的显式读取映射，返回请求的URI及当前HTML；资源发现仍只公布两份v9，不恢复旧详情/车等中间卡片。未知版本和路径继续拒绝。资源可读不代表Host已经更新工具目录：连接刷新后应能发现query_products；若仍仅有旧13个模型工具，购买准备无法使用新的无UI查询。真实失效记录须核对实际工具名及资源URI，不能仅凭有数据返回认定UI已展示。
+Host可能缓存tools/list中的旧资源URI。服务仅提供当前v9的两份资源，历史URI不再映射、重定向或回退至当前HTML，读取时返回资源不存在错误。刷新连接并重新发现工具与资源后使用当前URI；旧订单通过原orderId读取并打开当前入口，不重放生单或支付来恢复卡片。资源可读不代表Host已经更新工具目录，真实失效记录须核对实际工具名及资源URI，不能仅凭有数据返回认定UI已展示。
 
 同一次购买多个商品先通过query_products及其他数据工具准备完整目标，再一次create_order生成包含全部行的一张结算卡片；用户明确拆单除外。不逐商品调用展示/生单工具，支付状态在同卡片更新。
 
@@ -91,7 +91,7 @@ Web与Apps使用同一完整购物应用；共享源码、界面/交互边界和
 
 ## 验证边界
 
-自动化以隔离 `store_test` 和 loopback API3003 验证真实 HTTP/MCP 发现、错误映射、幂等与交易约束。真实 Host 的网页接手、可见摘要、Human 支付及库存结果仍须按 [Tasks](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/tasks.md) 分入口记录，协议测试不能冒充 Human 验收。旧 prepare/review/submit/handoff/get_order_link 写流程返回 `CHECKOUT_FLOW_REPLACED`，旧支付调用不生效。
+自动化以隔离 `store_test` 和 loopback API3003 验证真实 HTTP/MCP 发现、错误映射、幂等与交易约束。真实 Host 的网页接手、可见摘要、Human 支付及库存结果仍须按 [Tasks](../../openspec/changes/archive/2026-10-31-checkout-lifecycle-redesign/tasks.md) 分入口记录，协议测试不能冒充 Human 验收。旧 MCP prepare/review/submit/handoff/get_order_link 工具不再注册，调用与其他未知工具一样返回 SDK 标准协议错误（InvalidParams），旧支付调用不生效；旧 HTTP 路由继续返回 410 / CHECKOUT_FLOW_REPLACED。
 
 ## 多目标搜索与新协议选择
 
@@ -108,6 +108,12 @@ search_products/query_products接受旧单目标或严格批量结构：
 resolve_product_choices只在用户需要决定型号时调用，输入queries及可选choices（组ID到商品ID）。现代form客户端收到input_required，答复后续调原工具；SDK签名requestState绑定原目标、候选及价格，10分钟过期，进程重启失效。SDK getClientCapabilities在逐请求实例读取从当前envelope回填的能力，不是跨请求能力缓存。accept重查当前事实，decline/cancel停止；无能力或旧无状态客户端返回selection_required供对话澄清。工具不写车、不生单、不付款。超时/断连后无持续等待的服务器事务；Host应保留原目标，只有用户明确继续才重试，不能把失联视为接受。
 
 实际Host的协议版本、form支持、点选/取消显示仍需人工验收；本地SDK及AppBridge浏览器夹具成功不等于实际Host通过。本轮没有替换另一工作区正在运行的服务。
+
+## 工具校验与错误边界
+
+MCP 使用 SDK 高层注册和调用路径：工具参数先按声明的 schema 校验，失败返回 `isError: true` 和可读 `content`，不承诺业务 `structuredContent`；未知及退役工具返回标准协议错误。两者都不会执行库存维护或业务回调。调用方应先处理协议异常与 `isError`，不能假设所有失败都有业务 envelope，也不依赖 SDK 错误文案逐字稳定。
+
+合法输入进入业务后，预算、库存、版本等失败仍返回现有结构化错误码、约束详情和恢复提示；分类发现、请求结果核实保留维护豁免。Apps Bridge 将缺少合法业务结果的 SDK 错误作为失败，不会当作空成功；传输异常也不表示写入已失败，仍按原请求核实。
 
 ## 意图优先与错误恢复
 

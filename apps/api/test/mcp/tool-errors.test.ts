@@ -13,7 +13,7 @@ const orderInput = {
   cartId: id,
   requestId: id,
   selectedItems: [{ productId: 'P001', quantity: 1 }],
-  constraints: { currency: 'TWD' },
+  constraints: { currency: 'TWD' as const },
 };
 const context = {} as ServerContext;
 

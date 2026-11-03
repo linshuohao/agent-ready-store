@@ -4,7 +4,6 @@ import type { ToolDefinition } from '../register-tools.js';
 import type { CartService } from '../../cart/cart.service.js';
 import { persistentCartOperationInput } from '@store/contracts';
 import { z } from 'zod';
-import { parseToolInput as parse } from '../tool-input.js';
 
 const operationBase = persistentCartOperationInput.options[1]
   .omit({ operation: true })
@@ -13,7 +12,9 @@ const removeItemInput = operationBase
   .extend({ productId: z.string().min(1).max(64) })
   .strict();
 
-export function createRemoveCartItem(carts: CartService): ToolDefinition {
+export function createRemoveCartItem(
+  carts: CartService,
+): ToolDefinition<z.output<typeof removeItemInput>> {
   return {
     name: 'remove_cart_item',
     description: '移除明确指定车行，不取消或修改已有订单；未知沿原操作键恢复。',
@@ -26,7 +27,7 @@ export function createRemoveCartItem(carts: CartService): ToolDefinition {
     },
     handler: async (input) => {
       try {
-        const { cartId, productId, ...context } = parse(removeItemInput, input);
+        const { cartId, productId, ...context } = input;
         return await carts.operate(cartId, {
           ...context,
           operation: { type: 'remove_item', productId },

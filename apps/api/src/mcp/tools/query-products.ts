@@ -1,10 +1,13 @@
+import type { z } from 'zod';
 import { ToolError } from '../tool-error.js';
 import { AppError } from '../../shared/app-error.js';
 import type { ToolDefinition } from '../register-tools.js';
 import type { CatalogService } from '../../catalog/catalog.service.js';
 import { discoveryInput } from '@store/contracts';
 
-export function createQueryProducts(catalog: CatalogService): ToolDefinition {
+export function createQueryProducts(
+  catalog: CatalogService,
+): ToolDefinition<z.output<typeof discoveryInput>> {
   return {
     name: 'query_products',
     description:

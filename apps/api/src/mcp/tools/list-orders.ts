@@ -4,11 +4,12 @@ import type { ToolDefinition } from '../register-tools.js';
 import type { CartService } from '../../cart/cart.service.js';
 import { listOrdersInput } from '@store/contracts';
 import { z } from 'zod';
-import { parseToolInput as parse } from '../tool-input.js';
 
 const orderList = listOrdersInput.extend({ cartId: z.uuid() }).strict();
 
-export function createListOrders(carts: CartService): ToolDefinition {
+export function createListOrders(
+  carts: CartService,
+): ToolDefinition<z.output<typeof orderList>> {
   return {
     name: 'list_orders',
     description:
@@ -22,7 +23,7 @@ export function createListOrders(carts: CartService): ToolDefinition {
     },
     handler: async (input) => {
       try {
-        const { cartId, ...page } = parse(orderList, input);
+        const { cartId, ...page } = input;
         return await carts.listOrders(cartId, page);
       } catch (error) {
         if (

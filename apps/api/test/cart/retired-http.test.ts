@@ -115,11 +115,9 @@ const base = process.env.CHECKOUT_CORE_API_URL;
           'submit_order',
           'create_handoff',
         ]) {
-          const response = await client.callTool({ name, arguments: {} });
-          expect(response.structuredContent).toMatchObject({
-            ok: false,
-            error: { code: 'CHECKOUT_FLOW_REPLACED' },
-          });
+          await expect(
+            client.callTool({ name, arguments: {} }),
+          ).rejects.toMatchObject({ code: -32602 });
         }
       } finally {
         await client.close();

@@ -4,13 +4,12 @@ import type { ToolDefinition } from '../register-tools.js';
 import type { CatalogService } from '../../catalog/catalog.service.js';
 import { pageInput } from '@store/contracts';
 import { z } from 'zod';
-import { parseToolInput as parse } from '../tool-input.js';
 
 const reviewInput = pageInput.extend({ productId: z.string().min(1).max(64) });
 
 export function createListProductReviews(
   catalog: CatalogService,
-): ToolDefinition {
+): ToolDefinition<z.output<typeof reviewInput>> {
   return {
     name: 'list_product_reviews',
     description:
@@ -24,7 +23,7 @@ export function createListProductReviews(
     },
     handler: async (input) => {
       try {
-        const { productId, ...page } = parse(reviewInput, input);
+        const { productId, ...page } = input;
         return await catalog.reviews(productId, page);
       } catch (error) {
         if (

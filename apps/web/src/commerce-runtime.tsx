@@ -1,5 +1,6 @@
 'use client';
 import { useMemo, type ReactNode } from 'react';
+import NextLink from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { CommerceApplication } from '@store/commerce-ui/application';
 import { httpTransport, browserStorage } from '@store/commerce-ui/transport';
@@ -11,6 +12,7 @@ export function WebCommerce({ children }: { children: ReactNode }) {
     router = useRouter();
   const runtime = useMemo(
     () => ({
+      Link: NextLink,
       location: pathname + (query ? `?${query}` : ''),
       navigation: router,
       transport: httpTransport,
