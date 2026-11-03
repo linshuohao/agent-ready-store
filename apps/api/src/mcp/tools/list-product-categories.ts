@@ -1,3 +1,4 @@
+import type { z } from 'zod';
 import { ToolError } from '../tool-error.js';
 import { AppError } from '../../shared/app-error.js';
 import type { ToolDefinition } from '../register-tools.js';
@@ -6,7 +7,7 @@ import { categoryPageInput } from '@store/contracts';
 
 export function createListProductCategories(
   catalog: CatalogService,
-): ToolDefinition {
+): ToolDefinition<z.output<typeof categoryPageInput>> {
   return {
     name: 'list_product_categories',
     description:

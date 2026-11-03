@@ -5,15 +5,27 @@ import {
   Inject,
   Param,
   Post,
-  Req,
-  Res,
+  Body,
+  Query,
+  UseGuards,
+  HttpCode,
+  UseFilters,
+  UseInterceptors,
 } from '@nestjs/common';
-import type { Request, Response } from 'express';
 import { z } from 'zod';
 import { orderTargetInput } from '@store/contracts';
 import { CartService } from './cart.service.js';
 import { AppError } from '../shared/app-error.js';
-import { result } from '../shared/result.js';
+import {
+  HttpResultFilter,
+  HttpResultInterceptor,
+} from '../shared/http-result.js';
+
+import {
+  CartRequestGuard,
+  CartRequestPolicy,
+} from '../shared/request-guards.js';
+import { ZodValidationPipe } from '../shared/zod-validation.pipe.js';
 
 const orderContext = orderTargetInput.omit({ orderId: true });
 const listQuery = z
@@ -34,194 +46,114 @@ const listQuery = z
       .optional(),
   })
   .strict();
-function parse<T>(schema: z.ZodType<T>, input: unknown): T {
-  const parsed = schema.safeParse(input);
-  if (!parsed.success) throw new AppError('VALIDATION_ERROR', 400);
-  return parsed.data;
-}
-
+@UseInterceptors(HttpResultInterceptor)
+@UseFilters(HttpResultFilter)
+@UseGuards(CartRequestGuard)
 @Controller('api/v1')
 export class CartController {
   constructor(@Inject(CartService) private readonly carts: CartService) {}
 
-  private checkRequest(req: Request, write: boolean, query = false) {
-    if (
-      (!query && Object.keys(req.query).length) ||
-      req.headers['x-cart-token']
-    )
-      throw new AppError('VALIDATION_ERROR', 400);
-    if (
-      write &&
-      (req.get('origin') !== process.env.WEB_ORIGIN ||
-        !req.is('application/json'))
-    )
-      throw new AppError('FORBIDDEN', 403);
-  }
-
-  private async send(res: Response, work: () => Promise<unknown>) {
-    let status = 200;
-    const response = await result(async () => {
-      try {
-        return await work();
-      } catch (error) {
-        status = error instanceof AppError ? error.status : 503;
-        throw error;
-      }
-    });
-    res.setHeader('Cache-Control', 'no-store');
-    res.status(status).json(response);
-  }
-
+  @CartRequestPolicy({ allowQuery: true })
   @Get('shopping/request-result')
-  async requestResult(@Req() req: Request, @Res() res: Response) {
-    await this.send(res, async () => {
-      this.checkRequest(req, false, true);
-      return this.carts.requestResult(req.query);
-    });
+  async requestResult(@Query() query: Record<string, unknown>) {
+    return this.carts.requestResult(query);
   }
 
+  @HttpCode(200)
   @Post('shopping/carts/add')
-  async add(@Req() req: Request, @Res() res: Response) {
-    await this.send(res, async () => {
-      this.checkRequest(req, true);
-      return this.carts.add(req.body, 'WEB');
-    });
+  async add(@Body() body: unknown) {
+    return this.carts.add(body, 'WEB');
   }
 
+  @HttpCode(200)
   @Post('shopping/webmcp/carts/add')
-  async addWebMcp(@Req() req: Request, @Res() res: Response) {
-    await this.send(res, async () => {
-      this.checkRequest(req, true);
-      return this.carts.add(req.body, 'WEBMCP');
-    });
+  async addWebMcp(@Body() body: unknown) {
+    return this.carts.add(body, 'WEBMCP');
   }
 
+  @HttpCode(200)
   @Post('shopping/carts')
-  async initialize(@Req() req: Request, @Res() res: Response) {
-    await this.send(res, async () => {
-      this.checkRequest(req, true);
-      return this.carts.getOrCreate(req.body, 'WEB');
-    });
+  async initialize(@Body() body: unknown) {
+    return this.carts.getOrCreate(body, 'WEB');
   }
 
+  @HttpCode(200)
   @Post('shopping/webmcp/carts')
-  async initializeWebMcp(@Req() req: Request, @Res() res: Response) {
-    await this.send(res, async () => {
-      this.checkRequest(req, true);
-      return this.carts.getOrCreate(req.body, 'WEBMCP');
-    });
+  async initializeWebMcp(@Body() body: unknown) {
+    return this.carts.getOrCreate(body, 'WEBMCP');
   }
 
+  @HttpCode(200)
   @Post('shopping/webmcp/carts/:id/orders')
-  async createWebMcpOrder(
-    @Param('id') id: string,
-    @Req() req: Request,
-    @Res() res: Response,
-  ) {
-    await this.send(res, async () => {
-      this.checkRequest(req, true);
-      return this.carts.createOrder(id, req.body, 'WEBMCP');
-    });
+  async createWebMcpOrder(@Param('id') id: string, @Body() body: unknown) {
+    return this.carts.createOrder(id, body, 'WEBMCP');
   }
 
   @Get('shopping/carts/:id')
-  async get(
-    @Param('id') id: string,
-    @Req() req: Request,
-    @Res() res: Response,
-  ) {
-    await this.send(res, async () => {
-      this.checkRequest(req, false);
-      return this.carts.get(id);
-    });
+  async get(@Param('id') id: string) {
+    return this.carts.get(id);
   }
 
+  @HttpCode(200)
   @Post('shopping/carts/:id/operations')
-  async operate(
-    @Param('id') id: string,
-    @Req() req: Request,
-    @Res() res: Response,
-  ) {
-    await this.send(res, async () => {
-      this.checkRequest(req, true);
-      return this.carts.operate(id, req.body);
-    });
+  async operate(@Param('id') id: string, @Body() body: unknown) {
+    return this.carts.operate(id, body);
   }
 
+  @HttpCode(200)
   @Post('shopping/carts/:id/quote')
-  async quote(
-    @Param('id') id: string,
-    @Req() req: Request,
-    @Res() res: Response,
-  ) {
-    await this.send(res, async () => {
-      this.checkRequest(req, true);
-      return this.carts.quoteSelection(id, req.body, 'WEB');
-    });
+  async quote(@Param('id') id: string, @Body() body: unknown) {
+    return this.carts.quoteSelection(id, body, 'WEB');
   }
 
+  @HttpCode(200)
   @Post('shopping/carts/:id/orders')
-  async createOrder(
-    @Param('id') id: string,
-    @Req() req: Request,
-    @Res() res: Response,
-  ) {
-    await this.send(res, async () => {
-      this.checkRequest(req, true);
-      return this.carts.createOrder(id, req.body, 'WEB');
-    });
+  async createOrder(@Param('id') id: string, @Body() body: unknown) {
+    return this.carts.createOrder(id, body, 'WEB');
   }
 
+  @CartRequestPolicy({ allowQuery: true })
   @Get('shopping/carts/:id/orders')
   async listOrders(
     @Param('id') id: string,
-    @Req() req: Request,
-    @Res() res: Response,
+    @Query(new ZodValidationPipe(listQuery)) query: z.output<typeof listQuery>,
   ) {
-    await this.send(res, async () => {
-      this.checkRequest(req, false, true);
-      return this.carts.listOrders(id, parse(listQuery, req.query));
-    });
+    return this.carts.listOrders(id, query);
   }
 
+  @CartRequestPolicy({ allowQuery: true })
   @Get('shopping/orders/:id')
   async getOrder(
     @Param('id') id: string,
-    @Req() req: Request,
-    @Res() res: Response,
+    @Query(new ZodValidationPipe(orderContext))
+    query: z.output<typeof orderContext>,
   ) {
-    await this.send(res, async () => {
-      this.checkRequest(req, false, true);
-      return this.carts.getOrder(id, parse(orderContext, req.query).cartId);
-    });
+    return this.carts.getOrder(id, query.cartId);
   }
 
   // UI interaction only; never registered as an Agent tool. Origin is not human identity proof.
+  @HttpCode(200)
   @Post('shopping/orders/:id/pay')
   async payOrder(
     @Param('id') id: string,
-    @Req() req: Request,
-    @Res() res: Response,
+    @Body(new ZodValidationPipe(orderContext))
+    body: z.output<typeof orderContext>,
   ) {
-    await this.send(res, async () => {
-      this.checkRequest(req, true);
-      return this.carts.payOrder(id, parse(orderContext, req.body).cartId);
-    });
+    return this.carts.payOrder(id, body.cartId);
   }
 
+  @HttpCode(200)
   @Post('shopping/orders/:id/cancel')
   async cancelOrder(
     @Param('id') id: string,
-    @Req() req: Request,
-    @Res() res: Response,
+    @Body(new ZodValidationPipe(orderContext))
+    body: z.output<typeof orderContext>,
   ) {
-    await this.send(res, async () => {
-      this.checkRequest(req, true);
-      return this.carts.cancelOrder(id, parse(orderContext, req.body).cartId);
-    });
+    return this.carts.cancelOrder(id, body.cartId);
   }
 
   // Separate namespace: old clients cannot execute a legacy purchase on the new model.
+  @CartRequestPolicy({ retired: true })
   @All([
     'carts',
     'carts/*path',
@@ -231,12 +163,7 @@ export class CartController {
     'webmcp/*path',
     'order-links/*path',
   ])
-  async retired(@Res() res: Response) {
-    res.setHeader('Cache-Control', 'no-store');
-    res.status(410).json(
-      await result(() => {
-        throw new AppError('CHECKOUT_FLOW_REPLACED', 410);
-      }),
-    );
+  async retired() {
+    throw new AppError('CHECKOUT_FLOW_REPLACED', 410);
   }
 }

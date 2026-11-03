@@ -1,11 +1,13 @@
+import type { z } from 'zod';
 import { ToolError } from '../tool-error.js';
 import { AppError } from '../../shared/app-error.js';
 import type { ToolDefinition } from '../register-tools.js';
 import type { CartService } from '../../cart/cart.service.js';
 import { orderTargetInput } from '@store/contracts';
-import { parseToolInput as parse } from '../tool-input.js';
 
-export function createAppsPayOrder(carts: CartService): ToolDefinition {
+export function createAppsPayOrder(
+  carts: CartService,
+): ToolDefinition<z.output<typeof orderTargetInput>> {
   return {
     name: 'apps_pay_order',
     description:
@@ -20,7 +22,7 @@ export function createAppsPayOrder(carts: CartService): ToolDefinition {
     _meta: { ui: { visibility: ['app'] } },
     handler: async (input) => {
       try {
-        const { orderId, cartId } = parse(orderTargetInput, input);
+        const { orderId, cartId } = input;
         return await carts.payOrder(orderId, cartId);
       } catch (error) {
         if (

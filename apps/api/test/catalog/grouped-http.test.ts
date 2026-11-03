@@ -57,10 +57,11 @@ const base = process.env.API_BASE_URL,
             name: 'query_products',
             arguments: { queries: [{ id: 'a', offset: 1 }] },
           });
-          expect(invalid.structuredContent).toMatchObject({
-            ok: false,
-            error: { code: 'VALIDATION_ERROR' },
+          expect(invalid).toMatchObject({
+            isError: true,
+            content: [{ type: 'text', text: expect.any(String) }],
           });
+          expect(invalid.structuredContent).toBeUndefined();
         } finally {
           await client.close();
         }

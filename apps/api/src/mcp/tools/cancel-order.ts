@@ -1,11 +1,13 @@
+import type { z } from 'zod';
 import { ToolError } from '../tool-error.js';
 import { AppError } from '../../shared/app-error.js';
 import type { ToolDefinition } from '../register-tools.js';
 import type { CartService } from '../../cart/cart.service.js';
 import { orderTargetInput } from '@store/contracts';
-import { parseToolInput as parse } from '../tool-input.js';
 
-export function createCancelOrder(carts: CartService): ToolDefinition {
+export function createCancelOrder(
+  carts: CartService,
+): ToolDefinition<z.output<typeof orderTargetInput>> {
   return {
     name: 'cancel_order',
     description:
@@ -19,7 +21,7 @@ export function createCancelOrder(carts: CartService): ToolDefinition {
     },
     handler: async (input) => {
       try {
-        const { orderId, cartId } = parse(orderTargetInput, input);
+        const { orderId, cartId } = input;
         return await carts.cancelOrder(orderId, cartId);
       } catch (error) {
         if (

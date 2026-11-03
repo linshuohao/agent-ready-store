@@ -17,7 +17,6 @@ const app = new App(
 );
 const transport = bridgeTransport({
   call: (name, args) => app.callServerTool({ name, arguments: args }),
-  open: (url) => app.openLink({ url }),
 });
 const storage = {
   keys: () => Object.keys(sessionStorage),

@@ -24,12 +24,10 @@ export function useOrderPage(id: string) {
       if (document.visibilityState !== 'hidden')
         void commands.read(id, { background: true });
     };
-    const timer = setInterval(() => setNow(Date.now()), 1000);
     window.addEventListener('focus', returned);
     document.addEventListener('visibilitychange', returned);
     return () => {
       live = false;
-      clearInterval(timer);
       window.removeEventListener('focus', returned);
       document.removeEventListener('visibilitychange', returned);
     };
@@ -37,6 +35,12 @@ export function useOrderPage(id: string) {
   const expired = Boolean(
     state.order && now >= Date.parse(state.order.reservationExpiresAt),
   );
+  const ticking = Boolean(state.order && !committed(state.order) && !expired);
+  useEffect(() => {
+    if (!ticking) return;
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, [ticking]);
   useEffect(() => {
     if (expired && !committed(commands.snapshot(id).order!)) void load();
   }, [expired, commands, id, load]);

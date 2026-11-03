@@ -1,13 +1,15 @@
+import type { z } from 'zod';
 import { ToolError } from '../tool-error.js';
 import { AppError } from '../../shared/app-error.js';
 import type { ToolDefinition } from '../register-tools.js';
 import type { CartService } from '../../cart/cart.service.js';
 import { getOrCreateCartInput } from '@store/contracts';
-import { parseToolInput as parse } from '../tool-input.js';
 
 const agentCartInput = getOrCreateCartInput;
 
-export function createGetOrCreateCart(carts: CartService): ToolDefinition {
+export function createGetOrCreateCart(
+  carts: CartService,
+): ToolDefinition<z.output<typeof agentCartInput>> {
   return {
     name: 'get_or_create_cart',
     description:
@@ -21,7 +23,7 @@ export function createGetOrCreateCart(carts: CartService): ToolDefinition {
     },
     handler: async (input) => {
       try {
-        return await carts.getOrCreate(parse(agentCartInput, input), 'MCP');
+        return await carts.getOrCreate(input, 'MCP');
       } catch (error) {
         if (
           !(error instanceof AppError) ||

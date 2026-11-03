@@ -3,11 +3,12 @@ import { AppError } from '../../shared/app-error.js';
 import type { ToolDefinition } from '../register-tools.js';
 import type { CartService } from '../../cart/cart.service.js';
 import { z } from 'zod';
-import { parseToolInput as parse } from '../tool-input.js';
 
 const cartTarget = z.object({ cartId: z.uuid() }).strict();
 
-export function createGetCart(carts: CartService): ToolDefinition {
+export function createGetCart(
+  carts: CartService,
+): ToolDefinition<z.output<typeof cartTarget>> {
   return {
     name: 'get_cart',
     description:
@@ -21,7 +22,7 @@ export function createGetCart(carts: CartService): ToolDefinition {
     },
     handler: async (input) => {
       try {
-        return await carts.get(parse(cartTarget, input).cartId);
+        return await carts.get(input.cartId);
       } catch (error) {
         if (
           !(error instanceof AppError) ||

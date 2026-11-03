@@ -1,14 +1,14 @@
+import type { z } from 'zod';
 import { ToolError } from '../tool-error.js';
 import { AppError } from '../../shared/app-error.js';
 import type { ToolDefinition } from '../register-tools.js';
 import type { CartService } from '../../cart/cart.service.js';
 import { addCartItemInput } from '@store/contracts';
-import { parseToolInput as parse } from '../tool-input.js';
 
 export function createAddCartItem(
   carts: CartService,
   channel: 'MCP' | 'APPS' = 'MCP',
-): ToolDefinition {
+): ToolDefinition<z.output<typeof addCartItemInput>> {
   return {
     name: channel === 'APPS' ? 'apps_add_cart_item' : 'add_cart_item',
     ...(channel === 'APPS' ? { _meta: { ui: { visibility: ['app'] } } } : {}),
@@ -23,7 +23,7 @@ export function createAddCartItem(
     },
     handler: async (input) => {
       try {
-        return await carts.add(parse(addCartItemInput, input), channel);
+        return await carts.add(input, channel);
       } catch (error) {
         if (
           !(error instanceof AppError) ||

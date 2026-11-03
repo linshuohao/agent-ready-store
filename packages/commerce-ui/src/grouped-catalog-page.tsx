@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   groupedSearchInput,
   groupedSearchOutput,
@@ -31,37 +31,44 @@ export function GroupedCatalogPage({ collection }: { collection: string }) {
     new URLSearchParams(location.split('?')[1]).get('scope') ?? fallbackScope;
   const contextKey = 'store.apps.search.' + scope + ':' + collection;
   const [storageWarning, setStorageWarning] = useState(false);
-  const save = (next: GroupedSearchResult) => {
-    current.current = next;
-    setData(next);
-    try {
-      storage.setItem(
-        contextKey,
-        JSON.stringify({
-          queries: next.groups.map((g) => g.query),
-          catalogRevision: next.catalogRevision,
-          searchRevision: next.searchRevision,
-        }),
-      );
-    } catch {
-      setStorageWarning(true);
-    }
-  };
-  const fetchPage = async (input: GroupedSearchInput) => {
-    const response = (await (
-      await transport('/api/v1/products/search', input)
-    ).json()) as Result<unknown>;
-    if (!response.ok) throw Error(response.error.code);
-    const parsed = groupedSearchOutput.parse(response.data);
-    const requested = groupedSearchInput.parse(input).queries;
-    if (
-      JSON.stringify(parsed.groups.map((g) => g.query)) !==
-      JSON.stringify(requested)
-    )
-      throw Error('INVALID_RESULT');
-    return parsed;
-  };
+  const save = useCallback(
+    (next: GroupedSearchResult) => {
+      current.current = next;
+      setData(next);
+      try {
+        storage.setItem(
+          contextKey,
+          JSON.stringify({
+            queries: next.groups.map((g) => g.query),
+            catalogRevision: next.catalogRevision,
+            searchRevision: next.searchRevision,
+          }),
+        );
+      } catch {
+        setStorageWarning(true);
+      }
+    },
+    [contextKey, storage],
+  );
+  const fetchPage = useCallback(
+    async (input: GroupedSearchInput) => {
+      const response = (await (
+        await transport('/api/v1/products/search', input)
+      ).json()) as Result<unknown>;
+      if (!response.ok) throw Error(response.error.code);
+      const parsed = groupedSearchOutput.parse(response.data);
+      const requested = groupedSearchInput.parse(input).queries;
+      if (
+        JSON.stringify(parsed.groups.map((g) => g.query)) !==
+        JSON.stringify(requested)
+      )
+        throw Error('INVALID_RESULT');
+      return parsed;
+    },
+    [transport],
+  );
   useEffect(() => {
+    const generation = epoch;
     const requestEpoch = ++epoch.current;
     let input: GroupedSearchInput;
     try {
@@ -96,10 +103,10 @@ export function GroupedCatalogPage({ collection }: { collection: string }) {
           setError(e instanceof Error ? e.message : 'TEMPORARY_UNAVAILABLE');
       });
     return () => {
-      epoch.current++;
+      generation.current++;
     };
-    // A collection identifies one delivered search. Storage writes never retrigger it.
-  }, [collection, transport, storage]);
+    // Scope and collection identify a delivered search; stable callbacks avoid reloads on storage writes.
+  }, [collection, contextKey, fetchPage, save, storage]);
   const loadGroup = async (id: string, offset: number) => {
     const before = current.current;
     if (!before || error) return;

@@ -1,3 +1,4 @@
+import type { z } from 'zod';
 import { ToolError } from '../tool-error.js';
 import { AppError } from '../../shared/app-error.js';
 import type { ToolDefinition } from '../register-tools.js';
@@ -7,7 +8,9 @@ import { appResource } from '../resources.js';
 
 const resource = appResource('search_products');
 
-export function createSearchProducts(catalog: CatalogService): ToolDefinition {
+export function createSearchProducts(
+  catalog: CatalogService,
+): ToolDefinition<z.output<typeof discoveryInput>> {
   return {
     name: resource.tool,
     description:

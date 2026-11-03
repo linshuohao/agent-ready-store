@@ -1,5 +1,9 @@
-export type Transport = (path: string, body?: unknown) => Promise<Response>;
-export const httpTransport: Transport = (path, body) =>
+export type Transport = (
+  path: string,
+  body?: unknown,
+  options?: { signal?: AbortSignal },
+) => Promise<Response>;
+export const httpTransport: Transport = (path, body, options) =>
   fetch(path, {
     method: body === undefined ? 'GET' : 'POST',
     credentials: 'same-origin',
@@ -7,7 +11,9 @@ export const httpTransport: Transport = (path, body) =>
     headers:
       body === undefined ? undefined : { 'Content-Type': 'application/json' },
     body: body === undefined ? undefined : JSON.stringify(body),
-    signal: AbortSignal.timeout(10000),
+    signal: options?.signal
+      ? AbortSignal.any([options.signal, AbortSignal.timeout(10000)])
+      : AbortSignal.timeout(10000),
   });
 export type Storage = Pick<
   globalThis.Storage,

@@ -19,7 +19,6 @@ export type PageToolsProps = {
   product?: ProductDetail;
   cartId?: string;
   readonly?: boolean;
-  reviewId?: string;
   orderId?: string;
 };
 export type Navigation = {
@@ -27,7 +26,12 @@ export type Navigation = {
   replace: (href: string, options?: { scroll?: boolean }) => void;
 };
 export type RouteDelivery = { navigate: () => void };
+export type CommerceLinkProps = Omit<ComponentProps<'a'>, 'href'> & {
+  href: string;
+  prefetch?: boolean;
+};
 export type CommerceRuntime = {
+  Link?: ComponentType<CommerceLinkProps>;
   surface?: 'web' | 'embedded';
   revision?: number;
   subscribeDelivery?: (
@@ -49,14 +53,17 @@ export function useRuntime() {
 }
 export const usePathname = () => useRuntime().location.split('?')[0];
 export const useRouter = () => useRuntime().navigation;
-export function Link({
-  href,
-  prefetch: _prefetch,
-  onClick,
-  ...props
-}: Omit<ComponentProps<'a'>, 'href'> & { href: string; prefetch?: boolean }) {
-  void _prefetch;
-  const { navigation } = useRuntime();
+export function Link({ href, prefetch, onClick, ...props }: CommerceLinkProps) {
+  const { navigation, Link: EnvironmentLink } = useRuntime();
+  if (EnvironmentLink)
+    return (
+      <EnvironmentLink
+        {...props}
+        href={href}
+        prefetch={prefetch}
+        onClick={onClick}
+      />
+    );
   return (
     <a
       {...props}
@@ -71,6 +78,7 @@ export function Link({
           !event.shiftKey &&
           !event.altKey &&
           !props.target &&
+          props.download === undefined &&
           href.startsWith('/') &&
           !href.startsWith('//')
         ) {

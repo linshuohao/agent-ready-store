@@ -4,7 +4,6 @@ import type { ToolDefinition } from '../register-tools.js';
 import type { CartService } from '../../cart/cart.service.js';
 import { persistentCartOperationInput } from '@store/contracts';
 import { z } from 'zod';
-import { parseToolInput as parse } from '../tool-input.js';
 
 const operationBase = persistentCartOperationInput.options[1]
   .omit({ operation: true })
@@ -16,7 +15,9 @@ const updateItemInput = operationBase
   })
   .strict();
 
-export function createUpdateCartItem(carts: CartService): ToolDefinition {
+export function createUpdateCartItem(
+  carts: CartService,
+): ToolDefinition<z.output<typeof updateItemInput>> {
   return {
     name: 'update_cart_item',
     description:
@@ -30,10 +31,7 @@ export function createUpdateCartItem(carts: CartService): ToolDefinition {
     },
     handler: async (input) => {
       try {
-        const { cartId, productId, quantity, ...context } = parse(
-          updateItemInput,
-          input,
-        );
+        const { cartId, productId, quantity, ...context } = input;
         return await carts.operate(cartId, {
           ...context,
           operation: { type: 'set_quantity', productId, quantity },

@@ -2,7 +2,7 @@
 name: ai-native-workflow
 description: Use when starting or resuming work in agent-ready-store, including product requirements, UI/UX design, technical decisions, architecture design, feasibility experiments, incremental delivery, Project Showcase, maintenance, fixes, and review. 不用于无关项目或一般问答。
 metadata:
-  version: "0.8"
+  version: "0.9"
 ---
 
 # AI-Native Workflow
@@ -26,6 +26,10 @@ metadata:
 | 真实纠偏历史 | 必要时 `AI_NOTES.md`；聊天或历史建议不自动成为正式决策 |
 
 区分 **Normative**（适用且已确认的要求）、**Observed**（实际观察）、**Inferred**（有依据的推断）、**Unknown**（尚未确认/验证）；事实标签不代表批准。存在 Accepted Decision/Spec 冲突时按 AGENTS 的权威与冲突规则升级，不能用更新时间、现有代码或 AI 偏好裁决。缺少关键上下文时说明未知，不编造。
+
+## 开发前框架实践
+
+涉及Next/React/Nest代码或接口替换时，开始设计/编码前按[框架实践](../../../docs/engineering/FRAMEWORK_PRACTICES.md)加载当前范围的规则及版本匹配资料，核对已有高层能力和必要例外；共享UI修改也属于React范围。只在已有任务说明中简述适用项，不增加独立阶段、审批或报告。纯文档及无关工作跳过。实现后的检查由现有Review Integration复用同一正文。
 
 ## Task Classification 与循环
 

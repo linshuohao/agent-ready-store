@@ -2,7 +2,7 @@
 name: ai-native-review
 description: Use when a change in agent-ready-store needs review routing, review handoff, or a decision about visual review before human acceptance or PR review. 不用于普通低风险任务的自动全量审查。
 metadata:
-  version: "0.4"
+  version: "0.5"
 ---
 
 # Review Routing
@@ -20,6 +20,8 @@ metadata:
 | 收到 Findings | 按需加载 `superpowers:receiving-code-review` 核实反馈，实现者修复并重验；Reviewer 默认只读 |
 | 需求、交互或技术方案尚待判断 | 对照相关目标与拟议方案做聚焦 Design Review；标准按需读[产品、设计与交付契约](../../../docs/workflow/PRODUCT_ENGINEERING.md)，不套用已完成代码审查流程 |
 | 准备交付、PR 或 Human 验收 | 复用匹配当前范围的审查/测试，处理未决项，再按下节决定展示；最终 Showcase 按上述交付契约核对，不重复完整 Code Review |
+
+框架相关代码审查同时引用[框架实践](../../../docs/engineering/FRAMEWORK_PRACTICES.md)，核对开发前选用的资料、框架职责、既有封装复用及必要例外。共享UI须检查Hooks与异步生命周期。只将适用条目加入本次审查输入，不另启动最佳实践审查、不以Skill清单代替原始代码与行为证据；纯文档审查不加载无关框架知识。
 
 派发时提供原始契约位置、准确审查范围及证据入口，要求审阅者自行核对；实现者总结只作线索。项目只补充当前相关约束：金额、库存、订单、权限、购买确认、幂等及关键竞态的适用不变量与真实运行证据，不复制通用质量清单。合理用户预期可以揭示 Spec 缺口，不能自动成为已批准业务契约。
 

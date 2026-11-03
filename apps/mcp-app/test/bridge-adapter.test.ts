@@ -108,7 +108,7 @@ function setup() {
               : { ...cart },
     ),
   );
-  const bridge = { call, open: vi.fn(async () => ({})) };
+  const bridge = { call };
   return { call, transport: bridgeTransport(bridge), storage: memory() };
 }
 describe('Apps protocol adapter with the shared shopping application', () => {
@@ -147,6 +147,22 @@ describe('Apps protocol adapter with the shared shopping application', () => {
       quantity: 2,
     });
   });
+  it.each(['add_item', 'set_quantity'] as const)(
+    'rejects invalid %s quantities locally before calling Bridge',
+    async (type) => {
+      const { call, transport } = setup();
+      for (const quantity of [undefined, 0, -1, 1.5, 2147483648, '2']) {
+        await expect(
+          transport(`/api/v1/shopping/carts/${id}/operations`, {
+            operationRequestId: crypto.randomUUID(),
+            expectedCartVersion: 1,
+            operation: { type, productId: 'P001', quantity },
+          }),
+        ).rejects.toThrow();
+      }
+      expect(call).not.toHaveBeenCalled();
+    },
+  );
   it('shared initialization uses the APPS entry and never a Web endpoint', async () => {
     const { call, transport, storage } = setup();
     const input = {
@@ -389,7 +405,7 @@ it('card catalog reads use the data-only query tool without a new search UI entr
     catalogRevision: 'fixture',
   };
   const call = vi.fn(async () => ({ structuredContent: { ok: true, data } }));
-  const transport = bridgeTransport({ call, open: async () => ({}) });
+  const transport = bridgeTransport({ call });
   expect(
     await (await transport('/api/v1/products?q=earbuds&limit=2')).json(),
   ).toMatchObject({ ok: true, data });
@@ -434,7 +450,7 @@ describe('grouped search bridge', () => {
     );
     expect(route.startsWith('/search?')).toBe(true);
     const call = vi.fn(async () => delivery);
-    const response = await bridgeTransport({ call, open: async () => ({}) })(
+    const response = await bridgeTransport({ call })(
       '/api/v1/products/search',
       { queries: [{ id: 'audio', q: '蓝牙' }] },
     );
@@ -578,4 +594,25 @@ it('known order success survives local association failure while durable recover
     data: { order: { orderId: oid } },
   });
   expect(pendingRequests(storage).map((r) => r.requestId)).toEqual([requestId]);
+});
+
+it('rejects standard SDK errors and propagates protocol failures without reporting success', async () => {
+  const sdkError = {
+    isError: true,
+    content: [{ type: 'text', text: 'Input validation error' }],
+  };
+  const bridge: Bridge = { call: async () => sdkError };
+  await expect(
+    bridgeTransport(bridge)(`/api/v1/shopping/carts/${id}`),
+  ).rejects.toThrow();
+  expect(() => toolRoute('search_products', {}, sdkError)).toThrow();
+  const protocolError = new Error('Tool not found');
+  const failed: Bridge = {
+    call: async () => {
+      throw protocolError;
+    },
+  };
+  await expect(
+    bridgeTransport(failed)(`/api/v1/shopping/carts/${id}`),
+  ).rejects.toBe(protocolError);
 });

@@ -1,19 +1,16 @@
-export function decodeQuery(query: Record<string, unknown>) {
-  const decoded = { ...query };
-  for (const key of ['offset', 'limit', 'minPrice', 'maxPrice']) {
-    const value = decoded[key];
-    if (typeof value === 'string' && /^\d+(\.\d+)?$/.test(value))
-      decoded[key] = Number(value);
-  }
-  if (decoded.purchasableOnly === 'true') decoded.purchasableOnly = true;
-  if (decoded.purchasableOnly === 'false') decoded.purchasableOnly = false;
-  return decoded;
-}
+import { Injectable, type PipeTransform } from '@nestjs/common';
 
-export const httpStatus: Record<string, number> = {
-  VALIDATION_ERROR: 400,
-  FORBIDDEN: 403,
-  NOT_FOUND: 404,
-  CATALOG_CHANGED: 409,
-  TEMPORARY_UNAVAILABLE: 503,
-};
+@Injectable()
+export class CatalogQueryPipe implements PipeTransform {
+  transform(query: Record<string, unknown>) {
+    const decoded = { ...query };
+    for (const key of ['offset', 'limit', 'minPrice', 'maxPrice']) {
+      const value = decoded[key];
+      if (typeof value === 'string' && /^\d+(\.\d+)?$/.test(value))
+        decoded[key] = Number(value);
+    }
+    if (decoded.purchasableOnly === 'true') decoded.purchasableOnly = true;
+    if (decoded.purchasableOnly === 'false') decoded.purchasableOnly = false;
+    return decoded;
+  }
+}

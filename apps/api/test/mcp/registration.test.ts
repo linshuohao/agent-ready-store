@@ -2,7 +2,9 @@ import {
   appResource,
   createResourceRegistrar,
 } from '../../src/mcp/resources.js';
-import { readFileSync } from 'node:fs';
+import { readFileSync, mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { afterEach, expect, it, vi } from 'vitest';
 import express from 'express';
 import type { Server } from 'node:http';
@@ -12,7 +14,6 @@ import {
 } from '@modelcontextprotocol/client';
 import { McpServer, createMcpHandler } from '@modelcontextprotocol/server';
 import { toNodeHandler } from '@modelcontextprotocol/node';
-import { parseToolInput } from '../../src/mcp/tool-input.js';
 import { z } from 'zod';
 import { attachMcp } from '../../src/mcp/mcp.adapter.js';
 import { createToolRegistrar } from '../../src/mcp/register-tools.js';
@@ -74,24 +75,66 @@ it('preserves every committed discovery contract', async () => {
   );
   expect(await migrated.client.listTools()).toEqual(expected);
 });
-it('keeps retired, unknown and invalid-input failures inside the existing envelope', async () => {
+it('rejects unregistered and invalid calls before maintenance', async () => {
+  const beforeCall = vi.fn(async () => {});
+  const { client } = await connect((app, catalog, carts) =>
+    attachMcp(app, catalog, carts, beforeCall),
+  );
+  for (const name of ['prepare_checkout', 'unknown_tool']) {
+    await expect(
+      client.callTool({ name, arguments: {} }),
+    ).rejects.toMatchObject({ code: -32602 });
+  }
+  const response = await client.callTool({ name: 'get_cart', arguments: {} });
+  expect(response).toMatchObject({
+    isError: true,
+    content: [{ type: 'text', text: expect.any(String) }],
+  });
+  expect(response.structuredContent).toBeUndefined();
+  expect(beforeCall).not.toHaveBeenCalled();
+});
+
+it('rejects historical resource URIs instead of serving current HTML', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'mcp-resources-'));
+  for (const name of ['search-products', 'create-order'])
+    writeFileSync(join(dir, `${name}-v9.html`), '<html>current UI</html>');
+  vi.stubEnv('MCP_APPS_PATH', dir);
   const { client } = await connect();
-  for (const [name, code] of [
-    ['prepare_checkout', 'CHECKOUT_FLOW_REPLACED'],
-    ['unknown_tool', 'VALIDATION_ERROR'],
-    ['get_cart', 'VALIDATION_ERROR'],
-  ]) {
-    const response = await client.callTool({ name, arguments: {} });
-    expect(response).toMatchObject({
-      isError: true,
-      structuredContent: {
-        ok: false,
-        error: { code },
-        environment: { mode: 'simulation' },
-      },
+  try {
+    expect(
+      (await client.readResource({ uri: 'ui://store/search-products-v9.html' }))
+        .contents[0],
+    ).toMatchObject({
+      text: '<html>current UI</html>',
+      mimeType: 'text/html;profile=mcp-app',
+      _meta: { ui: { csp: { connectDomains: [] } } },
     });
+    expect(
+      (await client.listResources()).resources.map((r) => r.uri).sort(),
+    ).toEqual([
+      'ui://store/create-order-v9.html',
+      'ui://store/search-products-v9.html',
+    ]);
+    for (const name of ['search-products', 'create-order']) {
+      for (const version of ['v4', 'v5', 'v6', 'v7', 'v8']) {
+        await expect(
+          client.readResource({ uri: `ui://store/${name}-${version}.html` }),
+        ).rejects.toThrow();
+      }
+    }
+
+    for (const uri of [
+      'ui://store/unknown.html',
+      'file:///etc/passwd',
+      'ui://store/../unknown.html',
+      'ui://store/search-products-v999.html',
+    ])
+      await expect(client.readResource({ uri })).rejects.toThrow();
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
   }
 });
+
 it('rejects duplicate registrations before a second handler replaces the first', () => {
   const tool = {
     name: 'example',
@@ -106,7 +149,7 @@ it('rejects duplicate registrations before a second handler replaces the first',
     () => {},
   );
   register(tool);
-  expect(() => register(tool)).toThrow('Duplicate');
+  expect(() => register(tool)).toThrow(/already registered/i);
 });
 it('preserves Host and Origin rejection in demo mode', async () => {
   const { host } = await connect();
@@ -131,7 +174,14 @@ it('requires the token only when explicitly configured', async () => {
 it.each([false, true])(
   'discovers and invokes an independent tool with resource=%s through one registration',
   async (withResource) => {
-    const echoInput = z.object({ value: z.string() }).strict();
+    const echoInput = z
+      .object({
+        value: z
+          .string()
+          .default(' default ')
+          .transform((value) => value.trim()),
+      })
+      .strict();
     const calls: string[] = [];
     const { client } = await connect((app) => {
       const handler = createMcpHandler(() => {
@@ -152,7 +202,7 @@ it.each([false, true])(
           inputSchema: echoInput,
           annotations: { readOnlyHint: true },
           handler: (input) => {
-            const { value } = parseToolInput(echoInput, input);
+            const { value } = input;
             calls.push(value);
             return { echoed: value };
           },
@@ -170,20 +220,33 @@ it.each([false, true])(
     expect(
       await client.callTool({
         name: 'independent_example',
-        arguments: { value: 'works' },
+        arguments: { value: ' works ' },
       }),
     ).toMatchObject({
       structuredContent: { ok: true, data: { echoed: 'works' } },
     });
     expect(calls).toEqual(['works']);
     expect(
-      await client.callTool({ name: 'independent_example', arguments: {} }),
+      await client.callTool({
+        name: 'independent_example',
+        arguments: { value: 42 },
+      }),
     ).toMatchObject({
       isError: true,
-      structuredContent: { error: { code: 'VALIDATION_ERROR' } },
+      content: [{ type: 'text', text: expect.any(String) }],
     });
     expect(calls).toEqual(['works']);
-    const resources = (await client.listResources()).resources;
+    expect(
+      await client.callTool({ name: 'independent_example', arguments: {} }),
+    ).toMatchObject({
+      structuredContent: { ok: true, data: { echoed: 'default' } },
+    });
+    expect(calls).toEqual(['works', 'default']);
+    const resources = withResource
+      ? (await client.listResources()).resources
+      : [];
+    if (!withResource)
+      expect(client.getServerCapabilities()?.resources).toBeUndefined();
     expect(resources.map((resource) => resource.uri)).toEqual(
       withResource ? ['ui://store/independent-example-v9.html'] : [],
     );
@@ -322,7 +385,7 @@ it.each(['demo', 'token'] as const)(
       }),
     ).toMatchObject({
       isError: true,
-      structuredContent: { error: { code: 'VALIDATION_ERROR' } },
+      content: [{ type: 'text', text: expect.any(String) }],
     });
     expect(beforeCall).not.toHaveBeenCalled();
     expect(requestResult).toHaveBeenCalledTimes(2);

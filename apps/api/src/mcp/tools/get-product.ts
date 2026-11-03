@@ -1,11 +1,13 @@
+import type { z } from 'zod';
 import { ToolError } from '../tool-error.js';
 import { AppError } from '../../shared/app-error.js';
 import type { ToolDefinition } from '../register-tools.js';
 import type { CatalogService } from '../../catalog/catalog.service.js';
 import { productInput } from '@store/contracts';
-import { parseToolInput as parse } from '../tool-input.js';
 
-export function createGetProduct(catalog: CatalogService): ToolDefinition {
+export function createGetProduct(
+  catalog: CatalogService,
+): ToolDefinition<z.output<typeof productInput>> {
   return {
     name: 'get_product',
     description:
@@ -19,7 +21,7 @@ export function createGetProduct(catalog: CatalogService): ToolDefinition {
     },
     handler: async (input) => {
       try {
-        return await catalog.get(parse(productInput, input).productId);
+        return await catalog.get(input.productId);
       } catch (error) {
         if (
           !(error instanceof AppError) ||

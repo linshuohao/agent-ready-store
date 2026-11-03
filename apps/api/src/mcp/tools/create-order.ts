@@ -4,13 +4,14 @@ import type { ToolDefinition } from '../register-tools.js';
 import type { CartService } from '../../cart/cart.service.js';
 import { createOrderInput } from '@store/contracts';
 import { z } from 'zod';
-import { parseToolInput as parse } from '../tool-input.js';
 import { appResource } from '../resources.js';
 
 const orderCreation = createOrderInput.safeExtend({ cartId: z.uuid() });
 const resource = appResource('create_order');
 
-export function createOrderTool(carts: CartService): ToolDefinition {
+export function createOrderTool(
+  carts: CartService,
+): ToolDefinition<z.output<typeof orderCreation>> {
   return {
     name: resource.tool,
     description:
@@ -26,7 +27,7 @@ export function createOrderTool(carts: CartService): ToolDefinition {
     _meta: resource.metadata,
     handler: async (input) => {
       try {
-        const { cartId, ...body } = parse(orderCreation, input);
+        const { cartId, ...body } = input;
         return await carts.createOrder(cartId, body, 'MCP');
       } catch (error) {
         if (
