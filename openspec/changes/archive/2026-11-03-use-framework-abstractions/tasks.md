@@ -73,3 +73,7 @@ Human授权清理旧契约/组件、扫描列清单并逐步实施，强调Next/
 - 当前工作区根pnpm dev启动Web3000/API3002，核对两端cwd，连接store_test；desktop购物、WebMCP、cart-card三个文件11项浏览器回归通过（包含金额明细、草稿恢复和支付）。无操作业务库。
 - requesting-code-review独立reviewer /root/review_cleanup_guards 核对最终Diff与原始行为，未发现需修复findings；仅静态审查，未冒充重跑本轮集成。
 - 当前分支refactor/mcp-sdk-registration，上一轮提交51d59dc保留。本轮追加修改尚未提交/推送/归档；未从已完成的上一轮提交授权推定新提交授权。真实Host验收仍属于上一轮MCP Change的未完成项。
+
+## Acceptance and archive
+
+2026-11-03：Human 明确回复“延期验收，合并归档”，授权本轮合并与归档。实现及独立审查已完成；PR #22 的 CI（Verify、Delivery image）在 44af42c 全部通过。真实 Host 发现刷新、搜索/订单卡片及错误反馈现场验收延期，未声称通过；其范围保留在 simplify-mcp-sdk-registration 的任务 3.2，未来接入目标版本时补验。此决定允许带该已知缺口归档，不取消真实 Host 验收要求，也不构成发布授权。

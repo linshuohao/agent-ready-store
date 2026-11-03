@@ -38,3 +38,7 @@
 - 3.2仍未完成：尚无真实Host刷新发现、搜索/订单卡片及错误反馈的现场证据。本轮不自行发布或修改Host连接；SDK测试与真实Host验收分别记录。
 
 - 后续非MCP HTTP回归发现catalog/grouped-http仍断言旧参数错误envelope；已同步为SDK isError/content且无structuredContent，两个协议模式在实际API回归中通过。生产契约未变。
+
+## Acceptance and archive
+
+2026-11-03：Human 明确回复“延期验收，合并归档”，授权本轮合并与归档。实现及独立审查已完成；PR #22 的 CI（Verify、Delivery image）在 44af42c 全部通过。真实 Host 发现刷新、搜索/订单卡片及错误反馈现场验收延期，未声称通过；其范围保留在 simplify-mcp-sdk-registration 的任务 3.2，未来接入目标版本时补验。此决定允许带该已知缺口归档，不取消真实 Host 验收要求，也不构成发布授权。
