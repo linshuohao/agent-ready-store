@@ -13,6 +13,9 @@ export default {
   enhanceApp({ app, router }) {
     router.onAfterRouteChange = async (href) => {
       if (typeof window === 'undefined') return;
+      await nextTick();
+      // Same-page query navigation must also refresh Demo and reading state.
+      window.dispatchEvent(new Event('docs:navigated'));
       const target = new URL(href, location.href);
       if (
         target.pathname !== '/presentation.html' ||

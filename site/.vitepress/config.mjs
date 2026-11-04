@@ -46,10 +46,8 @@ export default defineConfig({
   ignoreDeadLinks: false,
   themeConfig: {
     nav: [
-      { text: '项目导览', link: '/' },
       { text: '项目展示', link: '/demo' },
       { text: '文档目录', link: '/library' },
-      { text: '交付证据', link: '/read/delivery-status' },
     ],
     sidebar: {
       '/read/': sidebar,

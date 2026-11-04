@@ -4,7 +4,6 @@ defineProps(['source', 'role', 'current', 'historical']);
 </script>
 <template>
   <div class="reading-tools">
-    <a href="/">项目导览</a><span> / 文档阅读</span>
     <p>
       {{ role }} · 来源：<code>{{ source }}</code>
     </p>

@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { useRoute } from 'vitepress';
-import { returnUrl, contextual } from './context';
+import { returnUrl } from './context';
 import { slides } from './presentation-nav';
 const props = defineProps({ mobile: Boolean });
 const route = useRoute();
@@ -75,11 +75,6 @@ watch(() => route.path, collect);
           >{{ h.title }}</a
         >
       </nav>
-      <div class="rail-shortcuts">
-        <a :href="contextual('/library.html')">完整文档</a
-        ><a :href="contextual('/specs.html')">现行规范</a
-        ><a :href="contextual('/history.html')">历史记录</a>
-      </div>
       <div v-if="related.length" class="rail-related">
         <p class="rail-label">相关展示</p>
         <a v-for="s in related" :href="'/presentation.html?slide=' + s.id"

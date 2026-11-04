@@ -1,10 +1,8 @@
 <script setup>
 import DefaultTheme from 'vitepress/theme';
 import ReadingNavigation from './ReadingNavigation.vue';
-import { useRoute } from 'vitepress';
-import { onMounted, watch, nextTick } from 'vue';
+import { onMounted, onUnmounted, nextTick } from 'vue';
 import { syncOrigin, validOrigin } from './context';
-const route = useRoute();
 let generation = 0;
 async function update() {
   const own = ++generation;
@@ -55,8 +53,12 @@ function preserve(e) {
 onMounted(() => {
   update();
   document.addEventListener('click', preserve, true);
+  window.addEventListener('docs:navigated', update);
 });
-watch(() => route.path, update);
+onUnmounted(() => {
+  document.removeEventListener('click', preserve, true);
+  window.removeEventListener('docs:navigated', update);
+});
 </script>
 <template>
   <DefaultTheme.Layout

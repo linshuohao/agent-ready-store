@@ -1,33 +1,19 @@
 .presentation-page {
   max-width: 1244px;
   margin: auto;
-  padding: 0 32px 32px;
-}
-.presentation-chapters {
-  display: flex;
-  gap: 28px;
-  padding: 18px 0;
-  border-bottom: 1px solid #d6d6d6;
-  overflow-x: auto;
-}
-.presentation-chapters a {
-  white-space: nowrap;
-  font-size: 14px;
-  color: #595959;
-}
-.presentation-chapters a[aria-current] {
-  color: #191919;
-  font-weight: 700;
+  min-width: 0;
+  width: 100%;
+  padding: 0 0 32px;
 }
 .presentation-screens {
-  display: flex;
-  gap: 12px;
-  padding: 16px 0;
-  flex-wrap: wrap;
+  display: grid;
+  gap: 2px;
+  padding: 4px 0 12px 12px;
 }
 .presentation-screens a {
-  padding: 6px 12px;
-  font-size: 13px;
+  padding: 5px 10px;
+  font-size: 12px;
+  line-height: 1.6;
   border-radius: 3px;
 }
 .presentation-screens a[aria-current] {
@@ -35,7 +21,7 @@
   color: #fff;
 }
 .presentation-body {
-  padding: 30px 0;
+  padding: 0 0 24px;
 }
 .presentation-heading h1 {
   font-size: 38px;
@@ -104,7 +90,6 @@
   grid-template-columns: 240px minmax(0, 1fr);
   gap: 32px;
   padding: 24px 0;
-  border-top: 1px solid #d6d6d6;
 }
 .presentation-explanation dt,
 .presentation-narrative h2 {
@@ -119,7 +104,6 @@
   margin: 0;
 }
 .presentation-evidence {
-  border-top: 1px solid #d6d6d6;
   padding-top: 24px;
   margin-top: 32px;
 }
@@ -148,7 +132,6 @@
   align-items: center;
   gap: 20px;
   padding: 16px 0;
-  border-top: 1px solid #d6d6d6;
   position: sticky;
   bottom: 0;
   background: #fff;
@@ -176,10 +159,7 @@
 }
 @media (max-width: 800px) {
   .presentation-page {
-    padding: 0 20px 24px;
-  }
-  .presentation-chapters {
-    gap: 20px;
+    padding: 0 0 24px;
   }
   .presentation-heading h1 {
     font-size: 29px;
@@ -365,5 +345,109 @@
   }
   .req-timeline h2 {
     font-size: 18px;
+  }
+}
+
+/* A single vertical directory keeps chapters and screens in one place. */
+.showcase-shell {
+  display: grid;
+  grid-template-columns: 184px minmax(0, 1fr);
+  gap: 32px;
+  max-width: 1380px;
+  margin: auto;
+  padding: 24px 32px 32px;
+  align-items: start;
+}
+.showcase-navigation {
+  position: sticky;
+  top: 104px;
+  max-height: calc(100dvh - 128px);
+  overflow: auto;
+  font-size: 13px;
+}
+.showcase-navigation > nav > a {
+  display: block;
+  padding: 7px 10px;
+  color: #595959;
+}
+.showcase-navigation > nav > a[aria-current] {
+  color: #191919;
+  font-weight: 650;
+}
+.showcase-navigation a:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.showcase-navigation > nav > a[aria-current] > span {
+  display: none;
+}
+.showcase-menu-toggle {
+  display: none;
+}
+.showcase-shell .demo-page {
+  min-width: 0;
+  width: 100%;
+  padding: 0;
+}
+.demo-route-picker {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  color: #595959;
+  font-size: 13px;
+}
+.demo-route-options {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.demo-route-options button {
+  border: 1px solid #ddd;
+  padding: 8px 12px;
+  min-height: 44px;
+  max-width: 100%;
+  background: #fff;
+  color: #191919;
+  border-radius: 3px;
+  font: inherit;
+}
+@media (max-width: 800px) {
+  .showcase-shell {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+    padding: 16px 20px 24px;
+  }
+  .showcase-navigation {
+    position: static;
+    max-height: none;
+  }
+  .showcase-menu-toggle {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    background: #f5f5f3;
+  }
+  .showcase-navigation > nav {
+    display: none;
+  }
+  .showcase-navigation[data-open='true'] > nav {
+    display: block;
+    padding-top: 8px;
+  }
+}
+
+.demo-route-options button[aria-pressed='true'] {
+  background: #191919;
+  color: #fff;
+  border-color: #191919;
+}
+
+@media (max-width: 800px) {
+  .showcase-navigation a,
+  .showcase-navigation .presentation-screens a {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
   }
 }
