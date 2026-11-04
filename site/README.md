@@ -43,7 +43,7 @@ AI 工作流补充参考用户提供的 ai_native_engineering_manual.html、ai_n
 
 ## 可复现检查
 
-`pnpm docs:build` 自动构建并检查产物链接；`pnpm docs:check` 运行源链接测试及断链、禁发文件、符号链接反例。安装仓库根开发依赖后执行 `pnpm exec playwright install chromium`，再运行 `pnpm docs:test`：启动临时预览并检查所有正文图示、完整展示链路、旧入口、刷新/返回和四种窗口宽度。使用系统 Chrome 可设置 `DOCS_BROWSER_CHANNEL=chrome`。
+`pnpm docs:build` 自动构建并检查产物链接；`pnpm docs:check` 运行源链接测试及断链、禁发文件、符号链接反例。安装仓库根开发依赖后执行 `pnpm exec playwright install chromium`，再运行 `pnpm docs:test`：启动临时预览，逐篇从目录进入正文并检查刷新、后退与前进；走查全部展示小节、三条 Demo 路线、页内锚点、手机菜单、原演示位置返回、正文图示、旧入口和四种窗口宽度。使用系统 Chrome 可设置 `DOCS_BROWSER_CHANNEL=chrome`。
 
 构建需要正常 Git checkout 和完整文件历史，用于将历史材料中已删除的源码链接定位到最后存在的版本。展示摘要中保留的源码外链固定在原选定版本 3275e19，不声称为最新源码；生成的当前文档源码链接则使用构建 revision。已验证独立域名根路径部署，非根部署前缀仍未验证。
 
@@ -62,3 +62,5 @@ git fetch --depth=2147483647 https://github.com/linshuohao/agent-ready-store.git
 历史文档会引用已删除源码，因此云端需补齐当前部署提交的历史；默认浅检出不足。GitHub Actions 负责业务测试与镜像验证，Vercel Git 集成独立自动发布；目前没有等待 Actions 成功才发布的门禁。文档构建自身必须通过链接、锚点与禁止文件检查。
 
 旧版交付页与展示页增量已接入：Demo 包含网页、探索式 Agent 和按约束直接生单三条路线，指令与首页 MCP 地址支持复制及拒绝权限后的手动复制；路线和步骤可刷新、前进后退并从文档返回。旧页面的独立视图由站内页面导航承接，取消订单路线仍在交付导览正文中。
+
+展示页导航采用桌面左侧章节目录，讲解小节嵌在当前章节下；手机以“展示目录”按钮展开。Demo 路线使用带标签的直接切换按钮，正文上方只保留步骤切换；顶部不再重复章节横栏。标题随屏幕自然折行，说明段落以间距分组。
