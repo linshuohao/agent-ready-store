@@ -2,7 +2,7 @@
 name: ai-native-workflow
 description: Use when starting or resuming work in agent-ready-store, including product requirements, UI/UX design, technical decisions, architecture design, feasibility experiments, incremental delivery, Project Showcase, maintenance, fixes, and review. 不用于无关项目或一般问答。
 metadata:
-  version: "0.9"
+  version: "0.10"
 ---
 
 # AI-Native Workflow
@@ -59,6 +59,8 @@ metadata:
 需要协调多个切片时，按可独立验收的用户/业务成果划分里程碑，结合依赖与风险排序。每个里程碑只说明成果、范围、关键依赖、退出条件及承接的 Change；不以“代码写完”代替可观察验收。简单单切片任务无需 Roadmap，按原路由使用当前 Change 或 Direct/Fix。
 
 划分时先明确最终用户成果及验收方式，再寻找可演示或可验证的最小闭环；优先解决阻塞后续的共享契约、关键不变量和高风险未知，再按依赖安排后续成果。前端、后端、协议适配通常是里程碑内的工作包，不机械分别设为交付里程碑；在契约明确、范围可隔离且宿主允许时并行，并尽早连接真实实现。每个里程碑的退出条件包含集成结果与所需验收证据，各工作包完成不自动等于里程碑完成。仅影响一个可审查单元的文档整理或局部修复不强拆多阶段。
+
+人工审阅批次按可完整解释、独立验收的成果组织，同时考虑理解成本：能否沿一条主线讲清、关键取舍是否须一起判断、一次引入多少新概念。代码行数不单独决定拆分；重复应用同一模式可合并讲解，相对独立的目标可拆批，紧密关联的设计保持整体说明。Task、Commit、AI 审查与 Human Review 不要求一一对应；已批准方案内连续推进相关任务和定向验证，到完整成果再交付。重要设计先供 Human 判断，后续批次引用整体设计，只展开本批差异；实质决策变化、契约冲突、重大风险或实际阻塞按 Decision & Autonomy 升级。批次复用当前 Change 的 Tasks 或对话约定，不新增审批层或计划载体。
 
 里程碑摘要复用已有交付状态文档中的相关位置；尚处探索且无需持久交接时留在当前对话，不新建平行计划。一个里程碑可由一个或多个可审查 Change 承接；Change 的 Proposal 引用所属里程碑和贡献范围，详细 Spec/Design/Tasks 与验证要求只维护在 OpenSpec。未启动的后续切片只保留目标、边界和依赖，不预建空 Change 或全量 Tasks。
 
@@ -140,6 +142,10 @@ metadata:
 
 依据行为契约设计验证，不把实现、自写测试和自我 Review 的一致当成正确。用实际命令与结果说明 **observed / inferred / unverified**，缺少测试或工具时报告限制，不能写成通过。
 
+本开发流程的 Verification、Review 与 Human Acceptance 依据本地/测试环境中符合契约的证据完成；满足适用验收、授权及 OpenSpec 条件后可收尾、归档。合并并发布部署后的生产环境检查属于后续部署验证，不作为开发收尾、归档或合并的前置条件，也不将测试通过表述为生产已验证。发布后的待检查事项交接到已有 PR 或交付记录，说明目标版本/环境、检查项及后续负责人或承接任务；发布权限仍独立核对。
+
+真实行为不等于生产环境：按风险所需的真实 PostgreSQL、并发、浏览器或 Host 集成应在本地/测试环境完成，Mock 不替代关键真实证据，不能全部推迟到生产。既有 Change 若把只能部署后执行的检查列为开发退出条件，应明确调整其验收范围并保留依据，不静默勾选完成；生产特有的未验证项交接后续，当前必要验证缺失仍按升级规则处理。
+
 | 风险 | 验证深度（选择与变更有关的检查） |
 | --- | --- |
 | 低 | 基础静态/文档检查、已有相关测试、Git Diff；无代码不编造业务测试 |
@@ -160,11 +166,9 @@ metadata:
 
 ## Review Integration（轻量路由）
 
-本 Skill 是统一任务入口，确定任务范围与权限；正式审查、反馈交接或交付展示需要选择时，读取并应用 [ai-native-review](../ai-native-review/SKILL.md)。它负责审查路径、已有审查进度及可视化选择，不反向调用本 Skill。
+本 Skill 确定范围、权限及交付批次；需要审查、反馈交接或 Human 验收时，读取并应用 [ai-native-review](../ai-native-review/SKILL.md)。传入准确 Diff/版本、适用契约、有效验证证据及未决项；它负责一次适用审查、反馈处理与变更导读，不反向调用本 Skill。
 
-普通低风险维护保留聚焦自查；代码审查复用 Superpowers 或可用 Codex Review，项目契约作为同一次审查输入，不额外追加一轮全量审查。需求/设计仍可作聚焦 Design Review；交付复用有效证据。默认先核实 Findings、修复、重验及必要的定向复核，再在 PR/交付时按人的理解成本决定短摘要、普通图示或 Visual Recap；风险高不自动意味着需要可视化，Diff 小也不自动意味着审查风险低。
-
-状态与证据留当前对话、同一 OpenSpec Change 或已有 PR，不另建状态机、平行计划或逐轮报告。未决契约冲突与重大残余风险仍交 Human；自查不冒充独立审查，Recap 不替代代码/运行证据或 Human 验收。提交、安装、外部发布及后续业务工作沿原有授权。
+普通低风险维护保留聚焦自查；交付按 Review Skill 组织人类阅读入口。根据审查结果回到受影响范围修复，或交 Human 验收；重要契约冲突按 Decision & Autonomy 升级。状态留在当前对话、同一 Change 或已有 PR，后续 Git 操作沿既有授权。
 
 ## Knowledge Evolution
 
